@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ThemeProvider, useTheme } from "./styles/theme.jsx";
+import PaperCanvasPanel from "./styles/PaperCanvasPanel.jsx";
 import { TAG_PROMPTS, UNIVERSAL_PROMPTS } from "./prompts/promptBank.js";
 
 // --- Prompt generation from tags ---
@@ -740,6 +741,11 @@ function DossierInner({ mode, sittingKey }) {
               <div>Select an entry to view</div>
             </div>
           )}
+        </div>
+
+        {/* Paper canvas sandbox — POST to /api/draw to drive it */}
+        <div style={{ padding: "24px 24px 0" }}>
+          <PaperCanvasPanel width={860} height={220} />
         </div>
 
         {showAddModal && (

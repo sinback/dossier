@@ -343,6 +343,8 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
   brushRadius = 8,
   crumpleStrength = 1.0,
   paperRoughness = 1.0,
+  interactive = true,
+  storageKey = null,
   style = {},
   className = "",
 }, ref) {
@@ -361,9 +363,58 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
         s.gl.texImage2D(s.gl.TEXTURE_2D, 0, s.gl.RG32F, s.W, s.H, 0, s.gl.RG, s.gl.FLOAT, null);
       }
       s.activeBounds = { x: 0, y: 0, w: 0, h: 0 };
+      if (storageKey) localStorage.removeItem(storageKey);
     },
     exportPNG() {
       return canvasRef.current?.toDataURL("image/png");
+    },
+    // Fill a rectangle with settled ink immediately (no animation).
+    // region is in CSS pixels. Returns { ok, error? }.
+    fillRect(region, color) {
+      const s = glState.current;
+      if (!s) return { ok: false, error: "Canvas not initialized" };
+      const { gl, inkTex, W, H, dpr } = s;
+
+      const px = Math.floor(region.x * dpr);
+      const py = Math.floor(region.y * dpr);
+      const pw = Math.ceil(region.width * dpr);
+      const ph = Math.ceil(region.height * dpr);
+
+      if (px < 0 || py < 0 || px + pw > W || py + ph > H) {
+        return {
+          ok: false,
+          error: `Region (${region.x},${region.y} ${region.width}×${region.height}) exceeds canvas bounds (${W/dpr}×${H/dpr} CSS px)`,
+        };
+      }
+
+      // CSS y is top-down; GL texture y is bottom-up
+      const glY = H - py - ph;
+
+      // Settled ink: wetness=0 so the simulation's dry early-exit preserves it
+      const data = new Float32Array(pw * ph * 2);
+      for (let i = 0; i < pw * ph; i++) {
+        data[i * 2]     = 1.0; // ink
+        data[i * 2 + 1] = 0.0; // wetness (already dry = permanent)
+      }
+      gl.bindTexture(gl.TEXTURE_2D, inkTex[s.current]);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, px, glY, pw, ph, gl.RG, gl.FLOAT, data);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+
+      if (color) {
+        s.inkRGB = new Float32Array([color.r / 255, color.g / 255, color.b / 255]);
+      }
+
+      // Expand active bounds to cover the new region and kick the render loop
+      const ab = s.activeBounds;
+      if (ab.w === 0) {
+        ab.x = px; ab.y = glY; ab.w = pw; ab.h = ph;
+      } else {
+        const x0 = Math.min(ab.x, px),        y0 = Math.min(ab.y, glY);
+        const x1 = Math.max(ab.x + ab.w, px + pw), y1 = Math.max(ab.y + ab.h, glY + ph);
+        ab.x = x0; ab.y = y0; ab.w = x1 - x0; ab.h = y1 - y0;
+      }
+      s.startLoop();
+      return { ok: true };
     },
   }));
 
@@ -455,6 +506,67 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
+    // ── Persistence ───────────────────────────────────────────────────────────
+    // We only save the ink channel (R), not wetness (G) — settled ink always has
+    // wetness=0 so there's nothing to round-trip. The ink values are encoded as
+    // a grayscale PNG via an offscreen 2D canvas, which compresses very well for
+    // sparse ink and keeps the localStorage footprint to ~50–200KB.
+
+    function saveInkState() {
+      if (!storageKey) return;
+      const raw = new Float32Array(W * H * 2);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, inkFBO[current]);
+      gl.readPixels(0, 0, W, H, gl.RG, gl.FLOAT, raw);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      const offscreen = document.createElement("canvas");
+      offscreen.width = W; offscreen.height = H;
+      const ctx = offscreen.getContext("2d");
+      const img = ctx.createImageData(W, H);
+      for (let i = 0; i < W * H; i++) {
+        const byte = Math.min(255, Math.floor((raw[i * 2] / 1.6) * 255));
+        img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = byte;
+        img.data[i * 4 + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ W, H, src: offscreen.toDataURL("image/png") }));
+      } catch (e) {
+        console.warn("[PaperCanvas] localStorage save failed:", e);
+      }
+    }
+
+    function loadInkState() {
+      if (!storageKey) return;
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) return;
+      const { W: sW, H: sH, src } = JSON.parse(saved);
+      if (sW !== W || sH !== H) return; // dimensions changed (e.g. DPR or resize), skip
+
+      const image = new Image();
+      image.onload = () => {
+        const offscreen = document.createElement("canvas");
+        offscreen.width = W; offscreen.height = H;
+        const ctx = offscreen.getContext("2d");
+        ctx.drawImage(image, 0, 0);
+        const px = ctx.getImageData(0, 0, W, H).data;
+
+        const inkData = new Float32Array(W * H * 2);
+        for (let i = 0; i < W * H; i++) {
+          inkData[i * 2]     = (px[i * 4] / 255) * 1.6; // R → ink
+          inkData[i * 2 + 1] = 0;                         // wetness = 0
+        }
+        gl.bindTexture(gl.TEXTURE_2D, inkTex[current]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG32F, W, H, 0, gl.RG, gl.FLOAT, inkData);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+
+        // Cover the full canvas so the render loop shows the restored ink
+        glState.current.activeBounds = { x: 0, y: 0, w: W, h: H };
+        startLoop();
+      };
+      image.src = src;
+    }
+
     // Wetness decays by 0.92/frame. After 200 frames: 0.92^200 ≈ 1e-7 — fully dry.
     // Once idle that long with no new stamps, the loop stops. Ink remains visible
     // in the textures; we just stop asking the GPU to keep simulating nothing.
@@ -464,6 +576,7 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
       const s = glState.current;
       if (s.framesSinceStamp >= IDLE_FRAMES) {
         s.running = false;
+        saveInkState(); // ink is fully settled — good moment to persist
         return; // don't reschedule — loop is stopped until next stamp
       }
       simulate();
@@ -505,8 +618,16 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     glState.current.framesSinceStamp = 0;
     glState.current.rafId = rafId;
 
+    // Load persisted ink after the first render frame so the canvas is ready
+    requestAnimationFrame(() => loadInkState());
+
+    // Save on page close in case the loop is still running when the user leaves
+    const handleUnload = () => saveInkState();
+    window.addEventListener("beforeunload", handleUnload);
+
     return () => {
       cancelAnimationFrame(glState.current?.rafId ?? rafId);
+      window.removeEventListener("beforeunload", handleUnload);
       gl.deleteTexture(heightTex);
       inkTex.forEach(t => gl.deleteTexture(t));
       inkFBO.forEach(f => gl.deleteFramebuffer(f));
@@ -617,18 +738,18 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
   return (
     <div
       className={className}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={stopPointer}
-      onPointerLeave={stopPointer}
-      onPointerCancel={stopPointer}
+      onPointerDown={interactive ? handlePointerDown : undefined}
+      onPointerMove={interactive ? handlePointerMove : undefined}
+      onPointerUp={interactive ? stopPointer : undefined}
+      onPointerLeave={interactive ? stopPointer : undefined}
+      onPointerCancel={interactive ? stopPointer : undefined}
       style={{
         position: "relative",
         width,
         height,
         borderRadius: 16,
         overflow: "hidden",
-        cursor: "crosshair",
+        cursor: interactive ? "crosshair" : "default",
         boxShadow: "0 12px 30px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.65)",
         touchAction: "none",
         ...style,
