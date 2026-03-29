@@ -1,0 +1,5 @@
+If this game ever makes money, throw some at the people who made the tools.
+
+zod (Colin McDonnell) - https://github.com/sponsors/colinhacks
+vite - https://github.com/vitejs/vite?sponsor=1
+postcss - https://opencollective.com/postcss/

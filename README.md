@@ -23,3 +23,7 @@ Then open `http://localhost:3000`.
 ## Stack
 
 React 19, Vite.
+
+## If this ever makes money
+
+Check `NPM_FUND_NOTES.txt` and throw a few bucks at the open source projects that made it possible.
