@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import Dossier from './Dossier.jsx'
-import CrinklyDemo from './CrinklyDemo.jsx'
-import InkyDemo from './InkyDemo.jsx'
+import CrinklyDemo from './styles/CrinklyDemo.jsx'
+import InkyDemo from './styles/InkyDemo.jsx'
 
 export default function App() {
   return (

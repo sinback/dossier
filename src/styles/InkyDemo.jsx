@@ -5,7 +5,7 @@ import React, { useRef } from "react";
 import InteractivePaperCanvas from "./InteractivePaperCanvas.jsx";
 
 export default function InkyDemo() {
-  const paperRef = useRef<InteractivePaperCanvas>(null);
+  const paperRef = useRef(null);
 
   return (
     <div
