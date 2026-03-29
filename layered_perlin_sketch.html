@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crumpled Paper Background</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #e9e6df;
+      font-family: Georgia, serif;
+    }
+
+    .paper {
+      width: min(800px, 90vw);
+      min-height: 320px;
+      padding: 48px;
+      box-sizing: border-box;
+      border-radius: 12px;
+      color: #2f2a24;
+      background-size: cover;
+      background-position: center;
+      box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 rgba(255,255,255,0.65);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: clamp(2rem, 4vw, 3rem);
+    }
+
+    p {
+      max-width: 60ch;
+      line-height: 1.6;
+      font-size: 1.05rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="paper" id="paper">
+    <h1>Crumpled Paper</h1>
+    <p>
+      This background is generated from layered Perlin-style noise with ridges,
+      fine grain, and soft directional shading so it looks more like wrinkled paper
+      than smooth clouds.
+    </p>
+  </div>
+
+  <script>
+    class PerlinNoise {
+      constructor() {
+        this.permutation = [
+          151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,
+          140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,
+          247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,
+          57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,
+          74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,
+          60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,
+          65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,
+          200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,
+          52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,
+          207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,
+          119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
+          129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,
+          218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,
+          81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,
+          184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,
+          222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+        ];
+
+        this.p = new Array(512);
+        for (let i = 0; i < 512; i++) {
+          this.p[i] = this.permutation[i % 256];
+        }
+      }
+
+      fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+      }
+
+      lerp(t, a, b) {
+        return a + t * (b - a);
+      }
+
+      grad(hash, x, y) {
+        const h = hash & 7;
+        const u = h < 4 ? x : y;
+        const v = h < 4 ? y : x;
+        return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+      }
+
+      noise(x, y) {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+
+        x -= Math.floor(x);
+        y -= Math.floor(y);
+
+        const u = this.fade(x);
+        const v = this.fade(y);
+
+        const aa = this.p[this.p[X] + Y];
+        const ab = this.p[this.p[X] + Y + 1];
+        const ba = this.p[this.p[X + 1] + Y];
+        const bb = this.p[this.p[X + 1] + Y + 1];
+
+        return this.lerp(
+          v,
+          this.lerp(u, this.grad(aa, x, y), this.grad(ba, x - 1, y)),
+          this.lerp(u, this.grad(ab, x, y - 1), this.grad(bb, x - 1, y - 1))
+        );
+      }
+
+      fbm(x, y, octaves = 5, persistence = 0.5) {
+        let total = 0;
+        let amplitude = 1;
+        let frequency = 1;
+        let maxValue = 0;
+
+        for (let i = 0; i < octaves; i++) {
+          total += this.noise(x * frequency, y * frequency) * amplitude;
+          maxValue += amplitude;
+          amplitude *= persistence;
+          frequency *= 2;
+        }
+
+        return total / maxValue;
+      }
+
+      ridged(x, y, octaves = 5, persistence = 0.5) {
+        let total = 0;
+        let amplitude = 0.5;
+        let frequency = 1;
+        let maxValue = 0;
+
+        for (let i = 0; i < octaves; i++) {
+          let n = this.noise(x * frequency, y * frequency);
+          n = 1 - Math.abs(n);   // make ridges
+          n *= n;                // sharpen them
+          total += n * amplitude;
+          maxValue += amplitude;
+          amplitude *= persistence;
+          frequency *= 2;
+        }
+
+        return total / maxValue;
+      }
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function generateCrumpledPaper(width, height) {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+
+      const noise = new PerlinNoise();
+
+      const baseScale = 0.012;
+      const ridgeScale = 0.03;
+      const fineScale = 0.12;
+
+      const values = new Float32Array(width * height);
+
+      // First pass: build height field
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const nx = x * baseScale;
+          const ny = y * baseScale;
+
+          const broad = noise.fbm(nx, ny, 5, 0.52);                  // big folds
+          const ridges = noise.ridged(x * ridgeScale, y * ridgeScale, 5, 0.55); // creases
+          const fine = noise.ridged(x * fineScale, y * fineScale, 3, 0.5);      // micro wrinkles
+
+          // Combine into paper height map
+          let h = 0.45 * broad + 0.9 * ridges + 0.18 * fine;
+          values[y * width + x] = h;
+        }
+      }
+
+      // Second pass: derive lighting from local slope
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = y * width + x;
+
+          const left = values[y * width + Math.max(0, x - 1)];
+          const right = values[y * width + Math.min(width - 1, x + 1)];
+          const up = values[Math.max(0, y - 1) * width + x];
+          const down = values[Math.min(height - 1, y + 1) * width + x];
+
+          const dx = right - left;
+          const dy = down - up;
+
+          // directional emboss lighting
+          const light = (-dx * 0.8) + (-dy * 0.6);
+
+          // tiny random paper grain
+          const grain = (Math.random() - 0.5) * 10;
+
+          // slightly warm paper tone
+          let base = 228 + values[i] * 18 + light * 65 + grain;
+
+          const r = clamp(base + 4, 210, 255);
+          const g = clamp(base + 2, 208, 252);
+          const b = clamp(base - 3, 200, 245);
+
+          const di = i * 4;
+          data[di] = r;
+          data[di + 1] = g;
+          data[di + 2] = b;
+          data[di + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return canvas.toDataURL("image/png");
+    }
+
+    const paper = document.getElementById("paper");
+    const texture = generateCrumpledPaper(1200, 800);
+    paper.style.backgroundImage = `url(${texture})`;
+  </script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perlin Noise Background Example</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #111;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+    }
+
+    .hero {
+      width: min(800px, 90vw);
+      min-height: 300px;
+      padding: 48px;
+      border-radius: 24px;
+      color: white;
+      box-sizing: border-box;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.28);
+      pointer-events: none;
+    }
+
+    .hero > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+    }
+
+    p {
+      margin: 0;
+      max-width: 55ch;
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero" id="hero">
+    <h1>Perlin Noise Background</h1>
+    <p>
+      This panel uses a procedurally generated noise texture as its background-image.
+      You can tweak the scale, octaves, and colors to get cloudy, marble, or terrain-like effects.
+    </p>
+  </div>
+
+  <script>
+    class PerlinNoise {
+      constructor() {
+        this.permutation = [
+          151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,
+          140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,
+          247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,
+          57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,
+          74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,
+          60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,
+          65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,
+          200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,
+          52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,
+          207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,
+          119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,
+          129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,
+          218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,
+          81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,
+          184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,
+          222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+        ];
+
+        this.p = new Array(512);
+        for (let i = 0; i < 512; i++) {
+          this.p[i] = this.permutation[i % 256];
+        }
+      }
+
+      fade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+      }
+
+      lerp(t, a, b) {
+        return a + t * (b - a);
+      }
+
+      grad(hash, x, y) {
+        const h = hash & 7;
+        const u = h < 4 ? x : y;
+        const v = h < 4 ? y : x;
+        return ((h & 1) ? -u : u) + ((h & 2) ? -2 * v : 2 * v);
+      }
+
+      noise(x, y) {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+
+        x -= Math.floor(x);
+        y -= Math.floor(y);
+
+        const u = this.fade(x);
+        const v = this.fade(y);
+
+        const aa = this.p[this.p[X] + Y];
+        const ab = this.p[this.p[X] + Y + 1];
+        const ba = this.p[this.p[X + 1] + Y];
+        const bb = this.p[this.p[X + 1] + Y + 1];
+
+        return this.lerp(
+          v,
+          this.lerp(u, this.grad(aa, x, y), this.grad(ba, x - 1, y)),
+          this.lerp(u, this.grad(ab, x, y - 1), this.grad(bb, x - 1, y - 1))
+        );
+      }
+
+      octaveNoise(x, y, octaves = 4, persistence = 0.5) {
+        let total = 0;
+        let frequency = 1;
+        let amplitude = 1;
+        let maxValue = 0;
+
+        for (let i = 0; i < octaves; i++) {
+          total += this.noise(x * frequency, y * frequency) * amplitude;
+          maxValue += amplitude;
+          amplitude *= persistence;
+          frequency *= 2;
+        }
+
+        return total / maxValue;
+      }
+    }
+
+    function generateNoiseDataURL(width, height) {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      const imageData = ctx.createImageData(width, height);
+
+      const perlin = new PerlinNoise();
+      const scale = 0.015;
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const n = perlin.octaveNoise(x * scale, y * scale, 5, 0.55);
+
+          // Normalize from roughly [-1, 1] to [0, 1]
+          const value = Math.max(0, Math.min(1, (n + 1) / 2));
+
+          // Map to a blue-purple gradient
+          const r = Math.floor(40 + value * 70);
+          const g = Math.floor(60 + value * 90);
+          const b = Math.floor(110 + value * 120);
+
+          const i = (y * width + x) * 4;
+          imageData.data[i] = r;
+          imageData.data[i + 1] = g;
+          imageData.data[i + 2] = b;
+          imageData.data[i + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return canvas.toDataURL("image/png");
+    }
+
+    const hero = document.getElementById("hero");
+    const bgDataURL = generateNoiseDataURL(800, 400);
+    hero.style.backgroundImage = `url(${bgDataURL})`;
+  </script>
+</body>
+</html>
