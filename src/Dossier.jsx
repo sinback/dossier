@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTheme } from "./theme.jsx";
 
 // --- Prompt generation from tags ---
 const PROMPT_TEMPLATES = {
@@ -254,460 +255,11 @@ const SEED_DATA = [
   },
 ];
 
-// --- Styles ---
-const styles = {
-  container: {
-    fontFamily: "'EB Garamond', Georgia, serif",
-    maxWidth: 960,
-    margin: "0 auto",
-    display: "flex",
-    gap: 0,
-    height: "100vh",
-    overflow: "hidden",
-    background: "#1a1714",
-    color: "#d4c9b8",
-    position: "relative",
-  },
-  sidebar: {
-    width: 280,
-    minWidth: 280,
-    borderRight: "1px solid #3a322a",
-    display: "flex",
-    flexDirection: "column",
-    background: "#1e1b17",
-    height: "100%",
-  },
-  sidebarHeader: {
-    padding: "20px 16px 12px",
-    borderBottom: "1px solid #3a322a",
-    flexShrink: 0,
-  },
-  sidebarTitle: {
-    fontFamily: "'Playfair Display', Georgia, serif",
-    fontSize: 22,
-    fontWeight: 900,
-    letterSpacing: "0.04em",
-    color: "#c9a96e",
-    margin: 0,
-    textTransform: "uppercase",
-  },
-  sidebarSubtitle: {
-    fontSize: 11,
-    fontFamily: "'JetBrains Mono', monospace",
-    color: "#7a6f60",
-    letterSpacing: "0.12em",
-    textTransform: "uppercase",
-    marginTop: 4,
-  },
-  filterRow: {
-    display: "flex",
-    gap: 4,
-    padding: "10px 16px",
-    borderBottom: "1px solid #2a2520",
-    flexShrink: 0,
-  },
-  filterBtn: (active) => ({
-    background: active ? "#3a322a" : "transparent",
-    border: "1px solid",
-    borderColor: active ? "#c9a96e" : "#3a322a",
-    color: active ? "#c9a96e" : "#7a6f60",
-    padding: "3px 10px",
-    borderRadius: 3,
-    fontSize: 11,
-    fontFamily: "'JetBrains Mono', monospace",
-    cursor: "pointer",
-    letterSpacing: "0.05em",
-    transition: "all 0.15s ease",
-  }),
-  entryList: {
-    flex: 1,
-    overflowY: "auto",
-    padding: "4px 0",
-  },
-  entryItem: (selected) => ({
-    padding: "10px 16px",
-    cursor: "pointer",
-    background: selected ? "#2a2520" : "transparent",
-    borderLeft: selected ? "2px solid #c9a96e" : "2px solid transparent",
-    transition: "all 0.12s ease",
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  }),
-  entryPortrait: {
-    fontSize: 22,
-    width: 36,
-    height: 36,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#2a2520",
-    borderRadius: "50%",
-    flexShrink: 0,
-  },
-  entryName: {
-    fontSize: 15,
-    fontWeight: 600,
-    color: "#d4c9b8",
-    lineHeight: 1.2,
-  },
-  entrySubtitle: {
-    fontSize: 11,
-    color: "#7a6f60",
-    fontFamily: "'JetBrains Mono', monospace",
-    marginTop: 1,
-  },
-  addBtn: {
-    margin: "8px 16px 12px",
-    padding: "8px 0",
-    background: "transparent",
-    border: "1px dashed #3a322a",
-    color: "#7a6f60",
-    borderRadius: 4,
-    cursor: "pointer",
-    fontFamily: "'EB Garamond', Georgia, serif",
-    fontSize: 14,
-    transition: "all 0.15s ease",
-    flexShrink: 0,
-  },
-  main: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    height: "100%",
-  },
-  mainHeader: {
-    padding: "20px 28px 16px",
-    borderBottom: "1px solid #2a2520",
-    flexShrink: 0,
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 16,
-  },
-  mainPortrait: {
-    fontSize: 36,
-    width: 56,
-    height: 56,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#2a2520",
-    borderRadius: "50%",
-    border: "2px solid #3a322a",
-    flexShrink: 0,
-  },
-  mainName: {
-    fontFamily: "'Playfair Display', Georgia, serif",
-    fontSize: 28,
-    fontWeight: 700,
-    color: "#d4c9b8",
-    margin: 0,
-    lineHeight: 1.1,
-  },
-  mainSubtitle: {
-    fontSize: 13,
-    color: "#c9a96e",
-    fontFamily: "'JetBrains Mono', monospace",
-    marginTop: 4,
-    letterSpacing: "0.03em",
-  },
-  tagsRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 8,
-  },
-  tag: {
-    background: "#2a2520",
-    border: "1px solid #3a322a",
-    borderRadius: 3,
-    padding: "2px 8px",
-    fontSize: 11,
-    fontFamily: "'JetBrains Mono', monospace",
-    color: "#9a8e7d",
-  },
-  tagKey: {
-    color: "#7a6f60",
-  },
-  tagValue: {
-    color: "#c9a96e",
-  },
-  notesSection: {
-    flex: 1,
-    padding: "0 28px 20px",
-    overflowY: "auto",
-    display: "flex",
-    flexDirection: "column",
-  },
-  sectionLabel: {
-    fontSize: 10,
-    fontFamily: "'JetBrains Mono', monospace",
-    color: "#5a5040",
-    letterSpacing: "0.15em",
-    textTransform: "uppercase",
-    marginTop: 20,
-    marginBottom: 8,
-  },
-  notesArea: {
-    width: "100%",
-    minHeight: 120,
-    background: "#15130f",
-    border: "1px solid #2a2520",
-    borderRadius: 4,
-    padding: "12px 14px",
-    color: "#d4c9b8",
-    fontFamily: "'EB Garamond', Georgia, serif",
-    fontSize: 15,
-    lineHeight: 1.6,
-    resize: "vertical",
-    outline: "none",
-    transition: "border-color 0.15s ease",
-    boxSizing: "border-box",
-  },
-  promptBox: {
-    marginTop: 12,
-    position: "relative",
-  },
-  promptInput: (hasPrompt) => ({
-    width: "100%",
-    background: "#15130f",
-    border: "1px solid #2a2520",
-    borderRadius: 4,
-    padding: "10px 40px 10px 14px",
-    color: "#d4c9b8",
-    fontFamily: "'EB Garamond', Georgia, serif",
-    fontSize: 15,
-    lineHeight: 1.5,
-    outline: "none",
-    boxSizing: "border-box",
-    transition: "border-color 0.15s ease",
-  }),
-  promptGhost: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 40,
-    padding: "10px 14px",
-    color: "#6a5f52",
-    fontFamily: "'EB Garamond', Georgia, serif",
-    fontSize: 15,
-    lineHeight: 1.5,
-    pointerEvents: "none",
-    fontStyle: "italic",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  cycleBtn: {
-    position: "absolute",
-    right: 8,
-    top: "50%",
-    transform: "translateY(-50%)",
-    background: "none",
-    border: "none",
-    color: "#5a5040",
-    cursor: "pointer",
-    fontSize: 16,
-    padding: "4px 6px",
-    borderRadius: 3,
-    transition: "color 0.15s ease",
-    fontFamily: "'JetBrains Mono', monospace",
-  },
-  quickNote: {
-    display: "flex",
-    gap: 8,
-    marginTop: 12,
-    alignItems: "center",
-  },
-  quickNoteBtn: {
-    background: "#2a2520",
-    border: "1px solid #3a322a",
-    borderRadius: 3,
-    padding: "4px 10px",
-    color: "#9a8e7d",
-    fontSize: 12,
-    fontFamily: "'JetBrains Mono', monospace",
-    cursor: "pointer",
-    transition: "all 0.15s ease",
-    whiteSpace: "nowrap",
-  },
-  savedEntries: {
-    marginTop: 16,
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
-  savedEntry: {
-    background: "#1e1b17",
-    border: "1px solid #2a2520",
-    borderRadius: 4,
-    padding: "10px 14px",
-    fontSize: 14,
-    lineHeight: 1.5,
-    position: "relative",
-  },
-  savedTimestamp: {
-    fontSize: 10,
-    fontFamily: "'JetBrains Mono', monospace",
-    color: "#5a5040",
-    marginBottom: 4,
-  },
-  savedText: {
-    color: "#b8ad9c",
-  },
-  deleteEntry: {
-    position: "absolute",
-    top: 8,
-    right: 10,
-    background: "none",
-    border: "none",
-    color: "#4a4035",
-    cursor: "pointer",
-    fontSize: 13,
-    padding: "2px 4px",
-    fontFamily: "'JetBrains Mono', monospace",
-  },
-  emptyState: {
-    flex: 1,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "column",
-    color: "#4a4035",
-    fontStyle: "italic",
-    fontSize: 16,
-    gap: 8,
-  },
-  modal: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: "rgba(10, 9, 7, 0.85)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 100,
-  },
-  modalCard: {
-    background: "#1e1b17",
-    border: "1px solid #3a322a",
-    borderRadius: 6,
-    padding: "24px 28px",
-    width: 380,
-    maxWidth: "90%",
-  },
-  modalTitle: {
-    fontFamily: "'Playfair Display', Georgia, serif",
-    fontSize: 20,
-    fontWeight: 700,
-    color: "#c9a96e",
-    marginBottom: 16,
-  },
-  modalLabel: {
-    fontSize: 10,
-    fontFamily: "'JetBrains Mono', monospace",
-    color: "#5a5040",
-    letterSpacing: "0.15em",
-    textTransform: "uppercase",
-    marginBottom: 4,
-    marginTop: 12,
-    display: "block",
-  },
-  modalInput: {
-    width: "100%",
-    background: "#15130f",
-    border: "1px solid #2a2520",
-    borderRadius: 4,
-    padding: "8px 12px",
-    color: "#d4c9b8",
-    fontFamily: "'EB Garamond', Georgia, serif",
-    fontSize: 15,
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  modalSelect: {
-    width: "100%",
-    background: "#15130f",
-    border: "1px solid #2a2520",
-    borderRadius: 4,
-    padding: "8px 12px",
-    color: "#d4c9b8",
-    fontFamily: "'EB Garamond', Georgia, serif",
-    fontSize: 15,
-    outline: "none",
-    boxSizing: "border-box",
-    appearance: "none",
-  },
-  modalActions: {
-    display: "flex",
-    gap: 8,
-    marginTop: 20,
-    justifyContent: "flex-end",
-  },
-  modalBtn: (primary) => ({
-    background: primary ? "#c9a96e" : "transparent",
-    border: primary ? "none" : "1px solid #3a322a",
-    color: primary ? "#1a1714" : "#7a6f60",
-    padding: "7px 18px",
-    borderRadius: 4,
-    cursor: "pointer",
-    fontFamily: "'EB Garamond', Georgia, serif",
-    fontSize: 14,
-    fontWeight: primary ? 600 : 400,
-  }),
-  exportBtn: {
-    background: "none",
-    border: "none",
-    color: "#5a5040",
-    cursor: "pointer",
-    fontSize: 11,
-    fontFamily: "'JetBrains Mono', monospace",
-    padding: "4px 8px",
-    borderRadius: 3,
-  },
-  settingsBanner: {
-    background: "#2a2520",
-    borderBottom: "1px solid #3a322a",
-    padding: "8px 28px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexShrink: 0,
-  },
-  settingsLabel: {
-    fontSize: 12,
-    fontFamily: "'JetBrains Mono', monospace",
-    color: "#7a6f60",
-  },
-  toggle: (on) => ({
-    width: 36,
-    height: 20,
-    borderRadius: 10,
-    background: on ? "#c9a96e" : "#3a322a",
-    border: "none",
-    cursor: "pointer",
-    position: "relative",
-    transition: "background 0.2s ease",
-    flexShrink: 0,
-  }),
-  toggleDot: (on) => ({
-    position: "absolute",
-    top: 3,
-    left: on ? 19 : 3,
-    width: 14,
-    height: 14,
-    borderRadius: "50%",
-    background: on ? "#1a1714" : "#5a5040",
-    transition: "left 0.2s ease, background 0.2s ease",
-  }),
-};
 
 // --- Components ---
 
 function PromptInput({ entry, imaginativeMode, onAddEntry }) {
+  const { theme, styles } = useTheme();
   const [prompts, setPrompts] = useState([]);
   const [promptIndex, setPromptIndex] = useState(0);
   const [inputValue, setInputValue] = useState("");
@@ -758,8 +310,8 @@ function PromptInput({ entry, imaginativeMode, onAddEntry }) {
           style={styles.cycleBtn}
           onClick={cyclePrompt}
           title="Next prompt"
-          onMouseEnter={(e) => (e.target.style.color = "#c9a96e")}
-          onMouseLeave={(e) => (e.target.style.color = "#5a5040")}
+          onMouseEnter={(e) => (e.target.style.color = theme.colors.accent)}
+          onMouseLeave={(e) => (e.target.style.color = theme.colors.textDim)}
         >
           ↻
         </button>
@@ -767,8 +319,8 @@ function PromptInput({ entry, imaginativeMode, onAddEntry }) {
       <div
         style={{
           fontSize: 10,
-          fontFamily: "'JetBrains Mono', monospace",
-          color: "#3a322a",
+          fontFamily: theme.fonts.mono,
+          color: theme.colors.border,
           marginTop: 4,
           textAlign: "right",
         }}
@@ -780,6 +332,7 @@ function PromptInput({ entry, imaginativeMode, onAddEntry }) {
 }
 
 function AddEntryModal({ onClose, onAdd }) {
+  const { theme, styles } = useTheme();
   const [name, setName] = useState("");
   const [type, setType] = useState("npc");
   const [subtitle, setSubtitle] = useState("");
@@ -849,7 +402,7 @@ function AddEntryModal({ onClose, onAdd }) {
                 width: 32,
                 height: 32,
                 cursor: "pointer",
-                border: portrait === p ? "2px solid #c9a96e" : "2px solid transparent",
+                border: portrait === p ? `2px solid ${theme.colors.accent}` : "2px solid transparent",
                 transition: "border-color 0.15s ease",
               }}
             >
@@ -877,6 +430,7 @@ function AddEntryModal({ onClose, onAdd }) {
 
 // --- Main App ---
 export default function Dossier() {
+  const { theme, styles } = useTheme();
   const [entries, setEntries] = useState(() => {
     try {
       const stored = localStorage.getItem("dossier-entries");
@@ -977,10 +531,10 @@ export default function Dossier() {
                 style={styles.filterBtn(filter === f)}
                 onClick={() => setFilter(f)}
                 onMouseEnter={(e) => {
-                  if (filter !== f) e.target.style.borderColor = "#5a5040";
+                  if (filter !== f) e.target.style.borderColor = theme.colors.textDim;
                 }}
                 onMouseLeave={(e) => {
-                  if (filter !== f) e.target.style.borderColor = "#3a322a";
+                  if (filter !== f) e.target.style.borderColor = theme.colors.border;
                 }}
               >
                 {f === "all" ? "All" : ENTRY_TYPES[f].label}
@@ -995,7 +549,7 @@ export default function Dossier() {
                 style={styles.entryItem(selectedId === entry.id)}
                 onClick={() => setSelectedId(entry.id)}
                 onMouseEnter={(e) => {
-                  if (selectedId !== entry.id) e.currentTarget.style.background = "#232019";
+                  if (selectedId !== entry.id) e.currentTarget.style.background = theme.colors.hover;
                 }}
                 onMouseLeave={(e) => {
                   if (selectedId !== entry.id) e.currentTarget.style.background = "transparent";
@@ -1014,12 +568,12 @@ export default function Dossier() {
             style={styles.addBtn}
             onClick={() => setShowAddModal(true)}
             onMouseEnter={(e) => {
-              e.target.style.borderColor = "#5a5040";
-              e.target.style.color = "#d4c9b8";
+              e.target.style.borderColor = theme.colors.textDim;
+              e.target.style.color = theme.colors.text;
             }}
             onMouseLeave={(e) => {
-              e.target.style.borderColor = "#3a322a";
-              e.target.style.color = "#7a6f60";
+              e.target.style.borderColor = theme.colors.border;
+              e.target.style.color = theme.colors.textMuted;
             }}
           >
             + New Entry
@@ -1038,8 +592,8 @@ export default function Dossier() {
                   style={styles.exportBtn}
                   onClick={exportData}
                   title="Export dossier as JSON"
-                  onMouseEnter={(e) => (e.target.style.color = "#c9a96e")}
-                  onMouseLeave={(e) => (e.target.style.color = "#5a5040")}
+                  onMouseEnter={(e) => (e.target.style.color = theme.colors.accent)}
+                  onMouseLeave={(e) => (e.target.style.color = theme.colors.textDim)}
                 >
                   ↓ export
                 </button>
@@ -1078,8 +632,8 @@ export default function Dossier() {
                   value={selected.notes}
                   onChange={(e) => updateNotes(selected.id, e.target.value)}
                   placeholder="Freeform notes..."
-                  onFocus={(e) => (e.target.style.borderColor = "#3a322a")}
-                  onBlur={(e) => (e.target.style.borderColor = "#2a2520")}
+                  onFocus={(e) => (e.target.style.borderColor = theme.colors.border)}
+                  onBlur={(e) => (e.target.style.borderColor = theme.colors.borderSubtle)}
                 />
 
                 <div style={styles.sectionLabel}>Quick Thoughts</div>
@@ -1101,8 +655,8 @@ export default function Dossier() {
                             {entry.prompt && (
                               <div style={{
                                 fontSize: 12,
-                                fontFamily: "'JetBrains Mono', monospace",
-                                color: "#5a5040",
+                                fontFamily: theme.fonts.mono,
+                                color: theme.colors.textDim,
                                 fontStyle: "italic",
                                 marginBottom: 3,
                               }}>
@@ -1113,8 +667,8 @@ export default function Dossier() {
                             <button
                               style={styles.deleteEntry}
                               onClick={() => deleteJournalEntry(selected.id, realIdx)}
-                              onMouseEnter={(e) => (e.target.style.color = "#c9a96e")}
-                              onMouseLeave={(e) => (e.target.style.color = "#4a4035")}
+                              onMouseEnter={(e) => (e.target.style.color = theme.colors.accent)}
+                              onMouseLeave={(e) => (e.target.style.color = theme.colors.textFaint)}
                             >
                               ×
                             </button>

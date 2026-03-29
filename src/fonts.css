@@ -40,6 +40,66 @@
   src: url('/fonts/playfair-display-900.woff2') format('woff2');
 }
 
+/* Caveat — MC handwriting, best contextual alternates of the bunch */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/caveat-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/caveat-700.woff2') format('woff2');
+}
+
+/* Architects Daughter — precise, measured; good for a meticulous character */
+@font-face {
+  font-family: 'Architects Daughter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/architects-daughter-400.woff2') format('woff2');
+}
+
+/* Patrick Hand — warm, friendly; approachable character voice */
+@font-face {
+  font-family: 'Patrick Hand';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/patrick-hand-400.woff2') format('woff2');
+}
+
+/* Kalam — distinctive, slightly rough; good for underground/informal contacts */
+@font-face {
+  font-family: 'Kalam';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('/fonts/kalam-300.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Kalam';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/kalam-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Kalam';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/kalam-700.woff2') format('woff2');
+}
+
 /* JetBrains Mono — labels / metadata */
 @font-face {
   font-family: 'JetBrains Mono';
