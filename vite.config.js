@@ -46,8 +46,16 @@ const drawPlugin = {
       });
     });
 
-    // POST /api/draw — validate command, broadcast to all connected panels.
+    // POST /api/draw — validate and broadcast a draw command.
+    // DELETE /api/draw — broadcast a clear command.
     server.middlewares.use('/api/draw', (req, res) => {
+      if (req.method === 'DELETE') {
+        const payload = `data: ${JSON.stringify({ type: 'clear' })}\n\n`;
+        for (const client of sseClients) client.write(payload);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, clients: sseClients.length }));
+        return;
+      }
       if (req.method !== 'POST') {
         res.writeHead(405, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Method not allowed' }));

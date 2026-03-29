@@ -364,9 +364,21 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
       }
       s.activeBounds = { x: 0, y: 0, w: 0, h: 0 };
       if (storageKey) localStorage.removeItem(storageKey);
+      s.startLoop(); // re-render so the cleared ink is visible immediately
     },
     exportPNG() {
       return canvasRef.current?.toDataURL("image/png");
+    },
+    // Deposit a single ink stamp at a CSS-pixel position.
+    // Used by inkText.js to animate handwritten strokes.
+    stampAt(xCss, yCss, { pressure = 1, radius = null } = {}) {
+      stamp(xCss, yCss, pressure, radius);
+    },
+    // Set the active ink color (r/g/b 0-255). Persists until changed again.
+    setInkColor(r, g, b) {
+      const s = glState.current;
+      if (!s) return;
+      s.inkRGB = new Float32Array([r / 255, g / 255, b / 255]);
     },
     // Fill a rectangle with settled ink immediately (no animation).
     // region is in CSS pixels. Returns { ok, error? }.
@@ -650,7 +662,7 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
   // Then modifies the CPU height field in the crumple region and re-uploads
   // only that sub-rectangle (UNPACK_ROW_LENGTH lets us pass the full array with
   // an offset instead of extracting a sub-buffer).
-  const stamp = useCallback((xCss, yCss, pressure = 1) => {
+  const stamp = useCallback((xCss, yCss, pressure = 1, radiusOverride = null) => {
     const s = glState.current;
     if (!s) return;
     const { gl, stampProg, stampUni, quadVAO, inkTex, inkFBO, heightTex, hfData, texelSize, W, H, dpr } = s;
@@ -658,7 +670,9 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     const next   = 1 - s.current;
     const xPx    = xCss * dpr;
     const yPx    = yCss * dpr;
-    const radius = brushRadius * dpr * lerp(0.8, 1.3, pressure);
+    const radius = radiusOverride !== null
+      ? radiusOverride * dpr
+      : brushRadius * dpr * lerp(0.8, 1.3, pressure);
 
     // Expand active bounds to cover this stamp (GL coords: y from bottom).
     // Pad generously so the ink has room to spread beyond the brush tip.
