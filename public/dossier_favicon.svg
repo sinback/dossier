@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-label="Dossier favicon optimized">
+  <title>Dossier favicon optimized</title>
+
+  <!-- back file -->
+  <path d="M16 10h24l8 8v30H16z"
+        fill="white" fill-opacity="0.14"
+        stroke="#fc0349" stroke-width="4.5" stroke-linejoin="round"/>
+
+  <!-- front file -->
+  <path d="M8 16h28l10 10v30H8z"
+        fill="white"
+        stroke="#fc0349" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M36 16v10h10"
+        fill="none"
+        stroke="#fc0349" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- avatar box -->
+  <rect x="14" y="23" width="14" height="14" rx="1.5"
+        fill="none" stroke="#fc0349" stroke-width="4"/>
+  <circle cx="21" cy="28" r="2.5" fill="#fc0349"/>
+  <path d="M16.5 35c1.2-3 3.2-4.5 4.5-4.5s3.3 1.5 4.5 4.5"
+        fill="none" stroke="#fc0349" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- simplified dossier lines -->
+  <path d="M32 28h6M32 36h8M14 44h24"
+        fill="none" stroke="#fc0349" stroke-width="4" stroke-linecap="round"/>
+</svg>
