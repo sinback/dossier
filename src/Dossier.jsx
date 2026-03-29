@@ -255,10 +255,6 @@ const SEED_DATA = [
 ];
 
 // --- Styles ---
-const FONTS = `
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400&family=Playfair+Display:wght@700;900&display=swap');
-`;
-
 const styles = {
   container: {
     fontFamily: "'EB Garamond', Georgia, serif",
@@ -966,9 +962,7 @@ export default function Dossier() {
   };
 
   return (
-    <>
-      <style>{FONTS}</style>
-      <div style={styles.container}>
+    <div style={styles.container}>
         {/* Sidebar */}
         <div style={styles.sidebar}>
           <div style={styles.sidebarHeader}>
@@ -1146,6 +1140,5 @@ export default function Dossier() {
           />
         )}
       </div>
-    </>
   );
 }

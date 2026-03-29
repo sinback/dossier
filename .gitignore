@@ -1,2 +1,4 @@
 node_modules/
+dist/
 dossier-state.json
+note_to_self.txt
