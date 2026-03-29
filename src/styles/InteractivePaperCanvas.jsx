@@ -95,13 +95,25 @@ uniform sampler2D u_inkWet;
 uniform sampler2D u_height;
 uniform vec2 u_texelSize; // 1/W, 1/H
 
+const float DRY = 0.015; // wetness below this = ink has settled permanently
+
 void main() {
   float h   = texture(u_height, v_uv).r;
   vec2  s   = texture(u_inkWet, v_uv).rg;
   float ink = s.r;
   float wet = s.g;
 
-  float retInk = ink * 0.90;
+  // Dry pixel: ink is frozen, no more decay or spreading.
+  if (wet < DRY) {
+    fragColor = vec2(ink, 0.0);
+    return;
+  }
+
+  // Ink retention increases as the pixel dries: fully wet = 1% loss/frame,
+  // nearly dry = ~0% loss. This ensures most ink survives to be frozen at DRY.
+  // (The original flat 0.90 factor killed ~99% of ink before it ever dried out.)
+  float retention = 1.0 - 0.01 * min(1.0, wet);
+  float retInk = ink * retention;
   float retWet = wet * 0.92;
   float inkIn  = 0.0;
   float wetIn  = 0.0;
@@ -118,26 +130,19 @@ void main() {
     float nInk = ns.r;
     float nWet = ns.g;
 
-    // --- inflow: how much neighbor n scatters toward me ---
-    // slope from n's perspective toward i = h - nH
     float slopeIn = h - nH;
     float biasIn  = clamp(0.25 + slopeIn * 2.5, 0.0, 0.75);
     inkIn += nInk * nWet * 0.028 * biasIn;
-    inkIn += nInk * nWet * 0.01 * 0.25; // capillary inflow
+    inkIn += nInk * nWet * 0.01 * 0.25;
     wetIn += nWet * 0.018 * clamp(0.4 + slopeIn * 1.6, 0.05, 0.5);
 
-    // --- outflow: how much I scatter toward neighbor n ---
-    // slope from i toward n = nH - h
     float slopeOut = nH - h;
     float biasOut  = clamp(0.25 + slopeOut * 2.5, 0.0, 0.75);
     retInk -= ink * wet * 0.028 * biasOut;
     retWet -= wet * 0.018 * clamp(0.4 + slopeOut * 1.6, 0.05, 0.5);
   }
 
-  retInk -= ink * wet * 0.01; // total capillary outflow (4 neighbors × 0.25 = 1.0)
-
-  float absorb = min(retInk, 0.003 + (1.0 - min(1.0, wet)) * 0.004);
-  retInk -= absorb;
+  retInk -= ink * wet * 0.01; // capillary outflow
 
   fragColor = vec2(max(0.0, retInk) + inkIn, max(0.0, retWet) + wetIn);
 }`;
@@ -355,6 +360,7 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
         s.gl.bindTexture(s.gl.TEXTURE_2D, tex);
         s.gl.texImage2D(s.gl.TEXTURE_2D, 0, s.gl.RG32F, s.W, s.H, 0, s.gl.RG, s.gl.FLOAT, null);
       }
+      s.activeBounds = { x: 0, y: 0, w: 0, h: 0 };
     },
     exportPNG() {
       return canvasRef.current?.toDataURL("image/png");
@@ -414,14 +420,26 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
 
     function simulate() {
       const next = 1 - current;
-      gl.viewport(0, 0, W, H);
+      const ab = glState.current.activeBounds;
+
+      // Copy the current texture into the next slot first. This keeps settled ink
+      // in the regions the scissor won't touch, so we don't lose it each frame.
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, inkFBO[current]);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, inkFBO[next]);
+      gl.blitFramebuffer(0, 0, W, H, 0, 0, W, H, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+
+      // Run simulation only over the active bounds (scissor discards all other fragments).
       gl.bindFramebuffer(gl.FRAMEBUFFER, inkFBO[next]);
+      gl.viewport(0, 0, W, H);
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(ab.x, ab.y, ab.w, ab.h);
       gl.useProgram(simProg);
       bindTex(0, inkTex[current], simUni("u_inkWet"));
       bindTex(1, heightTex,       simUni("u_height"));
       gl.uniform2fv(simUni("u_texelSize"), texelSize);
       gl.bindVertexArray(quadVAO);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disable(gl.SCISSOR_TEST);
       current = next;
     }
 
@@ -437,11 +455,31 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
+    // Wetness decays by 0.92/frame. After 200 frames: 0.92^200 ≈ 1e-7 — fully dry.
+    // Once idle that long with no new stamps, the loop stops. Ink remains visible
+    // in the textures; we just stop asking the GPU to keep simulating nothing.
+    const IDLE_FRAMES = 200;
+
     function tick() {
+      const s = glState.current;
+      if (s.framesSinceStamp >= IDLE_FRAMES) {
+        s.running = false;
+        return; // don't reschedule — loop is stopped until next stamp
+      }
       simulate();
       render();
+      s.framesSinceStamp++;
       rafId = requestAnimationFrame(tick);
-      glState.current.rafId = rafId;
+      s.rafId = rafId;
+    }
+
+    function startLoop() {
+      const s = glState.current;
+      if (s.running) return;
+      s.running = true;
+      s.framesSinceStamp = 0;
+      rafId = requestAnimationFrame(tick);
+      s.rafId = rafId;
     }
 
     glState.current = {
@@ -456,9 +494,15 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
       get current() { return current; },
       set current(v) { current = v; },
       rafId: null,
+      running: false,
+      framesSinceStamp: IDLE_FRAMES, // start idle; stamp() will trigger startLoop
+      activeBounds: { x: 0, y: 0, w: 0, h: 0 },
+      startLoop,
     };
 
     rafId = requestAnimationFrame(tick);
+    glState.current.running = true;
+    glState.current.framesSinceStamp = 0;
     glState.current.rafId = rafId;
 
     return () => {
@@ -490,10 +534,29 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     if (!s) return;
     const { gl, stampProg, stampUni, quadVAO, inkTex, inkFBO, heightTex, hfData, texelSize, W, H, dpr } = s;
 
-    const next  = 1 - s.current;
-    const xPx   = xCss * dpr;
-    const yPx   = yCss * dpr;
+    const next   = 1 - s.current;
+    const xPx    = xCss * dpr;
+    const yPx    = yCss * dpr;
     const radius = brushRadius * dpr * lerp(0.8, 1.3, pressure);
+
+    // Expand active bounds to cover this stamp (GL coords: y from bottom).
+    // Pad generously so the ink has room to spread beyond the brush tip.
+    const cx_gl = xPx;
+    const cy_gl = H - yPx;
+    const pad   = Math.max(radius, 45 * dpr) * 3;
+    const nx0 = Math.max(0,     Math.floor(cx_gl - pad));
+    const ny0 = Math.max(0,     Math.floor(cy_gl - pad));
+    const nx1 = Math.min(W,     Math.ceil(cx_gl  + pad));
+    const ny1 = Math.min(H,     Math.ceil(cy_gl  + pad));
+    const ab  = s.activeBounds;
+    ab.x = ab.w === 0 ? nx0 : Math.min(ab.x, nx0);
+    ab.y = ab.h === 0 ? ny0 : Math.min(ab.y, ny0);
+    ab.w = (ab.w === 0 ? nx1 : Math.max(ab.x + ab.w, nx1)) - ab.x;
+    ab.h = (ab.h === 0 ? ny1 : Math.max(ab.y + ab.h, ny1)) - ab.y;
+
+    // Reset idle counter and restart the loop if it was resting.
+    s.framesSinceStamp = 0;
+    s.startLoop();
 
     gl.viewport(0, 0, W, H);
     gl.bindFramebuffer(gl.FRAMEBUFFER, inkFBO[next]);
