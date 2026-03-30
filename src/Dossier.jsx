@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ThemeProvider, useTheme } from "./theme.jsx";
-import { TAG_PROMPTS, UNIVERSAL_PROMPTS } from "./promptBank.js";
+import { ThemeProvider, useTheme } from "./styles/theme.jsx";
+import { TAG_PROMPTS, UNIVERSAL_PROMPTS } from "./prompts/promptBank.js";
 
 // --- Prompt generation from tags ---
 
