@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 // --- Theme definitions ---
 // Each theme maps semantic names to actual values.
@@ -522,15 +522,14 @@ export function createStyles(t) {
 
 const ThemeContext = createContext();
 
-export function ThemeProvider({ children }) {
-  const [themeName, setThemeName] = useState("dev");
-  //const [themeName, setThemeName] = useState("player");
-  const theme = themes[themeName];
+export function ThemeProvider({ mode = "dev", children }) {
+  const themeName = mode;
+  const theme = themes[themeName] || themes.dev;
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const value = useMemo(
-    () => ({ theme, styles, themeName, setThemeName }),
-    [theme, styles, themeName],
+    () => ({ theme, styles, mode, themeName }),
+    [theme, styles, mode, themeName],
   );
 
   return (

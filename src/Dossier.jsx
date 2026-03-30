@@ -1,101 +1,32 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useTheme } from "./theme.jsx";
+import { ThemeProvider, useTheme } from "./theme.jsx";
+import { TAG_PROMPTS, UNIVERSAL_PROMPTS } from "./promptBank.js";
 
 // --- Prompt generation from tags ---
-const PROMPT_TEMPLATES = {
-  // Tag-based analytical prompts
-  faction: (name, val) => [
-    `What does ${val} actually want from ${name}?`,
-    `Is ${name} loyal to ${val}, or just convenient?`,
-    `How would ${val} react if ${name} disappeared?`,
-    `What's ${name}'s rank within ${val}, really?`,
-  ],
-  role: (name, val) => [
-    `Is "${val}" actually what ${name} does, or a cover?`,
-    `Who else does what ${name} does?`,
-    `How replaceable is ${name} as a ${val}?`,
-  ],
-  mood: (name, val) => [
-    `Why does ${name} always seem ${val}?`,
-    `Is the ${val} thing an act?`,
-    `What would make ${name} drop the ${val} mask?`,
-  ],
-  trait: (name, val) => [
-    `Does "${val}" make ${name} useful or dangerous?`,
-    `Have I seen ${name}'s "${val}" side slip?`,
-    `Who else knows ${name} is ${val}?`,
-  ],
-  location: (name, val) => [
-    `Why does ${name} hang around ${val}?`,
-    `What happens at ${val} when ${name} isn't there?`,
-    `Who else have I seen at ${val}?`,
-  ],
-  relationship: (name, val) => [
-    `What's the real deal between ${name} and ${val}?`,
-    `Would ${name} sell out ${val}?`,
-    `Would ${val} sell out ${name}?`,
-  ],
-  // Universal prompts (no tag needed)
-  universal: (name) => [
-    `Is ${name} hot?`,
-    `Do I trust ${name}?`,
-    `What's ${name}'s deal?`,
-    `Would I get a drink with ${name}?`,
-    `What am I not seeing about ${name}?`,
-    `What does ${name} think of me?`,
-    `Am I overthinking ${name}?`,
-    `If things go south, whose side is ${name} on?`,
-    `What would ${name} do if they had my job?`,
-    `Gut feeling about ${name}?`,
-  ],
-  // For faction-type entries
-  faction_entry: (name) => [
-    `What's ${name}'s real agenda?`,
-    `Who actually runs ${name}?`,
-    `What would the city look like without ${name}?`,
-    `Am I on ${name}'s radar?`,
-    `What's ${name}'s weak spot?`,
-    `Who in ${name} could I actually talk to?`,
-    `Is ${name} growing or dying?`,
-  ],
-  // For location-type entries
-  location_entry: (name) => [
-    `What really goes on at ${name}?`,
-    `Who controls ${name}?`,
-    `Is ${name} safe?`,
-    `What's changed about ${name} recently?`,
-    `Who have I seen at ${name}?`,
-    `What's the vibe at ${name} after dark?`,
-    `Why does everyone keep mentioning ${name}?`,
-    `What would I miss if ${name} disappeared?`,
-  ],
-};
 
 function generatePrompts(entry) {
   const prompts = [];
   const name = entry.name;
+  const type = entry.type;
 
-  // Generate from each tag
+  // Generate from each tag, preferring type-specific templates
   if (entry.tags) {
     for (const [key, value] of Object.entries(entry.tags)) {
-      const templateFn = PROMPT_TEMPLATES[key];
+      // Skip tags that don't generate prompts
+      if (key === "pronouns") continue;
+
+      const typedFn = TAG_PROMPTS[`${key}:${type}`];
+      const genericFn = TAG_PROMPTS[key];
+      const templateFn = typedFn || genericFn;
       if (templateFn) {
         prompts.push(...templateFn(name, value));
       }
     }
   }
 
-  // Add type-specific universals
-  const typeTemplates = {
-    faction: "faction_entry",
-    location: "location_entry",
-  };
-  const templateKey = typeTemplates[entry.type];
-  if (templateKey && PROMPT_TEMPLATES[templateKey]) {
-    prompts.push(...PROMPT_TEMPLATES[templateKey](name));
-  } else {
-    prompts.push(...PROMPT_TEMPLATES.universal(name));
-  }
+  // Add type-specific universal prompts
+  const universalFn = UNIVERSAL_PROMPTS[type] || UNIVERSAL_PROMPTS.npc;
+  prompts.push(...universalFn(name));
 
   // Shuffle
   for (let i = prompts.length - 1; i > 0; i--) {
@@ -111,7 +42,7 @@ const ENTRY_TYPES = {
   npc: {
     label: "People",
     singular: "Person",
-    portraits: ["🐺", "🦊", "🐦", "🐻", "🦎", "🐱", "🐰", "🦉", "🐍", "🦇", "🐸", "🦝"],
+    portraits: ["🐺", "🦊", "🐦", "🐻", "🦎", "🐱", "🐰", "🦉", "🐍", "🦇", "🐸", "🦝", "🦅", "🐿️"],
     defaultSubtitle: "Unknown",
     placeholders: {
       name: "e.g. Sal Marchetti",
@@ -146,16 +77,19 @@ const ENTRY_TYPE_KEYS = Object.keys(ENTRY_TYPES);
 const SEED_DATA = [
   {
     id: "npc-1",
-    name: "Marta Voss",
+    name: "The Mentor",
     type: "npc",
     subtitle: "Mentor / Handler",
-    portrait: "🦊",
+    portrait: "🦅",
     tags: {
       role: "fixer",
-      faction: "The Dockyards",
+      faction: "Aspenwatch",
       mood: "tired",
       trait: "patient",
       location: "The Russet",
+      species: "kestrel",
+      relationship: "Jack-O",
+      pronouns: "she",
     },
     notes: "",
   },
@@ -169,8 +103,10 @@ const SEED_DATA = [
       role: "enforcer",
       faction: "Bridgewater Union",
       mood: "cheerful",
-      trait: "unpredictable",
-      relationship: "Marta Voss",
+      trait: "thorough",
+      relationship: "The Mentor",
+      species: "raccoon",
+      pronouns: "he",
     },
     notes: "",
   },
@@ -184,7 +120,24 @@ const SEED_DATA = [
       role: "broker",
       mood: "nervous",
       trait: "well-connected",
-      location: "Canal Street Market",
+      location: "The Heights",
+      species: "robin",
+      pronouns: "they",
+    },
+    notes: "",
+  },
+  {
+    id: "npc-4",
+    name: "Jack-O",
+    type: "npc",
+    subtitle: "General Contractor",
+    portrait: "🐻",
+    tags: {
+      faction: "Bridgewater Union",
+      species: "squirrel",
+      appearance: "eyepatch",
+      trait: "jovial",
+      role: "fixer_hidden",
     },
     notes: "",
   },
@@ -253,17 +206,79 @@ const SEED_DATA = [
     },
     notes: "",
   },
+  {
+    id: "location-3",
+    name: "My Nest",
+    type: "location",
+    subtitle: "Good thing I can't smell too good.",
+    portrait: "🏚️",
+    tags: {
+      location: "The Heights",
+      vibe: "blighted",
+      trait: "safe",
+    },
+    notes: "",
+  },
+  {
+    id: "location-4",
+    name: "The Heights",
+    type: "location",
+    subtitle: "Old Money",
+    portrait: "🏚️",
+    tags: {
+      faction: "Aspenwatch",
+      vibe: "Pando",
+      concern: "blight",
+    },
+    notes: "",
+  },
 ];
 
 
 // --- Components ---
 
-function PromptInput({ entry, imaginativeMode, onAddEntry }) {
+// --- Sitting budget (player mode prompt rate-limiting) ---
+// In player mode, the player sees up to 10 prompts per sitting.
+// First 3 are free; after that, cycling is locked (placeholder for
+// future pacing logic). Once all 10 are revealed, the player can
+// re-cycle through the seen pool freely.
+
+const SITTING_BUDGET = { free: 3, max: 10 };
+
+function getSittingState(sittingKey) {
+  const storageKey = `dossier-sitting:${sittingKey || "default"}`;
+  try {
+    const raw = sessionStorage.getItem(storageKey);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { seen: 0 };
+}
+
+function setSittingState(sittingKey, state) {
+  const storageKey = `dossier-sitting:${sittingKey || "default"}`;
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {}
+}
+
+function PromptInput({ entry, imaginativeMode, mode, sittingKey, onAddEntry }) {
   const { theme, styles } = useTheme();
   const [prompts, setPrompts] = useState([]);
   const [promptIndex, setPromptIndex] = useState(0);
   const [inputValue, setInputValue] = useState("");
+  const [sittingState, _setSittingState] = useState(() => getSittingState(sittingKey));
   const inputRef = useRef(null);
+
+  const isPlayer = mode === "player";
+  const budgetExhausted = isPlayer && sittingState.seen >= SITTING_BUDGET.max;
+  const budgetLocked = isPlayer &&
+    sittingState.seen >= SITTING_BUDGET.free &&
+    sittingState.seen < SITTING_BUDGET.max;
+
+  const updateSitting = useCallback((newState) => {
+    _setSittingState(newState);
+    setSittingState(sittingKey, newState);
+  }, [sittingKey]);
 
   useEffect(() => {
     const generated = generatePrompts(entry);
@@ -273,8 +288,19 @@ function PromptInput({ entry, imaginativeMode, onAddEntry }) {
   }, [entry.id]);
 
   const cyclePrompt = useCallback(() => {
+    if (isPlayer) {
+      const next = sittingState.seen + 1;
+      if (next > SITTING_BUDGET.max) {
+        // Re-cycling through already-seen prompts is free
+        setPromptIndex((i) => (i + 1) % Math.min(prompts.length, SITTING_BUDGET.max));
+        return;
+      }
+      updateSitting({ ...sittingState, seen: next });
+    }
     setPromptIndex((i) => (i + 1) % prompts.length);
-  }, [prompts.length]);
+  }, [prompts.length, isPlayer, sittingState, updateSitting]);
+
+  const canCycle = !isPlayer || sittingState.seen < SITTING_BUDGET.free || budgetExhausted;
 
   const handleKeyDown = (e) => {
     if (e.key === "Tab" && !inputValue && imaginativeMode && prompts.length > 0) {
@@ -285,11 +311,15 @@ function PromptInput({ entry, imaginativeMode, onAddEntry }) {
       e.preventDefault();
       onAddEntry(inputValue.trim(), imaginativeMode ? currentPrompt : null);
       setInputValue("");
-      cyclePrompt();
+      if (canCycle) cyclePrompt();
     }
   };
 
   const currentPrompt = prompts[promptIndex] || "";
+
+  const budgetLabel = isPlayer
+    ? `${Math.min(sittingState.seen, SITTING_BUDGET.max)} / ${SITTING_BUDGET.max}`
+    : null;
 
   return (
     <div style={styles.promptBox}>
@@ -307,11 +337,15 @@ function PromptInput({ entry, imaginativeMode, onAddEntry }) {
       />
       {imaginativeMode && (
         <button
-          style={styles.cycleBtn}
-          onClick={cyclePrompt}
-          title="Next prompt"
-          onMouseEnter={(e) => (e.target.style.color = theme.colors.accent)}
-          onMouseLeave={(e) => (e.target.style.color = theme.colors.textDim)}
+          style={{
+            ...styles.cycleBtn,
+            opacity: canCycle ? 1 : 0.3,
+            cursor: canCycle ? "pointer" : "default",
+          }}
+          onClick={canCycle ? cyclePrompt : undefined}
+          title={canCycle ? "Next prompt" : "No more new prompts right now"}
+          onMouseEnter={(e) => { if (canCycle) e.target.style.color = theme.colors.accent; }}
+          onMouseLeave={(e) => { if (canCycle) e.target.style.color = theme.colors.textDim; }}
         >
           ↻
         </button>
@@ -323,9 +357,20 @@ function PromptInput({ entry, imaginativeMode, onAddEntry }) {
           color: theme.colors.border,
           marginTop: 4,
           textAlign: "right",
+          display: "flex",
+          justifyContent: "space-between",
         }}
       >
-        {imaginativeMode ? "tab to accept · enter to save · ↻ cycle" : "enter to save"}
+        <span>
+          {budgetLabel && (
+            <span style={{ color: budgetLocked ? theme.colors.accent : theme.colors.border }}>
+              {budgetLabel}
+            </span>
+          )}
+        </span>
+        <span>
+          {imaginativeMode ? "tab to accept · enter to save · ↻ cycle" : "enter to save"}
+        </span>
       </div>
     </div>
   );
@@ -429,7 +474,15 @@ function AddEntryModal({ onClose, onAdd }) {
 }
 
 // --- Main App ---
-export default function Dossier() {
+export default function Dossier({ mode = "dev", sittingKey } = {}) {
+  return (
+    <ThemeProvider mode={mode}>
+      <DossierInner mode={mode} sittingKey={sittingKey} />
+    </ThemeProvider>
+  );
+}
+
+function DossierInner({ mode, sittingKey }) {
   const { theme, styles } = useTheme();
   const [entries, setEntries] = useState(() => {
     try {
@@ -640,6 +693,8 @@ export default function Dossier() {
                 <PromptInput
                   entry={selected}
                   imaginativeMode={imaginativeMode}
+                  mode={mode}
+                  sittingKey={sittingKey}
                   onAddEntry={(text, prompt) => addJournalEntry(selected.id, text, prompt)}
                 />
 
