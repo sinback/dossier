@@ -131,13 +131,13 @@ void main() {
     float nWet = ns.g;
 
     float slopeIn = h - nH;
-    float biasIn  = clamp(0.25 + slopeIn * 2.5, 0.0, 0.75);
+    float biasIn  = clamp(0.25 + slopeIn * 1.2, 0.0, 0.75);
     inkIn += nInk * nWet * 0.028 * biasIn;
     inkIn += nInk * nWet * 0.01 * 0.25;
     wetIn += nWet * 0.018 * clamp(0.4 + slopeIn * 1.6, 0.05, 0.5);
 
     float slopeOut = nH - h;
-    float biasOut  = clamp(0.25 + slopeOut * 2.5, 0.0, 0.75);
+    float biasOut  = clamp(0.25 + slopeOut * 1.2, 0.0, 0.75);
     retInk -= ink * wet * 0.028 * biasOut;
     retWet -= wet * 0.018 * clamp(0.4 + slopeOut * 1.6, 0.05, 0.5);
   }
@@ -174,7 +174,7 @@ void main() {
   vec2  px    = floor(v_uv / u_texelSize);
   float grain = fract(sin(px.x * 12.9898 + px.y * 78.233) * 43758.5453) * 2.0 - 1.0;
 
-  float base = (229.0 + h * 16.0 + light * 58.0 + grain * 5.0) / 255.0;
+  float base = (229.0 + h * 16.0 + light * 100.0 + grain * 5.0) / 255.0;
   vec3 paper = vec3(
     clamp(base + 6.0/255.0,  210.0/255.0, 1.0),
     clamp(base + 3.0/255.0,  208.0/255.0, 252.0/255.0),
@@ -218,7 +218,7 @@ void main() {
   float deposit     = radial * edgeBreakup * u_stampAmount;
 
   fragColor = vec2(
-    clamp(state.r + deposit * 0.35, 0.0, 1.6),
+    clamp(state.r + deposit * 0.50, 0.0, 1.6),
     clamp(state.g + deposit * 0.9,  0.0, 2.0)
   );
 }`;
@@ -305,7 +305,7 @@ function generateHeightField(W, H, out, noise, roughness = 1.0) {
       const ridges = noise.ridged(x * ridge, y * ridge, 5, 0.56) * roughness;
       const f      = noise.ridged(x * fine,  y * fine,  3, 0.52) * roughness;
       const cx = (x / W) * 2 - 1, cy = (y / H) * 2 - 1;
-      out[i] = 0.28 * broad + 0.92 * ridges + 0.14 * f
+      out[i] = 1.0 * broad + 0.1 * ridges + 0.14 * f
              + 0.03 * (1 - Math.sqrt(cx * cx + cy * cy));
     }
   }

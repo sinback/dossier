@@ -490,7 +490,7 @@ function planStroke(waypoints, baseSpeed, stepSize) {
   for (let i = 0; i <= N; i++) {
     if (pts[i].s >= nextS || i === 0) {
       const velNorm = Math.min(1, pts[i].v / (baseSpeed * 2));
-      stamps.push({ x: pts[i].x, y: pts[i].y, pressure: 0.95 - 0.30 * velNorm, v: pts[i].v });
+      stamps.push({ x: pts[i].x, y: pts[i].y, pressure: 0.92 - 0.14 * velNorm, v: pts[i].v });
       nextS = pts[i].s + stepSize;
     }
   }
@@ -498,7 +498,7 @@ function planStroke(waypoints, baseSpeed, stepSize) {
   const last = pts[N], tail = stamps[stamps.length - 1];
   if (tail && Math.hypot(last.x - tail.x, last.y - tail.y) > stepSize * 0.3) {
     const velNorm = Math.min(1, last.v / (baseSpeed * 2));
-    stamps.push({ x: last.x, y: last.y, pressure: 0.95 - 0.30 * velNorm, v: last.v });
+    stamps.push({ x: last.x, y: last.y, pressure: 0.92 - 0.14 * velNorm, v: last.v });
   }
 
   // Inter-stamp delays from average local speed

@@ -4,7 +4,7 @@ import { animateText } from "./inkText.js";
 
 // Listens for draw commands from the dev POST API and routes them to the canvas.
 // Not interactive — the game (or the API) drives what appears here, not the user.
-export default function PaperCanvasPanel({ width = 860, height = 220 }) {
+export default function PaperCanvasPanel({ width = 800, height = 600 }) {
   const canvasRef = useRef(null);
   // Keep a ref to dispatch so the SSE handler always calls the latest version,
   // even after hot-module replacement or parent re-renders.
