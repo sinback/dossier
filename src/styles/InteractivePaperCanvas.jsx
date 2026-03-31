@@ -409,8 +409,8 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     },
     // Deposit a single ink stamp at a CSS-pixel position.
     // Used by inkText.js to animate handwritten strokes.
-    stampAt(xCss, yCss, { pressure = 1, radius = null, nibAngle = 0, nibAspect = 1, smearDirX = 0, smearDirY = 0 } = {}) {
-      stamp(xCss, yCss, pressure, radius, nibAngle, nibAspect, smearDirX, smearDirY);
+    stampAt(xCss, yCss, { pressure = 1, radius = null, nibAngle = 0, nibAspect = 1, smearDirX = 0, smearDirY = 0, crumple = false } = {}) {
+      stamp(xCss, yCss, pressure, radius, nibAngle, nibAspect, smearDirX, smearDirY, crumple);
     },
     // Set the active ink color (r/g/b 0-255). Persists until changed again.
     setInkColor(r, g, b) {
@@ -703,7 +703,7 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
   // Then modifies the CPU height field in the crumple region and re-uploads
   // only that sub-rectangle (UNPACK_ROW_LENGTH lets us pass the full array with
   // an offset instead of extracting a sub-buffer).
-  const stamp = useCallback((xCss, yCss, pressure = 1, radiusOverride = null, nibAngle = 0, nibAspect = 1, smearDirX = 0, smearDirY = 0) => {
+  const stamp = useCallback((xCss, yCss, pressure = 1, radiusOverride = null, nibAngle = 0, nibAspect = 1, smearDirX = 0, smearDirY = 0, crumple = true) => {
     const s = glState.current;
     if (!s) return;
     const { gl, stampProg, stampUni, quadVAO, inkTex, inkFBO, heightTex, hfData, texelSize, W, H, dpr } = s;
@@ -755,16 +755,20 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     s.current = next;
 
-    // Partial height field re-upload: only the crumpled sub-rectangle
-    const { x0, y0, w, h } = applyLocalCrumple(
-      W, H, hfData, noise, xPx, yPx,
-      45 * dpr, 0.18 * pressure * crumpleStrength
-    );
-    gl.bindTexture(gl.TEXTURE_2D, heightTex);
-    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, W); // source row stride = full texture width
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, x0, y0, w, h, gl.RED, gl.FLOAT, hfData, y0 * W + x0);
-    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0);
-    gl.bindTexture(gl.TEXTURE_2D, null);
+    // Crumple: CPU-side height field modification simulating paper deformation
+    // under pen pressure. Skipped for programmatic stamps (text animation) where
+    // per-stamp crumple is invisible and the CPU noise cost is prohibitive.
+    if (crumple) {
+      const { x0, y0, w, h } = applyLocalCrumple(
+        W, H, hfData, noise, xPx, yPx,
+        45 * dpr, 0.18 * pressure * crumpleStrength
+      );
+      gl.bindTexture(gl.TEXTURE_2D, heightTex);
+      gl.pixelStorei(gl.UNPACK_ROW_LENGTH, W);
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, x0, y0, w, h, gl.RED, gl.FLOAT, hfData, y0 * W + x0);
+      gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
   }, [brushRadius, crumpleStrength, noise]);
 
   // ── Pointer events ────────────────────────────────────────────────────────
