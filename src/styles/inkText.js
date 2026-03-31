@@ -322,23 +322,195 @@ const STROKE_TABLE = {
 
 // ── Minimum-jerk trajectory ──────────────────────────────────────────────────
 // Flash & Hogan (1985): humans minimize ∫‖d³x/dt³‖² dt over a movement.
-// For point-to-point movement the optimal interpolant is a 5th-degree polynomial
-// with zero velocity and acceleration at both endpoints.
+// The optimal position interpolant is a 5th-degree polynomial with zero
+// velocity and acceleration at both endpoints.
 
-// Position interpolant: τ ∈ [0,1] → [0,1].  Monotonic, starts and ends at rest.
+// Position interpolant: τ ∈ [0,1] → [0,1].  Used for endpoint ramps.
 function minJerkPos(tau) {
   const t2 = tau * tau;
   const t3 = t2 * tau;
   return 10 * t3 - 15 * t3 * tau + 6 * t3 * t2;
 }
 
-// Velocity profile (d/dτ of minJerkPos).  Bell-shaped, peak = 1.875 at τ = 0.5.
-function minJerkVel(tau) {
-  const t2 = tau * tau;
-  return 30 * t2 - 60 * t2 * tau + 30 * t2 * t2;
+// ── Natural cubic spline ────────────────────────────────────────────────────
+// C² interpolation through (knots[i], values[i]) with natural BCs (S''=0 at ends).
+// Supports non-uniform knot spacing (chord-length parameterization).
+
+function naturalCubicSpline(knots, values) {
+  const n = values.length - 1;
+
+  if (n < 1) {
+    const v = values[0] ?? 0;
+    return { eval: () => v, deriv: () => 0, deriv2: () => 0 };
+  }
+
+  const h = new Float64Array(n);
+  for (let i = 0; i < n; i++) h[i] = Math.max(1e-8, knots[i + 1] - knots[i]);
+
+  if (n === 1) {
+    const slope = (values[1] - values[0]) / h[0];
+    const t0 = knots[0];
+    return {
+      eval:   (t) => values[0] + slope * (t - t0),
+      deriv:  ()  => slope,
+      deriv2: ()  => 0,
+    };
+  }
+
+  // Tridiagonal system for second derivatives M[i] = S''(knots[i]).
+  // M[0] = M[n] = 0.  Solve for M[1]...M[n-1] via Thomas algorithm.
+  const m = n - 1;
+  const diag  = new Float64Array(m);
+  const upper = new Float64Array(m);
+  const lower = new Float64Array(m);
+  const rhs   = new Float64Array(m);
+
+  for (let j = 0; j < m; j++) {
+    const i = j + 1;
+    diag[j] = 2 * (h[i - 1] + h[i]);
+    rhs[j]  = 6 * ((values[i + 1] - values[i]) / h[i]
+                  - (values[i] - values[i - 1]) / h[i - 1]);
+    if (j < m - 1) upper[j] = h[i];
+    if (j > 0)     lower[j] = h[i - 1];
+  }
+
+  for (let j = 1; j < m; j++) {
+    const w = lower[j] / diag[j - 1];
+    diag[j] -= w * upper[j - 1];
+    rhs[j]  -= w * rhs[j - 1];
+  }
+
+  const sol = new Float64Array(m);
+  sol[m - 1] = rhs[m - 1] / diag[m - 1];
+  for (let j = m - 2; j >= 0; j--) {
+    sol[j] = (rhs[j] - upper[j] * sol[j + 1]) / diag[j];
+  }
+
+  const M = new Float64Array(n + 1);
+  for (let j = 0; j < m; j++) M[j + 1] = sol[j];
+
+  // Segment coefficients: S_i(t) = a + b·δ + c·δ² + d·δ³,  δ = t − knots[i]
+  const segs = new Array(n);
+  for (let i = 0; i < n; i++) {
+    segs[i] = {
+      a: values[i],
+      b: (values[i + 1] - values[i]) / h[i] - h[i] * (2 * M[i] + M[i + 1]) / 6,
+      c: M[i] / 2,
+      d: (M[i + 1] - M[i]) / (6 * h[i]),
+      t0: knots[i],
+    };
+  }
+
+  function findSeg(t) {
+    if (t <= knots[0]) return { s: segs[0], dt: 0 };
+    if (t >= knots[n]) return { s: segs[n - 1], dt: h[n - 1] };
+    let lo = 0, hi = n - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (knots[mid] <= t) lo = mid; else hi = mid - 1;
+    }
+    return { s: segs[lo], dt: t - knots[lo] };
+  }
+
+  return {
+    eval(t)   { const {s,dt}=findSeg(t); return s.a + s.b*dt + s.c*dt*dt + s.d*dt*dt*dt; },
+    deriv(t)  { const {s,dt}=findSeg(t); return s.b + 2*s.c*dt + 3*s.d*dt*dt; },
+    deriv2(t) { const {s,dt}=findSeg(t); return 2*s.c + 6*s.d*dt; },
+  };
 }
 
-const MJ_PEAK_VEL = 1.875; // minJerkVel(0.5)
+// ── Stroke trajectory planner ───────────────────────────────────────────────
+// Builds a smooth spline through the stroke's waypoints, computes curvature at
+// dense samples, applies the 2/3 power law (Lacquaniti et al. 1983) for speed,
+// tapers with a minimum-jerk ramp at endpoints, and returns stamp-ready points.
+
+function planStroke(waypoints, baseSpeed, stepSize) {
+  if (waypoints.length < 2) return [];
+
+  // Chord-length parameterization
+  const chords = [0];
+  for (let i = 1; i < waypoints.length; i++) {
+    chords.push(chords[i - 1] + Math.hypot(
+      waypoints[i][0] - waypoints[i - 1][0],
+      waypoints[i][1] - waypoints[i - 1][1],
+    ));
+  }
+  const totalChord = chords[chords.length - 1];
+  if (totalChord < 0.5) return [];
+
+  const spX = naturalCubicSpline(chords, waypoints.map(p => p[0]));
+  const spY = naturalCubicSpline(chords, waypoints.map(p => p[1]));
+
+  // Dense sampling for curvature + arc length
+  const N = Math.max(40, Math.ceil(totalChord / (stepSize * 0.4)));
+  const pts = new Array(N + 1);
+  for (let i = 0; i <= N; i++) {
+    const t   = (i / N) * totalChord;
+    const x   = spX.eval(t),    y   = spY.eval(t);
+    const dx  = spX.deriv(t),   dy  = spY.deriv(t);
+    const ddx = spX.deriv2(t),  ddy = spY.deriv2(t);
+    const sSq = dx * dx + dy * dy;
+    const sMag = Math.sqrt(sSq);
+    const kappa = sMag > 1e-6 ? Math.abs(dx * ddy - dy * ddx) / (sSq * sMag) : 0;
+    pts[i] = { x, y, kappa, s: 0, v: 0 };
+  }
+
+  // True arc lengths
+  for (let i = 1; i <= N; i++) {
+    pts[i].s = pts[i - 1].s + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  }
+  const totalArc = pts[N].s;
+  if (totalArc < 0.5) return [];
+
+  // 2/3 power law: v ∝ κ^(−1/3).  MIN_K bounds the speed ratio on straight runs.
+  const MIN_K = 0.002;
+  let rawSum = 0;
+  for (let i = 0; i <= N; i++) {
+    pts[i].v = Math.pow(Math.max(MIN_K, pts[i].kappa), -1 / 3);
+    rawSum += pts[i].v;
+  }
+  const vScale = baseSpeed / (rawSum / (N + 1));
+  const vMin = baseSpeed * 0.08, vMax = baseSpeed * 3;
+  for (let i = 0; i <= N; i++) {
+    pts[i].v = Math.min(vMax, Math.max(vMin, pts[i].v * vScale));
+  }
+
+  // Minimum-jerk ramp at stroke endpoints (15% of arc each end)
+  const rampLen = totalArc * 0.15;
+  for (let i = 0; i <= N; i++) {
+    let env = 1;
+    if (pts[i].s < rampLen)              env = minJerkPos(pts[i].s / rampLen);
+    else if (pts[i].s > totalArc - rampLen) env = minJerkPos((totalArc - pts[i].s) / rampLen);
+    pts[i].v = Math.max(vMin, pts[i].v * env);
+  }
+
+  // Emit stamps at ~stepSize arc-length intervals
+  const stamps = [];
+  let nextS = 0;
+  for (let i = 0; i <= N; i++) {
+    if (pts[i].s >= nextS || i === 0) {
+      const velNorm = Math.min(1, pts[i].v / (baseSpeed * 2));
+      stamps.push({ x: pts[i].x, y: pts[i].y, pressure: 0.95 - 0.30 * velNorm, v: pts[i].v });
+      nextS = pts[i].s + stepSize;
+    }
+  }
+  // Ensure the final point is stamped
+  const last = pts[N], tail = stamps[stamps.length - 1];
+  if (tail && Math.hypot(last.x - tail.x, last.y - tail.y) > stepSize * 0.3) {
+    const velNorm = Math.min(1, last.v / (baseSpeed * 2));
+    stamps.push({ x: last.x, y: last.y, pressure: 0.95 - 0.30 * velNorm, v: last.v });
+  }
+
+  // Inter-stamp delays from average local speed
+  if (stamps.length > 0) stamps[0].delayMs = 0;
+  for (let i = 1; i < stamps.length; i++) {
+    const dist = Math.hypot(stamps[i].x - stamps[i - 1].x, stamps[i].y - stamps[i - 1].y);
+    const avgV = (stamps[i].v + stamps[i - 1].v) / 2;
+    stamps[i].delayMs = avgV > 0.01 ? (dist / avgV) * 1000 : 0;
+  }
+
+  return stamps;
+}
 
 // ── Pixel-scan fallback ────────────────────────────────────────────────────────
 // Renders the character to an offscreen canvas, finds the column-by-column
@@ -397,27 +569,6 @@ function resolveStrokes(char, charX, charY, charW, charH, size, font) {
   return pixelScanFallback(char, charX, charY, charW, charH, size, font) ?? [];
 }
 
-// Per-segment speed multiplier based on local curvature.
-// Looks at the direction change at the shared waypoint between this segment
-// and the next. Sharp turn → slow down; straight run → speed up.
-// curveMin: multiplier at sharpest turn (dot=-1); curveMax: multiplier on straight (dot=1).
-function curvatureMultiplier(stroke, segIndex, curveMin, curveMax) {
-  // Need the segment after this one to measure the turn at the shared point.
-  if (segIndex + 2 >= stroke.length) return 1.0; // last segment, no turn ahead
-  const [ax, ay] = stroke[segIndex];
-  const [bx, by] = stroke[segIndex + 1]; // shared point (end of this seg / start of next)
-  const [cx, cy] = stroke[segIndex + 2];
-
-  const inDx = bx - ax, inDy = by - ay;
-  const outDx = cx - bx, outDy = cy - by;
-  const inLen  = Math.hypot(inDx, inDy);
-  const outLen = Math.hypot(outDx, outDy);
-  if (inLen < 0.001 || outLen < 0.001) return 1.0;
-
-  // cos(θ): 1.0 = straight ahead, -1.0 = U-turn
-  const dot = (inDx * outDx + inDy * outDy) / (inLen * outLen);
-  return curveMin + (dot + 1) / 2 * (curveMax - curveMin);
-}
 
 // Animate a text draw command onto an InteractivePaperCanvas ref.
 // Returns a cancel() function; calling it stops the animation mid-flight.
@@ -434,8 +585,6 @@ export async function animateText(canvasRef, command) {
     font    = 'Caveat',
     color     = null,
     speed     = 480,
-    curveMin  = 0.20, // speed multiplier at sharpest turn (e.g. 0.1 = crawl, 0.5 = gentle)
-    curveMax  = 2.00, // speed multiplier on dead-straight segments (e.g. 1.5 = subtle, 3.0 = rocket)
   } = command;
 
   // Wait until fonts are ready so measureText is accurate.
@@ -486,57 +635,26 @@ export async function animateText(canvasRef, command) {
         const stroke = strokes[si];
         if (stroke.length < 2) continue;
 
-        // Walk each segment with minimum-jerk velocity profile.
-        // The pen accelerates from rest, peaks at mid-segment, decelerates to rest.
-        // Curvature multiplier still governs total segment duration.
-        for (let i = 0; i < stroke.length - 1; i++) {
+        // Plan smooth trajectory: cubic spline + 2/3 power law + min-jerk ramp.
+        const stamps = planStroke(stroke, speed, step);
+
+        for (const stamp of stamps) {
           if (cancelled) break;
-          const [x0, y0] = stroke[i];
-          const [x1, y1] = stroke[i + 1];
-          const segDist  = Math.hypot(x1 - x0, y1 - y0);
-          if (segDist < 0.1) continue;
-
-          const curve    = curvatureMultiplier(stroke, i, curveMin, curveMax);
-          const segSpeed = speed * curve;
-
-          // Segment duration (seconds).  Within this time the min-jerk profile
-          // distributes velocity: slow at endpoints, fast in the middle.
-          const segDuration = segDist / segSpeed;
-
-          // Size time-step so the maximum spatial gap (at peak velocity) ≈ step.
-          // Peak spatial rate = segDist/segDuration * MJ_PEAK_VEL, so
-          // dt = step / (segSpeed * MJ_PEAK_VEL).
-          const dt       = step / (segSpeed * MJ_PEAK_VEL);
-          const numSteps = Math.max(1, Math.ceil(segDuration / dt));
-          const delayMs  = (segDuration / numSteps) * 1000;
-
-          for (let s = 0; s <= numSteps; s++) {
-            if (cancelled) break;
-            const tau = s / numSteps;
-            const pos = minJerkPos(tau);
-            const vel = minJerkVel(tau);
-
-            const sx = x0 + (x1 - x0) * pos;
-            const sy = y0 + (y1 - y0) * pos;
-
-            // Velocity-dependent pressure: slow pen → heavier stroke, fast → lighter.
-            const velNorm  = vel / MJ_PEAK_VEL;          // 0 at rest → 1 at peak
-            const pressure = 0.95 - 0.30 * velNorm;      // 0.95 heavy ↔ 0.65 light
-
-            canvasRef.current?.stampAt(sx, sy, { radius: strokeRadius, pressure });
-            if (delayMs > 0.5) await sleep(delayMs);
-          }
+          canvasRef.current?.stampAt(stamp.x, stamp.y, {
+            radius: strokeRadius, pressure: stamp.pressure,
+          });
+          if (stamp.delayMs > 0.5) await sleep(stamp.delayMs);
         }
 
         // Pen-lift pause: time proportional to air-travel distance to the next
         // stroke's start point. No next stroke → brief settle pause only.
         if (!cancelled) {
           const nextStroke = strokes[si + 1];
-          let liftMs = 30; // minimum settle time
+          let liftMs = 30;
           if (nextStroke?.length) {
-            const [ex, ey] = stroke[stroke.length - 1];
+            const lastPt = stroke[stroke.length - 1];
             const [nx, ny] = nextStroke[0];
-            const airDist  = Math.hypot(nx - ex, ny - ey);
+            const airDist = Math.hypot(nx - lastPt[0], ny - lastPt[1]);
             liftMs = Math.max(30, airDist / liftSpeed * 1000);
           }
           await sleep(liftMs);
