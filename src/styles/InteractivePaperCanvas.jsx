@@ -203,17 +203,42 @@ uniform float u_stampRadius; // radius in texels (long axis — along the nib sl
 uniform float u_stampAmount;
 uniform float u_nibAngle;  // nib slit angle in radians (0 = horizontal slit)
 uniform float u_nibAspect; // long-axis / short-axis ratio (1 = circle, 3 = narrow slit)
+uniform vec2  u_smearDir;  // stroke velocity direction in texels (length = smear distance)
 
 void main() {
   vec2  state = texture(u_inkWet, v_uv).rg;
+  float ink   = state.r;
+  float wet   = state.g;
   float h     = texture(u_height, v_uv).r;
 
   vec2  diff = (v_uv - u_stampCenter) / u_texelSize; // distance in texels
   float r    = u_stampRadius;
 
-  // Early exit using the long axis (cheapest possible reject)
-  if (length(diff) > r * 1.8) { fragColor = state; return; }
+  // Early exit using the long axis + smear reach
+  float smearLen = length(u_smearDir);
+  if (length(diff) > r * 1.8 + smearLen) { fragColor = state; return; }
 
+  // ── Smear: nib drags wet ink forward along stroke direction ──
+  // Sample ink at the trailing edge (where the nib just came from).
+  // Move a fraction of that wet ink to the current position.
+  if (smearLen > 0.1) {
+    // Trailing-edge UV: look behind the stamp in the stroke direction
+    vec2 trailUV = v_uv - u_smearDir * u_texelSize;
+    vec2 trailState = texture(u_inkWet, trailUV).rg;
+    float trailInk = trailState.r;
+    float trailWet = trailState.g;
+
+    // Only smear wet ink, proportional to how much nib overlaps this texel
+    float nibDist = length(diff);
+    float nibMask = smoothstep(r * 1.4, r * 0.3, nibDist);
+    float smearAmt = nibMask * trailWet * 0.10;
+
+    ink += trailInk * smearAmt;
+    wet += trailWet * smearAmt * 0.5;
+    // Don't subtract from the trail here — that texel gets its own pass
+  }
+
+  // ── Nib deposit: elliptical Gaussian ──
   // Rotate into nib-aligned coordinates: x along slit, y perpendicular
   float ca = cos(u_nibAngle);
   float sa = sin(u_nibAngle);
@@ -230,8 +255,8 @@ void main() {
   float deposit     = radial * edgeBreakup * u_stampAmount;
 
   fragColor = vec2(
-    clamp(state.r + deposit * 0.50, 0.0, 1.6),
-    clamp(state.g + deposit * 0.9,  0.0, 2.0)
+    clamp(ink + deposit * 0.50, 0.0, 1.6),
+    clamp(wet + deposit * 0.9,  0.0, 2.0)
   );
 }`;
 
@@ -383,8 +408,8 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     },
     // Deposit a single ink stamp at a CSS-pixel position.
     // Used by inkText.js to animate handwritten strokes.
-    stampAt(xCss, yCss, { pressure = 1, radius = null, nibAngle = 0, nibAspect = 1 } = {}) {
-      stamp(xCss, yCss, pressure, radius, nibAngle, nibAspect);
+    stampAt(xCss, yCss, { pressure = 1, radius = null, nibAngle = 0, nibAspect = 1, smearDirX = 0, smearDirY = 0 } = {}) {
+      stamp(xCss, yCss, pressure, radius, nibAngle, nibAspect, smearDirX, smearDirY);
     },
     // Set the active ink color (r/g/b 0-255). Persists until changed again.
     setInkColor(r, g, b) {
@@ -674,7 +699,7 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
   // Then modifies the CPU height field in the crumple region and re-uploads
   // only that sub-rectangle (UNPACK_ROW_LENGTH lets us pass the full array with
   // an offset instead of extracting a sub-buffer).
-  const stamp = useCallback((xCss, yCss, pressure = 1, radiusOverride = null, nibAngle = 0, nibAspect = 1) => {
+  const stamp = useCallback((xCss, yCss, pressure = 1, radiusOverride = null, nibAngle = 0, nibAspect = 1, smearDirX = 0, smearDirY = 0) => {
     const s = glState.current;
     if (!s) return;
     const { gl, stampProg, stampUni, quadVAO, inkTex, inkFBO, heightTex, hfData, texelSize, W, H, dpr } = s;
@@ -720,6 +745,8 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     gl.uniform1f(stampUni("u_stampAmount"), 0.85 * pressure);
     gl.uniform1f(stampUni("u_nibAngle"), nibAngle);
     gl.uniform1f(stampUni("u_nibAspect"), nibAspect);
+    // Smear direction in texels — scale by DPR, flip Y for GL coordinates
+    gl.uniform2f(stampUni("u_smearDir"), smearDirX * dpr, -smearDirY * dpr);
     gl.bindVertexArray(quadVAO);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     s.current = next;

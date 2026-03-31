@@ -737,9 +737,15 @@ export async function animateText(canvasRef, command) {
           // Nib aspect: low pressure = tines closed (thin), high pressure = splayed (wide)
           const nibAspect = NIB_ASPECT_MAX - (NIB_ASPECT_MAX - NIB_ASPECT_MIN) * stamp.pressure;
 
+          // Smear direction: tangent vector scaled by velocity (faster = more drag)
+          const velNorm = Math.min(1, stamp.v / (speed * 2));
+          const smearDist = strokeRadius * 1.5 * velNorm;
+          const smearDirX = tx * smearDist;
+          const smearDirY = ty * smearDist;
+
           canvasRef.current?.stampAt(sx, sy, {
             radius: strokeRadius, pressure: stamp.pressure,
-            nibAngle: NIB_ANGLE, nibAspect,
+            nibAngle: NIB_ANGLE, nibAspect, smearDirX, smearDirY,
           });
           if (stamp.delayMs > 0.5) await sleep(stamp.delayMs);
         }
