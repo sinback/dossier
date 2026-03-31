@@ -380,6 +380,7 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
   brushRadius = 8,
   crumpleStrength = 1.0,
   paperRoughness = 1.0,
+  simScale = 2,        // internal resolution multiplier (2 = supersample at 2× CSS pixels)
   interactive = true,
   storageKey = null,
   style = {},
@@ -470,7 +471,10 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
   // ── WebGL init ────────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
-    const dpr = window.devicePixelRatio || 1;
+    // Effective DPR includes the quality multiplier so the sim runs at higher
+    // internal resolution than the display.  The browser downsamples the canvas
+    // backing store to CSS size automatically.
+    const dpr = (window.devicePixelRatio || 1) * simScale;
     const W = Math.floor(width * dpr);
     const H = Math.floor(height * dpr);
     canvas.width  = W;
@@ -684,7 +688,7 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
       gl.deleteVertexArray(quadVAO);
       glState.current = null;
     };
-  }, [width, height, noise, paperRoughness]);
+  }, [width, height, noise, paperRoughness, simScale]);
 
   // Live-update ink color without reinitializing
   useEffect(() => {
