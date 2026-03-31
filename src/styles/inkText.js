@@ -320,6 +320,26 @@ const STROKE_TABLE = {
   ],
 };
 
+// ── Minimum-jerk trajectory ──────────────────────────────────────────────────
+// Flash & Hogan (1985): humans minimize ∫‖d³x/dt³‖² dt over a movement.
+// For point-to-point movement the optimal interpolant is a 5th-degree polynomial
+// with zero velocity and acceleration at both endpoints.
+
+// Position interpolant: τ ∈ [0,1] → [0,1].  Monotonic, starts and ends at rest.
+function minJerkPos(tau) {
+  const t2 = tau * tau;
+  const t3 = t2 * tau;
+  return 10 * t3 - 15 * t3 * tau + 6 * t3 * t2;
+}
+
+// Velocity profile (d/dτ of minJerkPos).  Bell-shaped, peak = 1.875 at τ = 0.5.
+function minJerkVel(tau) {
+  const t2 = tau * tau;
+  return 30 * t2 - 60 * t2 * tau + 30 * t2 * t2;
+}
+
+const MJ_PEAK_VEL = 1.875; // minJerkVel(0.5)
+
 // ── Pixel-scan fallback ────────────────────────────────────────────────────────
 // Renders the character to an offscreen canvas, finds the column-by-column
 // centerline of ink pixels, and returns it as a single stroke path.
@@ -466,8 +486,9 @@ export async function animateText(canvasRef, command) {
         const stroke = strokes[si];
         if (stroke.length < 2) continue;
 
-        // Walk each segment, depositing ink stamps at `step`-pixel intervals.
-        // Speed is modulated per segment by the curvature at the upcoming turn.
+        // Walk each segment with minimum-jerk velocity profile.
+        // The pen accelerates from rest, peaks at mid-segment, decelerates to rest.
+        // Curvature multiplier still governs total segment duration.
         for (let i = 0; i < stroke.length - 1; i++) {
           if (cancelled) break;
           const [x0, y0] = stroke[i];
@@ -477,15 +498,32 @@ export async function animateText(canvasRef, command) {
 
           const curve    = curvatureMultiplier(stroke, i, curveMin, curveMax);
           const segSpeed = speed * curve;
-          const steps    = Math.max(1, Math.ceil(segDist / step));
-          const delayMs  = (segDist / steps) / segSpeed * 1000;
 
-          for (let s = 0; s <= steps; s++) {
+          // Segment duration (seconds).  Within this time the min-jerk profile
+          // distributes velocity: slow at endpoints, fast in the middle.
+          const segDuration = segDist / segSpeed;
+
+          // Size time-step so the maximum spatial gap (at peak velocity) ≈ step.
+          // Peak spatial rate = segDist/segDuration * MJ_PEAK_VEL, so
+          // dt = step / (segSpeed * MJ_PEAK_VEL).
+          const dt       = step / (segSpeed * MJ_PEAK_VEL);
+          const numSteps = Math.max(1, Math.ceil(segDuration / dt));
+          const delayMs  = (segDuration / numSteps) * 1000;
+
+          for (let s = 0; s <= numSteps; s++) {
             if (cancelled) break;
-            const t  = s / steps;
-            const sx = x0 + (x1 - x0) * t;
-            const sy = y0 + (y1 - y0) * t;
-            canvasRef.current?.stampAt(sx, sy, { radius: strokeRadius, pressure: 0.82 });
+            const tau = s / numSteps;
+            const pos = minJerkPos(tau);
+            const vel = minJerkVel(tau);
+
+            const sx = x0 + (x1 - x0) * pos;
+            const sy = y0 + (y1 - y0) * pos;
+
+            // Velocity-dependent pressure: slow pen → heavier stroke, fast → lighter.
+            const velNorm  = vel / MJ_PEAK_VEL;          // 0 at rest → 1 at peak
+            const pressure = 0.95 - 0.30 * velNorm;      // 0.95 heavy ↔ 0.65 light
+
+            canvasRef.current?.stampAt(sx, sy, { radius: strokeRadius, pressure });
             if (delayMs > 0.5) await sleep(delayMs);
           }
         }
