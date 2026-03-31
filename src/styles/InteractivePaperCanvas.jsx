@@ -114,7 +114,7 @@ void main() {
   // (The original flat 0.90 factor killed ~99% of ink before it ever dried out.)
   float retention = 1.0 - 0.01 * min(1.0, wet);
   float retInk = ink * retention;
-  float retWet = wet * 0.92;
+  float retWet = wet * 0.85;
   float inkIn  = 0.0;
   float wetIn  = 0.0;
 
