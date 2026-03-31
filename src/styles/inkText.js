@@ -521,6 +521,15 @@ function planStroke(waypoints, baseSpeed, stepSize) {
 const TREMOR_HZ = 10;       // dominant frequency (physiological range: 8–12 Hz)
 const TREMOR_SCALE = 0.35;  // amplitude as fraction of strokeRadius
 
+// ── Nib geometry ────────────────────────────────────────────────────────────
+// Models a quill/broad-nib pen held at a fixed angle. The slit (long axis of
+// the contact ellipse) stays at NIB_ANGLE; pressure splays the tines, making
+// the short axis wider (aspect → 1). Low pressure keeps tines together
+// (aspect → NIB_ASPECT_MAX, thin hairlines perpendicular to the slit).
+const NIB_ANGLE = (40 * Math.PI) / 180;  // 40° from horizontal
+const NIB_ASPECT_MAX = 3.0;              // closed tines: 3:1 slit
+const NIB_ASPECT_MIN = 1.4;              // full splay: nearly round
+
 // ── Waypoint jitter ─────────────────────────────────────────────────────────
 // Per-render random perturbation of interior waypoints so the same letter
 // never looks identical twice.  Amplitude is a fraction of glyph height,
@@ -725,8 +734,12 @@ export async function animateText(canvasRef, command) {
           const sx = stamp.x + (-ty) * disp;
           const sy = stamp.y + tx * disp;
 
+          // Nib aspect: low pressure = tines closed (thin), high pressure = splayed (wide)
+          const nibAspect = NIB_ASPECT_MAX - (NIB_ASPECT_MAX - NIB_ASPECT_MIN) * stamp.pressure;
+
           canvasRef.current?.stampAt(sx, sy, {
             radius: strokeRadius, pressure: stamp.pressure,
+            nibAngle: NIB_ANGLE, nibAspect,
           });
           if (stamp.delayMs > 0.5) await sleep(stamp.delayMs);
         }

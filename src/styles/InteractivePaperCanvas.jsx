@@ -199,20 +199,32 @@ uniform sampler2D u_inkWet;
 uniform sampler2D u_height;
 uniform vec2 u_texelSize;
 uniform vec2 u_stampCenter; // UV coords of stamp center
-uniform float u_stampRadius; // radius in texels
+uniform float u_stampRadius; // radius in texels (long axis — along the nib slit)
 uniform float u_stampAmount;
+uniform float u_nibAngle;  // nib slit angle in radians (0 = horizontal slit)
+uniform float u_nibAspect; // long-axis / short-axis ratio (1 = circle, 3 = narrow slit)
 
 void main() {
   vec2  state = texture(u_inkWet, v_uv).rg;
   float h     = texture(u_height, v_uv).r;
 
   vec2  diff = (v_uv - u_stampCenter) / u_texelSize; // distance in texels
-  float d    = length(diff);
   float r    = u_stampRadius;
 
-  if (d > r * 1.8) { fragColor = state; return; }
+  // Early exit using the long axis (cheapest possible reject)
+  if (length(diff) > r * 1.8) { fragColor = state; return; }
 
-  float radial      = exp(-(d * d) / (2.0 * r * r * 0.45));
+  // Rotate into nib-aligned coordinates: x along slit, y perpendicular
+  float ca = cos(u_nibAngle);
+  float sa = sin(u_nibAngle);
+  vec2 nd = vec2(diff.x * ca + diff.y * sa,
+                -diff.x * sa + diff.y * ca);
+
+  // Elliptical Gaussian: long axis (along slit) = r, short axis = r / aspect
+  float ry = r / u_nibAspect;
+  float e2 = (nd.x * nd.x) / (r * r) + (nd.y * nd.y) / (ry * ry);
+  float radial = exp(-e2 / (2.0 * 0.45));
+
   vec2  px          = v_uv / u_texelSize;
   float edgeBreakup = 0.85 + 0.35 * sin(px.x * 0.22 + px.y * 0.17 + h * 8.0);
   float deposit     = radial * edgeBreakup * u_stampAmount;
@@ -371,8 +383,8 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     },
     // Deposit a single ink stamp at a CSS-pixel position.
     // Used by inkText.js to animate handwritten strokes.
-    stampAt(xCss, yCss, { pressure = 1, radius = null } = {}) {
-      stamp(xCss, yCss, pressure, radius);
+    stampAt(xCss, yCss, { pressure = 1, radius = null, nibAngle = 0, nibAspect = 1 } = {}) {
+      stamp(xCss, yCss, pressure, radius, nibAngle, nibAspect);
     },
     // Set the active ink color (r/g/b 0-255). Persists until changed again.
     setInkColor(r, g, b) {
@@ -662,7 +674,7 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
   // Then modifies the CPU height field in the crumple region and re-uploads
   // only that sub-rectangle (UNPACK_ROW_LENGTH lets us pass the full array with
   // an offset instead of extracting a sub-buffer).
-  const stamp = useCallback((xCss, yCss, pressure = 1, radiusOverride = null) => {
+  const stamp = useCallback((xCss, yCss, pressure = 1, radiusOverride = null, nibAngle = 0, nibAspect = 1) => {
     const s = glState.current;
     if (!s) return;
     const { gl, stampProg, stampUni, quadVAO, inkTex, inkFBO, heightTex, hfData, texelSize, W, H, dpr } = s;
@@ -706,6 +718,8 @@ const InteractivePaperCanvas = forwardRef(function InteractivePaperCanvas({
     gl.uniform2f(stampUni("u_stampCenter"), xPx / W, 1.0 - yPx / H);
     gl.uniform1f(stampUni("u_stampRadius"), radius);
     gl.uniform1f(stampUni("u_stampAmount"), 0.85 * pressure);
+    gl.uniform1f(stampUni("u_nibAngle"), nibAngle);
+    gl.uniform1f(stampUni("u_nibAspect"), nibAspect);
     gl.bindVertexArray(quadVAO);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     s.current = next;
