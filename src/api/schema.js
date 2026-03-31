@@ -31,6 +31,7 @@ const TextCommand = z.object({
   size: z.number().positive().max(200).default(32),
   color: Color,
   region: Region,
+  jitter: z.number().min(0).max(0.5).default(0.025),
 });
 
 // Animate an SVG path appearing as ink strokes, following the path's draw order.
