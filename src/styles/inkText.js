@@ -512,6 +512,22 @@ function planStroke(waypoints, baseSpeed, stepSize) {
   return stamps;
 }
 
+// ── Tremor ──────────────────────────────────────────────────────────────────
+// Quasi-periodic displacement simulating physiological hand tremor (~8–12 Hz).
+// Sum of incommensurate sinusoids stays band-limited around the fundamental
+// while avoiding exact repetition — matching real tremor's spectral shape.
+// Output range: approximately [−1, 1].
+
+const TREMOR_HZ = 10;       // dominant frequency (physiological range: 8–12 Hz)
+const TREMOR_SCALE = 0.35;  // amplitude as fraction of strokeRadius
+
+function tremor1D(phase) {
+  const w = 2 * Math.PI;
+  return 0.60 * Math.sin(phase * w)
+       + 0.25 * Math.sin(phase * w * 2.37)
+       + 0.15 * Math.sin(phase * w * 4.91);
+}
+
 // ── Pixel-scan fallback ────────────────────────────────────────────────────────
 // Renders the character to an offscreen canvas, finds the column-by-column
 // centerline of ink pixels, and returns it as a single stroke path.
@@ -637,10 +653,33 @@ export async function animateText(canvasRef, command) {
 
         // Plan smooth trajectory: cubic spline + 2/3 power law + min-jerk ramp.
         const stamps = planStroke(stroke, speed, step);
+        const tremorAmp = strokeRadius * TREMOR_SCALE;
+        const tremorOffset = Math.random() * 100; // desync strokes
+        let cumTimeS = 0;
 
-        for (const stamp of stamps) {
+        for (let sti = 0; sti < stamps.length; sti++) {
           if (cancelled) break;
-          canvasRef.current?.stampAt(stamp.x, stamp.y, {
+          const stamp = stamps[sti];
+          cumTimeS += stamp.delayMs / 1000;
+
+          // Perpendicular direction from neighboring stamps
+          let tx, ty;
+          if (sti < stamps.length - 1) {
+            tx = stamps[sti + 1].x - stamp.x;
+            ty = stamps[sti + 1].y - stamp.y;
+          } else if (sti > 0) {
+            tx = stamp.x - stamps[sti - 1].x;
+            ty = stamp.y - stamps[sti - 1].y;
+          } else { tx = 1; ty = 0; }
+          const tLen = Math.hypot(tx, ty);
+          if (tLen > 0.001) { tx /= tLen; ty /= tLen; }
+
+          // Tremor: quasi-periodic perpendicular displacement at TREMOR_HZ
+          const disp = tremor1D(cumTimeS * TREMOR_HZ + tremorOffset) * tremorAmp;
+          const sx = stamp.x + (-ty) * disp;
+          const sy = stamp.y + tx * disp;
+
+          canvasRef.current?.stampAt(sx, sy, {
             radius: strokeRadius, pressure: stamp.pressure,
           });
           if (stamp.delayMs > 0.5) await sleep(stamp.delayMs);
