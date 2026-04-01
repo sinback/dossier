@@ -229,36 +229,37 @@ export default function MatlackCanvas() {
   }, []);
 
   // Per-ref ellipse data (4x scale coordinates)
-  // inner = counter (negative space) via flood fill + area moments
-  // outer = ink outer edge via ray-cast boundary points + boundary moments (√2 corrected)
-  //         downstroke angular sector (-20° to 100°) excluded from ray-cast
+  // ★ = hand-traced by sinback (GIMP bezier → moment fit, residuals <0.08)
+  // auto = automated pipeline (flood fill + ray-cast)
+  // Ellipse model validated: all hand traces are genuinely elliptical
   const ellipseData = {
-    '01': { w: 124, h: 100,
-            inner: { cx: 55.0, cy: 41.9, a: 37.7, b: 14.0, tilt: -52.9 },
-            outer: { cx: 46.0, cy: 34.0, a: 58.0, b: 23.2, tilt: -42.3 }},
-    '02': { w: 104, h: 120,
+    // ★ = hand-traced (sinback via GIMP bezier), auto = automated pipeline
+    '01': { w: 124, h: 100, // ★
+            inner: { cx: 51.7, cy: 46.4, a: 37.8, b: 17.2, tilt: -47.2 },
+            outer: { cx: 51.4, cy: 46.6, a: 50.5, b: 29.1, tilt: -37.3 }},
+    '02': { w: 104, h: 120, // auto (inner only)
             inner: { cx: 45.1, cy: 57.0, a: 33.2, b: 10.1, tilt: -51.7 },
-            outer: { cx: 35.0, cy: 50.0, a: 54.5, b: 23.1, tilt: -43.9 }},
+            outer: null },
     '03': null,  // thrown out
-    '04': { w: 148, h: 120,
+    '04': { w: 148, h: 120, // auto (outer only)
             inner: null,
             outer: { cx: 52.0, cy: 45.0, a: 50.7, b: 20.5, tilt: -41.4 }},
-    '05': { w: 144, h: 128,
-            inner: { cx: 63.3, cy: 47.8, a: 44.7, b: 17.2, tilt: -50.4 },
-            outer: { cx: 51.0, cy: 41.0, a: 65.4, b: 25.1, tilt: -41.0 }},
-    '06': { w: 100, h: 120,
+    '05': { w: 144, h: 128, // ★
+            inner: { cx: 62.9, cy: 50.7, a: 42.4, b: 19.5, tilt: -44.6 },
+            outer: { cx: 59.1, cy: 50.5, a: 61.1, b: 32.8, tilt: -39.9 }},
+    '06': { w: 100, h: 120, // auto (outer only, unreliable)
             inner: null,
-            outer: { cx: 40.0, cy: 62.0, a: 29.2, b: 9.5, tilt: -50.6 }},
+            outer: null },
     '07': null,  // thrown out
-    '08': { w: 156, h: 148,
+    '08': { w: 156, h: 148, // auto (outer only, unreliable)
             inner: null,
-            outer: { cx: 57.0, cy: 68.0, a: 32.4, b: 7.7, tilt: -50.6 }},
-    '09': { w: 132, h: 104,
-            inner: { cx: 57.4, cy: 46.9, a: 30.5, b: 10.5, tilt: -50.3 },
-            outer: { cx: 46.0, cy: 41.0, a: 51.6, b: 22.1, tilt: -41.7 }},
-    '10': { w: 120, h: 112,
-            inner: { cx: 56.0, cy: 62.0, a: 38.4, b: 12.1, tilt: -43.0 },
-            outer: { cx: 47.0, cy: 55.0, a: 53.3, b: 20.5, tilt: -40.9 }},
+            outer: null },
+    '09': { w: 132, h: 104, // ★
+            inner: { cx: 55.1, cy: 51.7, a: 32.8, b: 14.1, tilt: -44.9 },
+            outer: { cx: 51.7, cy: 50.2, a: 47.9, b: 26.5, tilt: -40.3 }},
+    '10': { w: 120, h: 112, // ★
+            inner: { cx: 55.7, cy: 63.7, a: 35.7, b: 14.0, tilt: -41.6 },
+            outer: { cx: 56.0, cy: 61.6, a: 54.3, b: 26.4, tilt: -38.6 }},
   };
 
   const REF_H = 80;
