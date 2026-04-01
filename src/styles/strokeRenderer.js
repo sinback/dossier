@@ -49,8 +49,8 @@ out vec4 fragColor;
 void main() {
   float edge = abs(v_edgeDist);
   float aa = 1.0 - smoothstep(0.7, 1.0, edge);
-  // Coverage = pressure-weighted opacity with edge AA
-  float coverage = (0.5 + 0.5 * v_pressure) * aa;
+  // Coverage: pressure-driven with soft knee — light touch visible but faint
+  float coverage = (0.15 + 0.85 * v_pressure) * v_pressure * aa;
   fragColor = vec4(coverage, 0.0, 0.0, 1.0);
 }
 `;
@@ -89,8 +89,8 @@ void main() {
 
 const NIB_ANGLE = (40 * Math.PI) / 180;
 const NIB_SEMI_MAJOR = 1.0;
-const NIB_SEMI_MINOR_MIN = 0.15;
-const NIB_SEMI_MINOR_MAX = 0.5;
+const NIB_SEMI_MINOR_MIN = 0.06;   // tines closed — near-hairline
+const NIB_SEMI_MINOR_MAX = 0.5;    // tines splayed — heavy pressure
 
 function nibHalfWidth(tangentAngle, pressure, radius) {
   const b = NIB_SEMI_MINOR_MIN + (NIB_SEMI_MINOR_MAX - NIB_SEMI_MINOR_MIN) * pressure;

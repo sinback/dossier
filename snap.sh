@@ -22,6 +22,16 @@ ACTION="${1:-snap}"
 shift || true
 
 case "$ACTION" in
+  refresh)
+    echo "Hard-refreshing Firefox..."
+    hyprctl dispatch focuswindow class:firefox > /dev/null 2>&1
+    sleep 0.3
+    wtype -M ctrl -M shift -k r -m shift -m ctrl
+    sleep 1.5
+    hyprctl dispatch focuswindow class:kitty > /dev/null 2>&1
+    echo "Done."
+    exit 0
+    ;;
   clear)
     echo "Clearing canvas..."
     curl -s -X DELETE "$API" > /dev/null
