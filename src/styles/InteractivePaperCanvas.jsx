@@ -342,7 +342,7 @@ function generateHeightField(W, H, out, noise, roughness = 1.0) {
       const ridges = noise.ridged(x * ridge, y * ridge, 5, 0.56) * roughness;
       const f      = noise.ridged(x * fine,  y * fine,  3, 0.52) * roughness;
       const cx = (x / W) * 2 - 1, cy = (y / H) * 2 - 1;
-      out[i] = 1.0 * broad + 0.1 * ridges + 0.14 * f
+      out[i] = 1.0 * broad
              + 0.03 * (1 - Math.sqrt(cx * cx + cy * cy));
     }
   }

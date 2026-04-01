@@ -132,7 +132,7 @@ const SEED_DATA = [
     name: "Jack-O",
     type: "npc",
     subtitle: "General Contractor",
-    portrait: "🐻",
+    portrait: "🐿️",
     tags: {
       faction: "Bridgewater Union",
       species: "squirrel",

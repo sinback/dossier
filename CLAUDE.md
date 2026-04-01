@@ -29,3 +29,15 @@
 
 ## Narrative goals
 - You won't usually be giving input on these, but when it's time and the user prompts you, `reference_narrative_ledger.md`, `project_game_world.md`, and `dossier-state.json` are good sources of information you should refer to.
+
+## Tools to help you
+If you're working on handwriting or styling, you can do ./snap.sh clear → ./snap.sh text "whatever", then read for_claude.png to see the result, all without the user in the loop. Usage:                 
+```
+  ./snap.sh                          # just screenshot
+  ./snap.sh clear                    # clear canvas + screenshot
+  ./snap.sh text "Hello world"       # draw text, wait 5s, screenshot
+  ./snap.sh text "Big" --size 64     # with options (--size, --font, --wait)
+  ./snap.sh file payload.json        # send arbitrary draw command JSON
+```
+
+If you don't see Firefox in the snapshot, pause and ask the user to switch the Firefox tab back to Dossier.

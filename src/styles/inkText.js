@@ -320,6 +320,283 @@ const STROKE_TABLE = {
   ],
 };
 
+// ── Glyph primitive system ───────────────────────────────────────────────────
+// Parameterized geometric primitives that generate structurally varied waypoints
+// each render. Characters defined here bypass STROKE_TABLE and tangent-biased
+// jitter — variation is structural, not additive noise.
+//
+// Data flow: GLYPH_TABLE[char] → resolveAnchors → sample primitives → waypoints
+//            → existing planStroke pipeline
+
+// Variation helper: value ± random range (uniform)
+function vary(base, range) {
+  return base + (Math.random() * 2 - 1) * range;
+}
+
+// ── Anchor resolution ───────────────────────────────────────────────────────
+// Anchors are named points resolved before primitives are sampled.
+// Static anchors: { x, y, dx, dy } — base position + random variation.
+// Derived anchors: { from, to, t, dt } — interpolated between two resolved
+// anchors at parameter t ± dt. Guarantees shared points (e.g., crossbar on leg).
+
+function resolveAnchors(defs) {
+  const resolved = new Map();
+
+  // First pass: resolve all static anchors
+  for (const [name, def] of Object.entries(defs)) {
+    if (def.x !== undefined) {
+      resolved.set(name, [
+        vary(def.x, def.dx || 0),
+        vary(def.y, def.dy || 0),
+      ]);
+    }
+  }
+
+  // Second pass: resolve derived anchors (depend on statics)
+  for (const [name, def] of Object.entries(defs)) {
+    if (def.from !== undefined) {
+      const a = resolved.get(def.from);
+      const b = resolved.get(def.to);
+      if (!a || !b) continue;
+      const t = vary(def.t, def.dt || 0);
+      resolved.set(name, [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+      ]);
+    }
+  }
+
+  return resolved;
+}
+
+// ── Primitive samplers ──────────────────────────────────────────────────────
+
+// Line: quadratic Bezier from→to with perpendicular bow. bow=0 → straight line.
+function sampleLine(from, to, bow, n) {
+  const mx = (from[0] + to[0]) / 2;
+  const my = (from[1] + to[1]) / 2;
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  // Perpendicular offset for control point
+  const cx = mx + (-dy) * bow;
+  const cy = my + dx * bow;
+
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const u = 1 - t;
+    pts.push([
+      u * u * from[0] + 2 * u * t * cx + t * t * to[0],
+      u * u * from[1] + 2 * u * t * cy + t * t * to[1],
+    ]);
+  }
+  return pts;
+}
+
+// Arc: elliptical arc section with variation on all geometric params.
+// startAnchor/endAnchor pin endpoints to resolved anchor positions.
+function sampleArc(def, anchors) {
+  const cx = vary(def.cx, def.dcx || 0);
+  const cy = vary(def.cy, def.dcy || 0);
+  const rx = vary(def.rx, def.drx || 0);
+  const ry = vary(def.ry, def.dry || 0);
+  const rot = vary(def.rotation || 0, def.drot || 0);
+  const startAngle = vary(def.startAngle, def.dstart || 0);
+  const endAngle = vary(def.endAngle, def.dend || 0);
+  const n = def.n || 10;
+
+  const cosR = Math.cos(rot);
+  const sinR = Math.sin(rot);
+
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const angle = startAngle + (endAngle - startAngle) * t;
+    const lx = rx * Math.cos(angle);
+    const ly = ry * Math.sin(angle);
+    pts.push([
+      cx + cosR * lx - sinR * ly,
+      cy + sinR * lx + cosR * ly,
+    ]);
+  }
+
+  // Pin endpoints to anchors if specified
+  if (def.startAnchor) {
+    const a = anchors.get(def.startAnchor);
+    if (a) { pts[0][0] = a[0]; pts[0][1] = a[1]; }
+  }
+  if (def.endAnchor) {
+    const a = anchors.get(def.endAnchor);
+    if (a) { pts[n - 1][0] = a[0]; pts[n - 1][1] = a[1]; }
+  }
+
+  return pts;
+}
+
+// ── Glyph waypoint generator ────────────────────────────────────────────────
+// Takes a glyph definition and returns array of strokes, each an array of
+// [x, y] in normalized [0,1] space.
+
+function generateGlyphWaypoints(glyphDef) {
+  const anchors = resolveAnchors(glyphDef.anchors || {});
+
+  // Sample each primitive into waypoints
+  const sampled = glyphDef.primitives.map(prim => {
+    const from = anchors.get(prim.from) || [0, 0];
+    const to = anchors.get(prim.to) || [1, 1];
+
+    let pts;
+    if (prim.type === 'line') {
+      const bow = vary(prim.bow || 0, prim.dbow || 0);
+      pts = sampleLine(from, to, bow, prim.n || 4);
+    } else if (prim.type === 'arc') {
+      pts = sampleArc(prim, anchors);
+    } else {
+      pts = [];
+    }
+    return { pts, stroke: prim.stroke };
+  });
+
+  // Group by stroke field. Primitives sharing the same stroke number are
+  // concatenated into one continuous pen-down movement (junction duplicates
+  // dropped). Primitives without a stroke field become individual strokes.
+  // Output order follows first-appearance of each stroke number.
+  const groups = new Map(); // stroke number → accumulated waypoints
+  const order = [];         // stroke numbers in first-appearance order
+
+  let autoId = -1;          // ungrouped primitives get unique negative IDs
+  for (const { pts, stroke } of sampled) {
+    if (pts.length === 0) continue;
+    const key = stroke !== undefined ? stroke : autoId--;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      order.push(key);
+    }
+    const acc = groups.get(key);
+    // Drop first point if it duplicates the end of the accumulated path
+    // (shared anchor junction)
+    const start = (acc.length > 0) ? 1 : 0;
+    for (let i = start; i < pts.length; i++) {
+      acc.push(pts[i]);
+    }
+  }
+
+  return order.map(key => groups.get(key));
+}
+
+// ── Ruled reference lines ────────────────────────────────────────────────────
+// Shared vertical reference positions in normalized [0,1] glyph space.
+// Based on Zaner-Bloser manuscript proportions: midline is equidistant between
+// cap line and baseline, so uppercase crossbars and lowercase tops align.
+//
+//   0.00 ─── cap / ascender line
+//   0.36 ─── midline (x-height): top of a, c, e, o; crossbar of H, A
+//   0.72 ─── baseline: where letters sit
+//   1.00 ─── descender line: bottom of g, j, p, q, y
+//
+// STROKE_TABLE uses a legacy convention (xHeight≈0.25, baseline≈0.73) that
+// will gradually be migrated. GLYPH_TABLE entries use RULED for consistency.
+
+const RULED = {
+  cap:       0.00,
+  xHeight:   0.36,
+  baseline:  0.72,
+  descender: 1.00,
+};
+
+// Derived helpers
+const X_MID = (RULED.xHeight + RULED.baseline) / 2;  // vertical center of lowercase body
+
+// ── Glyph table ─────────────────────────────────────────────────────────────
+// Each entry defines anchors + primitives. Coordinates are normalized [0,1]
+// and reference RULED constants for vertical positioning.
+
+const GLYPH_TABLE = {
+
+  // 'o' — single elliptical arc, full loop
+  'o': {
+    anchors: {
+      center: { x: 0.45, y: X_MID, dx: 0.02, dy: 0.02 },
+    },
+    primitives: [{
+      type: 'arc',
+      cx: 0.45, dcx: 0.02,
+      cy: X_MID, dcy: 0.02,
+      rx: 0.33, drx: 0.02,
+      ry: (RULED.baseline - RULED.xHeight) / 2, dry: 0.015,
+      rotation: 0, drot: 0.05,
+      startAngle: -Math.PI / 2, dstart: 0.06,
+      endAngle: -Math.PI / 2 + Math.PI * 2, dend: 0.06,
+      n: 18,
+    }],
+  },
+
+  // 'a' — single stroke: bowl sweeps from ~2 o'clock CCW all the way around,
+  // then pen continues straight down to baseline without lifting.
+  // (Zaner-Bloser manuscript style — see Practice Master 2)
+  'a': {
+    anchors: {
+      // start x pinned tight — must stay right of bowl for visible downstroke
+      start:    { x: 0.76, y: X_MID - 0.04, dx: 0.01, dy: 0.02 },
+      flick:    { x: 0.82, y: RULED.baseline + 0.04, dx: 0.02, dy: 0.01 },
+    },
+    primitives: [
+      {
+        type: 'arc',
+        cx: 0.44, dcx: 0.02,
+        cy: X_MID, dcy: 0.02,
+        rx: 0.30, drx: 0.02,
+        ry: (RULED.baseline - RULED.xHeight) / 2, dry: 0.015,
+        rotation: 0, drot: 0.04,
+        startAngle: -Math.PI / 4, dstart: 0.05,
+        endAngle: -Math.PI / 4 - Math.PI * 2, dend: 0.05,
+        n: 18,
+        startAnchor: 'start',
+        endAnchor: 'start',
+        stroke: 0,
+      },
+      // Downstroke + flick as one ballistic sweep — pen doesn't stop at baseline
+      { type: 'line', from: 'start', to: 'flick', bow: -0.03, dbow: 0.01, n: 4, stroke: 0 },
+    ],
+  },
+
+  // 'A' — two legs + crossbar. Crossbar endpoints derived ON the legs.
+  // Legs span cap to baseline. Crossbar t value places it at ~xHeight.
+  'A': {
+    anchors: {
+      apex:    { x: 0.50, y: RULED.cap, dx: 0.03, dy: 0.01 },
+      footL:   { x: 0.08, y: RULED.baseline, dx: 0.03, dy: 0.0 },
+      footR:   { x: 0.92, y: RULED.baseline, dx: 0.03, dy: 0.0 },
+      // Crossbar at xHeight: t = xHeight / baseline = 0.36/0.72 = 0.50
+      crossL:  { from: 'apex', to: 'footL', t: RULED.xHeight / RULED.baseline, dt: 0.04 },
+      crossR:  { from: 'apex', to: 'footR', t: RULED.xHeight / RULED.baseline, dt: 0.04 },
+    },
+    primitives: [
+      { type: 'line', from: 'apex',   to: 'footL',  bow: 0, dbow: 0.015, n: 4 },
+      { type: 'line', from: 'apex',   to: 'footR',  bow: 0, dbow: 0.015, n: 4 },
+      { type: 'line', from: 'crossL', to: 'crossR', bow: 0, dbow: 0.02,  n: 3 },
+    ],
+  },
+
+  // 'H' — two verticals + crossbar. Crossbar derived ON the verticals at xHeight.
+  'H': {
+    anchors: {
+      topL:    { x: 0.15, y: RULED.cap, dx: 0.02, dy: 0.0 },
+      botL:    { x: 0.15, y: RULED.baseline, dx: 0.02, dy: 0.0 },
+      topR:    { x: 0.85, y: RULED.cap, dx: 0.02, dy: 0.0 },
+      botR:    { x: 0.85, y: RULED.baseline, dx: 0.02, dy: 0.0 },
+      // t = xHeight / baseline = 0.50 — crossbar sits at midline
+      crossL:  { from: 'topL', to: 'botL', t: RULED.xHeight / RULED.baseline, dt: 0.04 },
+      crossR:  { from: 'topR', to: 'botR', t: RULED.xHeight / RULED.baseline, dt: 0.04 },
+    },
+    primitives: [
+      { type: 'line', from: 'topL',   to: 'botL',   bow: 0, dbow: 0.01, n: 4 },
+      { type: 'line', from: 'topR',   to: 'botR',   bow: 0, dbow: 0.01, n: 4 },
+      { type: 'line', from: 'crossL', to: 'crossR', bow: 0, dbow: 0.02, n: 3 },
+    ],
+  },
+};
+
 // ── Minimum-jerk trajectory ──────────────────────────────────────────────────
 // Flash & Hogan (1985): humans minimize ∫‖d³x/dt³‖² dt over a movement.
 // The optimal position interpolant is a 5th-degree polynomial with zero
@@ -330,6 +607,39 @@ function minJerkPos(tau) {
   const t2 = tau * tau;
   const t3 = t2 * tau;
   return 10 * t3 - 15 * t3 * tau + 6 * t3 * t2;
+}
+
+// ── Sigma-lognormal pulse ───────────────────────────────────────────────────
+// Plamondon (1995): pen-tip velocity is a sum of lognormal-shaped pulses,
+// each representing one motor sub-movement. The lognormal shape emerges from
+// the central limit theorem applied to cascaded neuromuscular delays.
+//
+// Single pulse velocity: v(t) = (D / (σ√(2π))) · (1/t) · exp(-(ln(t)-μ)² / (2σ²))
+//
+// Parameters:
+//   D     — amplitude (total distance covered by this sub-movement)
+//   mu    — log-time delay (shifts peak timing; higher = later peak)
+//   sigma — log-time spread (lower = sharper/faster, higher = broader/lazier)
+//
+// For a normalized pulse (peak ≈ 1), we omit D and just return the shape.
+// t must be > 0; the pulse is zero at t=0 and tapers asymptotically.
+
+function lognormalPulse(t, mu, sigma) {
+  if (t <= 0) return 0;
+  const logT = Math.log(t);
+  const diff = logT - mu;
+  return (1 / (t * sigma * Math.sqrt(2 * Math.PI)))
+       * Math.exp(-(diff * diff) / (2 * sigma * sigma));
+}
+
+// Peak time of a lognormal pulse: t_peak = exp(μ - σ²)
+function lognormalPeakTime(mu, sigma) {
+  return Math.exp(mu - sigma * sigma);
+}
+
+// Peak velocity value (for normalization)
+function lognormalPeakValue(mu, sigma) {
+  return lognormalPulse(lognormalPeakTime(mu, sigma), mu, sigma);
 }
 
 // ── Natural cubic spline ────────────────────────────────────────────────────
@@ -424,7 +734,7 @@ function naturalCubicSpline(knots, values) {
 // dense samples, applies the 2/3 power law (Lacquaniti et al. 1983) for speed,
 // tapers with a minimum-jerk ramp at endpoints, and returns stamp-ready points.
 
-function planStroke(waypoints, baseSpeed, stepSize) {
+function planStroke(waypoints, baseSpeed, stepSize, velocityModel = 'power-law') {
   if (waypoints.length < 2) return [];
 
   // Chord-length parameterization
@@ -462,26 +772,70 @@ function planStroke(waypoints, baseSpeed, stepSize) {
   const totalArc = pts[N].s;
   if (totalArc < 0.5) return [];
 
-  // 2/3 power law: v ∝ κ^(−1/3).  MIN_K bounds the speed ratio on straight runs.
-  const MIN_K = 0.002;
-  let rawSum = 0;
-  for (let i = 0; i <= N; i++) {
-    pts[i].v = Math.pow(Math.max(MIN_K, pts[i].kappa), -1 / 3);
-    rawSum += pts[i].v;
-  }
-  const vScale = baseSpeed / (rawSum / (N + 1));
   const vMin = baseSpeed * 0.08, vMax = baseSpeed * 3;
-  for (let i = 0; i <= N; i++) {
-    pts[i].v = Math.min(vMax, Math.max(vMin, pts[i].v * vScale));
-  }
 
-  // Minimum-jerk ramp at stroke endpoints (15% of arc each end)
-  const rampLen = totalArc * 0.15;
-  for (let i = 0; i <= N; i++) {
-    let env = 1;
-    if (pts[i].s < rampLen)              env = minJerkPos(pts[i].s / rampLen);
-    else if (pts[i].s > totalArc - rampLen) env = minJerkPos((totalArc - pts[i].s) / rampLen);
-    pts[i].v = Math.max(vMin, pts[i].v * env);
+  if (velocityModel === 'lognormal' || velocityModel === 'lognormal-multi') {
+    // ── Sigma-lognormal velocity envelope ──────────────────────────────────
+    // σ=0.4 is mid-range (trained but not calligrapher-perfect).
+    const sigma = 0.4;
+    const duration = totalArc / baseSpeed;
+
+    if (velocityModel === 'lognormal') {
+      // Single pulse for entire stroke
+      const mu = Math.log(duration * 0.4) + sigma * sigma;
+      const peakV = lognormalPeakValue(mu, sigma);
+      for (let i = 0; i <= N; i++) {
+        const t = (pts[i].s / totalArc) * duration;
+        const pulse = t > 0 ? lognormalPulse(t, mu, sigma) / peakV : 0;
+        pts[i].v = Math.min(vMax, Math.max(vMin, pulse * baseSpeed));
+      }
+    } else {
+      // Multiple overlapping pulses — one per ~60-90° of curvature or ~25% of
+      // arc length, whichever gives 4-7 pulses. Each pulse represents one motor
+      // sub-movement. Overlap between adjacent pulses keeps velocity from
+      // dropping to zero — the tail of one pulse blends into the attack of the next.
+      const nPulses = Math.max(2, Math.min(8, Math.round(totalArc / (baseSpeed * 0.08))));
+      const pulseSpacing = duration / nPulses;
+      // Each pulse's duration ~ 1.8x the spacing so they overlap ~40%
+      const pulseDur = pulseSpacing * 1.8;
+
+      for (let i = 0; i <= N; i++) {
+        const t = (pts[i].s / totalArc) * duration;
+        let vSum = 0;
+        for (let p = 0; p < nPulses; p++) {
+          // Each pulse is centered at evenly spaced positions along the stroke
+          const center = (p + 0.5) * pulseSpacing;
+          // Local time relative to this pulse's onset
+          const lt = t - (center - pulseDur * 0.4);  // onset slightly before center
+          if (lt <= 0) continue;
+          const pMu = Math.log(pulseDur * 0.4) + sigma * sigma;
+          const pPeak = lognormalPeakValue(pMu, sigma);
+          vSum += lognormalPulse(lt, pMu, sigma) / pPeak;
+        }
+        pts[i].v = Math.min(vMax, Math.max(vMin, vSum * baseSpeed / 1.4));
+      }
+    }
+  } else {
+    // ── Classic: 2/3 power law + minimum-jerk ramps ────────────────────────
+    const MIN_K = 0.002;
+    let rawSum = 0;
+    for (let i = 0; i <= N; i++) {
+      pts[i].v = Math.pow(Math.max(MIN_K, pts[i].kappa), -1 / 3);
+      rawSum += pts[i].v;
+    }
+    const vScale = baseSpeed / (rawSum / (N + 1));
+    for (let i = 0; i <= N; i++) {
+      pts[i].v = Math.min(vMax, Math.max(vMin, pts[i].v * vScale));
+    }
+
+    // Minimum-jerk ramp at stroke endpoints (15% of arc each end)
+    const rampLen = totalArc * 0.15;
+    for (let i = 0; i <= N; i++) {
+      let env = 1;
+      if (pts[i].s < rampLen)              env = minJerkPos(pts[i].s / rampLen);
+      else if (pts[i].s > totalArc - rampLen) env = minJerkPos((totalArc - pts[i].s) / rampLen);
+      pts[i].v = Math.max(vMin, pts[i].v * env);
+    }
   }
 
   // Emit stamps at ~stepSize arc-length intervals
@@ -604,7 +958,16 @@ function sleep(ms) {
 // Resolve strokes for one character, returning them in canvas CSS-pixel coords.
 // Interior waypoints are jittered so each render is unique; endpoints are pinned
 // so strokes still start/end at their intended positions.
-function resolveStrokes(char, charX, charY, charW, charH, size, font, jitterScale) {
+function resolveStrokes(char, charX, charY, charW, charH, size, font, jitterScale, useGlyphs = true) {
+  // Check GLYPH_TABLE first — structural variation, no additive jitter needed.
+  const glyphDef = useGlyphs ? (GLYPH_TABLE[char] ?? GLYPH_TABLE[char.toUpperCase()]) : null;
+  if (glyphDef) {
+    const normStrokes = generateGlyphWaypoints(glyphDef);
+    return normStrokes.map(stroke =>
+      stroke.map(([nx, ny]) => [charX + nx * charW, charY + ny * charH])
+    );
+  }
+
   const upper = char.toUpperCase();
   const table = STROKE_TABLE[char] ?? STROKE_TABLE[upper];
   if (table) {
@@ -651,6 +1014,8 @@ export async function animateText(canvasRef, command) {
     color     = null,
     speed     = 480,
     jitter    = JITTER_SCALE,
+    glyphs    = true,
+    velocity  = 'power-law',  // 'power-law' | 'lognormal'
   } = command;
 
   // Wait until fonts are ready so measureText is accurate.
@@ -699,7 +1064,7 @@ export async function animateText(canvasRef, command) {
 
       const charW  = mctx.measureText(char).width;
       const yOff   = baselineWander(charIdx, wanderPhase) * wanderAmp;
-      const strokes = resolveStrokes(char, cursorX, glyphTop + yOff, charW, glyphH, size, font, jitter);
+      const strokes = resolveStrokes(char, cursorX, glyphTop + yOff, charW, glyphH, size, font, jitter, glyphs);
 
       for (let si = 0; si < strokes.length; si++) {
         if (cancelled) break;
@@ -707,7 +1072,7 @@ export async function animateText(canvasRef, command) {
         if (stroke.length < 2) continue;
 
         // Plan smooth trajectory: cubic spline + 2/3 power law + min-jerk ramp.
-        const stamps = planStroke(stroke, speed, step);
+        const stamps = planStroke(stroke, speed, step, velocity);
         const tremorAmp = strokeRadius * TREMOR_SCALE;
         const tremorOffset = Math.random() * 100; // desync strokes
         let cumTimeS = 0;
