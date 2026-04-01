@@ -37,7 +37,7 @@ case "$ACTION" in
     FONT="Caveat"
     REGION='{"x":20,"y":20,"width":700,"height":400}'
     COLOR='{"r":30,"g":38,"b":58}'
-    WAIT_MS=10000
+    WAIT_MS=3000
     GLYPHS=true
     VELOCITY="power-law"
 
