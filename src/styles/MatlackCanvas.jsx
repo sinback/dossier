@@ -278,41 +278,55 @@ export default function MatlackCanvas() {
       });
 
       // ── Downstroke ─────────────────────────────────────────────────
-      // Anchored to the outer ellipse's right edge so it overlaps the
-      // bowl properly. The rightmost point of the outer ellipse at its
-      // tilt angle is where the downstroke sits.
+      // Overlaps the bowl's right edge. Starts at the upper-right of the
+      // bowl, runs down through the bowl's right side, extends below the
+      // bowl bottom, and flicks out at the bowl's tilt angle.
       const oTiltR = outer.tilt * Math.PI / 180;
-      // Rightmost point of outer ellipse (angle=0 in local coords)
-      const bowlRightX = outer.cx + outer.a * Math.cos(oTiltR);
-      const bowlRightY = outer.cy + outer.a * Math.sin(oTiltR);
-      // Downstroke runs from near top of letter to below bowl bottom
-      const downTopX = bowlRightX;
-      const downTopY = cy - inner.a * 0.65;
-      const downEndY = cy + inner.a * 0.95;
+
+      // Sample a point on the outer ellipse at ~upper-right to anchor the top
+      const topAngle = -0.15;  // slightly above the rightmost point
+      const dsTopX = outer.cx + (outer.a * Math.cos(topAngle) * Math.cos(oTiltR)
+                                - outer.b * Math.sin(topAngle) * Math.sin(oTiltR));
+      const dsTopY = outer.cy + (outer.a * Math.cos(topAngle) * Math.sin(oTiltR)
+                                + outer.b * Math.sin(topAngle) * Math.cos(oTiltR));
+
+      // Bottom of downstroke: below the bowl's lowest point
+      const botAngle = Math.PI * 0.55;  // just past 6 o'clock in local coords
+      const dsBotX = outer.cx + (outer.a * Math.cos(botAngle) * Math.cos(oTiltR)
+                                - outer.b * Math.sin(botAngle) * Math.sin(oTiltR));
+      const dsBotY = outer.cy + (outer.a * Math.cos(botAngle) * Math.sin(oTiltR)
+                                + outer.b * Math.sin(botAngle) * Math.cos(oTiltR));
+      // Extend a bit past the bowl
+      const downEndX = dsBotX + s * 0.02;
+      const downEndY = dsBotY + s * 0.08;
 
       const downPts = [];
       const downSteps = 35;
       for (let i = 0; i <= downSteps; i++) {
         const t = i / downSteps;
+        // Slight leftward bow
         const bowX = -s * 0.015 * Math.sin(t * Math.PI);
         let p;
         if (t < 0.12) p = 0.3 + 0.55 * (t / 0.12);
         else if (t < 0.65) p = 0.85 + 0.15 * Math.sin((t - 0.12) / 0.53 * Math.PI);
-        else p = 0.85 - 0.55 * ((t - 0.65) / 0.35);
+        else p = 0.85 - 0.50 * ((t - 0.65) / 0.35);
         downPts.push({
-          x: downTopX + bowX,
-          y: downTopY + (downEndY - downTopY) * t,
+          x: dsTopX + (downEndX - dsTopX) * t + bowX,
+          y: dsTopY + (downEndY - dsTopY) * t,
           pressure: p,
         });
       }
-      // Exit flick
+
+      // Exit flick: curves up-right at roughly the bowl's tilt angle
+      const flickAngle = -oTiltR * 0.8;  // slightly less steep than bowl tilt
+      const flickLen = s * 0.12;
       const flickStart = downPts[downPts.length - 1];
-      for (let i = 1; i <= 6; i++) {
-        const t = i / 6;
+      for (let i = 1; i <= 8; i++) {
+        const t = i / 8;
         downPts.push({
-          x: flickStart.x + t * s * 0.05,
-          y: flickStart.y + t * s * 0.02,
-          pressure: 0.20 * (1 - t * t),
+          x: flickStart.x + Math.cos(flickAngle) * flickLen * t,
+          y: flickStart.y - Math.sin(flickAngle) * flickLen * t,
+          pressure: 0.25 * (1 - t * t),
         });
       }
       renderer.drawStroke(downPts, 4.0 * dpr * (size / 120));
