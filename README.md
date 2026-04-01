@@ -22,7 +22,11 @@ Then open `http://localhost:3000`.
 
 ## Stack
 
-React 19, Vite.
+React 19, Vite, WebGL2.
+
+## Documentation
+
+- [Ink & Paper Rendering System](src/styles/README.md) — stroke kinematics, nib geometry, WebGL ink simulation, and all the motor neuroscience math behind the handwriting animation.
 
 ## If this ever makes money
 
