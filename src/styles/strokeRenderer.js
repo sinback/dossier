@@ -372,20 +372,24 @@ export function createStrokeRenderer(gl) {
     },
 
     /**
-     * Draw a bowl shape as the subtraction of two filled ellipses.
-     * The bowl = outer ellipse minus inner ellipse.
-     * Both ellipses defined by: { cx, cy, a, b, tilt } in pixel coords.
-     * tilt is in degrees.
+     * Draw a bowl shape as the subtraction of two filled ellipses,
+     * with ink density varying around the arc (velocity/dwell effect).
      *
-     * @param {object} outer - { cx, cy, a, b, tilt }
+     * @param {object} outer - { cx, cy, a, b, tilt } in pixel coords, tilt in degrees
      * @param {object} inner - { cx, cy, a, b, tilt }
-     * @param {number} pressure - base ink pressure for the bowl [0,1]
+     * @param {object} [opts] - { densityFn, basePressure }
+     *   densityFn(arcFrac): maps normalized arc position [0,1] to ink density [0,1]
+     *     Arc starts at the top-right of the outer ellipse (entry point) and goes CCW.
+     *   basePressure: fallback if no densityFn (default 0.7)
      */
-    drawBowl(outer, inner, pressure = 0.7) {
+    drawBowl(outer, inner, opts = {}) {
+      const { densityFn, basePressure = 0.7 } = opts;
       ensureFBO();
 
-      // Build filled ellipse geometry (triangle fan)
-      function filledEllipse(e, segments = 64) {
+      // Build filled ellipse geometry (triangle fan) with per-vertex ink density
+      // For the outer ellipse, density varies around the arc.
+      // For the inner ellipse, density is maxed (it's a clean cutout).
+      function filledEllipse(e, pressureFn, segments = 64) {
         const count = segments + 2;
         const positions = new Float32Array(count * 2);
         const pressures = new Float32Array(count);
@@ -393,19 +397,90 @@ export function createStrokeRenderer(gl) {
         const tiltR = (e.tilt || 0) * Math.PI / 180;
         const cosT = Math.cos(tiltR), sinT = Math.sin(tiltR);
 
-        // Center vertex
+        // Center vertex gets average pressure (interpolation will blend from here)
+        let pSum = 0;
+        for (let i = 0; i <= segments; i++) {
+          pSum += pressureFn(i / segments);
+        }
         positions[0] = e.cx; positions[1] = e.cy;
-        pressures[0] = pressure; edgeDists[0] = 0.0;
+        pressures[0] = pSum / (segments + 1);
+        edgeDists[0] = 0.0;
 
         for (let i = 0; i <= segments; i++) {
-          const angle = (i / segments) * Math.PI * 2;
+          const arcFrac = i / segments;
+          const angle = arcFrac * Math.PI * 2;
           const lx = e.a * Math.cos(angle);
           const ly = e.b * Math.sin(angle);
           const vi = i + 1;
           positions[vi * 2]     = e.cx + cosT * lx - sinT * ly;
           positions[vi * 2 + 1] = e.cy + sinT * lx + cosT * ly;
-          pressures[vi] = pressure;
-          edgeDists[vi] = 0.0;  // all interior — no edge AA for filled shapes
+          pressures[vi] = pressureFn(arcFrac);
+          edgeDists[vi] = 0.0;
+        }
+        return { positions, pressures, edgeDists, count };
+      }
+
+      // Density function for the outer ellipse
+      // Arc fraction 0 = angle 0 in ellipse-local coords (right side, ~top-right after tilt)
+      // Going CCW: 0.0=right, 0.25=top, 0.5=left, 0.75=bottom
+      const outerPressureFn = densityFn
+        ? densityFn
+        : () => basePressure;
+
+      // Inner ellipse: uniform max pressure (clean cutout)
+      const innerPressureFn = () => 1.0;
+
+      // ── Variable inner cutout ──────────────────────────────────────
+      // The inner shape isn't a fixed ellipse — its radii expand in the
+      // thin regions (top/upper-right) and stay normal in the fat regions
+      // (bottom-left). This controls stroke WIDTH, separate from density.
+      //
+      // widthFn(arcFrac): returns a scale factor [0, 1] for how much of
+      // the gap between inner and outer ellipse to fill with ink.
+      //   1.0 = full stroke width (inner stays at base size)
+      //   0.0 = zero stroke width (inner inflates to match outer)
+      const { widthFn } = opts;
+
+      // Build the actual inner cutout shape with angle-dependent radii
+      function variableInnerEllipse(e, outerE, wFn, segments = 64) {
+        const count = segments + 2;
+        const positions = new Float32Array(count * 2);
+        const pressures = new Float32Array(count);
+        const edgeDists = new Float32Array(count);
+
+        const iTiltR = (e.tilt || 0) * Math.PI / 180;
+        const oTiltR = (outerE.tilt || 0) * Math.PI / 180;
+        const iCosT = Math.cos(iTiltR), iSinT = Math.sin(iTiltR);
+        const oCosT = Math.cos(oTiltR), oSinT = Math.sin(oTiltR);
+
+        // Center: interpolate between inner and outer centers based on avg width
+        positions[0] = e.cx; positions[1] = e.cy;
+        pressures[0] = 1.0; edgeDists[0] = 0.0;
+
+        for (let i = 0; i <= segments; i++) {
+          const arcFrac = i / segments;
+          const angle = arcFrac * Math.PI * 2;
+
+          // Inner ellipse point at this angle
+          const ilx = e.a * Math.cos(angle);
+          const ily = e.b * Math.sin(angle);
+          const ix = e.cx + iCosT * ilx - iSinT * ily;
+          const iy = e.cy + iSinT * ilx + iCosT * ily;
+
+          // Outer ellipse point at the same angle
+          const olx = outerE.a * Math.cos(angle);
+          const oly = outerE.b * Math.sin(angle);
+          const ox = outerE.cx + oCosT * olx - oSinT * oly;
+          const oy = outerE.cy + oSinT * olx + oCosT * oly;
+
+          // Width factor: 1.0 = use inner pos (full stroke), 0.0 = use outer pos (no stroke)
+          const w = wFn ? wFn(arcFrac) : 1.0;
+          // Interpolate: as w decreases, inner point moves toward outer (shrinks the gap)
+          const vi = i + 1;
+          positions[vi * 2]     = ix + (ox - ix) * (1 - w);
+          positions[vi * 2 + 1] = iy + (oy - iy) * (1 - w);
+          pressures[vi] = 1.0;
+          edgeDists[vi] = 0.0;
         }
         return { positions, pressures, edgeDists, count };
       }
@@ -419,17 +494,21 @@ export function createStrokeRenderer(gl) {
       gl.useProgram(covProg);
       gl.uniform2f(cov_u_resolution, fboW, fboH);
 
-      // Draw outer with full coverage
+      // Draw outer with varying coverage
       gl.enable(gl.BLEND);
       gl.blendEquation(gl.MAX);
       gl.blendFunc(gl.ONE, gl.ONE);
-      uploadCoverage(filledEllipse(outer), gl.TRIANGLE_FAN);
+      uploadCoverage(filledEllipse(outer, outerPressureFn), gl.TRIANGLE_FAN);
 
-      // ── Punch out inner ellipse: overwrite with zero coverage ──────
-      // Use standard blend with constant zero — fragments write 0 to R channel
+      // ── Punch out variable inner shape ─────────────────────────────
       gl.blendEquation(gl.FUNC_ADD);
       gl.blendFuncSeparate(gl.ZERO, gl.ZERO, gl.ZERO, gl.ZERO);
-      uploadCoverage(filledEllipse(inner), gl.TRIANGLE_FAN);
+      uploadCoverage(
+        widthFn
+          ? variableInnerEllipse(inner, outer, widthFn)
+          : filledEllipse(inner, innerPressureFn),
+        gl.TRIANGLE_FAN
+      );
 
       // ── Pass 2: composite onto main canvas ─────────────────────────
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);

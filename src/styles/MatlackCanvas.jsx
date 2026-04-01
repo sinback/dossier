@@ -224,29 +224,84 @@ export default function MatlackCanvas() {
         tilt: -39,
       };
 
-      // Draw the bowl as ellipse subtraction
-      renderer.drawBowl(outer, inner, 0.75);
+      // ── Arc fraction mapping ────────────────────────────────────────
+      // arcFrac 0.0 = angle 0 in ellipse-local coords = along semi-major axis.
+      // After outer tilt of -39°, this points to upper-right on screen.
+      // Going CCW (arcFrac increasing):
+      //   ~0.00: upper-right (start of entry / seg 4 end)
+      //   ~0.15: upper-left (top of bowl = segment 1)
+      //   ~0.35: left side going down (segment 2 start)
+      //   ~0.55: bottom-left (segment 2 end / peak fatness)
+      //   ~0.70: bottom (segment 3)
+      //   ~0.85: lower-right (segment 3 end / blending to downstroke)
 
-      // Downstroke: heavy vertical stroke on the right side of the bowl
-      // Positioned at the rightmost extent of the inner ellipse
-      const tiltR = inner.tilt * Math.PI / 180;
-      // Right side of inner ellipse: angle = 0 in local coords
-      const downTopX = cx + inner.a * Math.cos(tiltR) * 0.85;
-      const downTopY = cy + inner.a * Math.sin(tiltR) * 0.85;
-      const downLen = s * 0.85;
+      // WIDTH function: controls how much of the outer-inner gap to keep.
+      // 1.0 = full stroke width, 0.0 = paper-thin.
+      // This is what makes the top thin and the bottom-left fat.
+      // Phase offset shifts the thickness pattern CCW without changing the bowl shape.
+      const PHASE = 0.03;  // ~10° CCW shift
+      function bowlWidth(arcFracRaw) {
+        const arcFrac = (arcFracRaw + PHASE) % 1.0;
+        if (arcFrac < 0.08) {
+          // Upper-right: moderate (transitions from downstroke)
+          return 0.45;
+        } else if (arcFrac < 0.25) {
+          // Segment 1: top — thin, flat
+          return 0.15;
+        } else if (arcFrac < 0.55) {
+          // Segment 2: thin → fat (decelerating pen)
+          const t = (arcFrac - 0.25) / 0.30;
+          return 0.15 + 0.85 * t * t;  // quadratic ramp
+        } else if (arcFrac < 0.75) {
+          // Bottom-left: full width — peak
+          return 1.0;
+        } else if (arcFrac < 0.92) {
+          // Segment 3: fat → thin (accelerating)
+          const t = (arcFrac - 0.75) / 0.17;
+          return 1.0 - 0.55 * t;
+        } else {
+          // Lower-right: moderate (approaching downstroke)
+          return 0.45;
+        }
+      }
+
+      // DENSITY function: mostly uniform dark ink. Width does the talking now.
+      function bowlDensity(arcFracRaw) {
+        const arcFrac = (arcFracRaw + PHASE) % 1.0;
+        if (arcFrac > 0.10 && arcFrac < 0.25) return 0.65;  // segment 1: slightly lighter
+        return 0.85;
+      }
+
+      renderer.drawBowl(outer, inner, {
+        densityFn: bowlDensity,
+        widthFn: bowlWidth,
+      });
+
+      // ── Downstroke ─────────────────────────────────────────────────
+      // Anchored to the outer ellipse's right edge so it overlaps the
+      // bowl properly. The rightmost point of the outer ellipse at its
+      // tilt angle is where the downstroke sits.
+      const oTiltR = outer.tilt * Math.PI / 180;
+      // Rightmost point of outer ellipse (angle=0 in local coords)
+      const bowlRightX = outer.cx + outer.a * Math.cos(oTiltR);
+      const bowlRightY = outer.cy + outer.a * Math.sin(oTiltR);
+      // Downstroke runs from near top of letter to below bowl bottom
+      const downTopX = bowlRightX;
+      const downTopY = cy - inner.a * 0.65;
+      const downEndY = cy + inner.a * 0.95;
 
       const downPts = [];
       const downSteps = 35;
       for (let i = 0; i <= downSteps; i++) {
         const t = i / downSteps;
-        const bowX = -s * 0.02 * Math.sin(t * Math.PI);
+        const bowX = -s * 0.015 * Math.sin(t * Math.PI);
         let p;
-        if (t < 0.15) p = 0.3 + 0.5 * (t / 0.15);
-        else if (t < 0.65) p = 0.80 + 0.20 * Math.sin((t - 0.15) / 0.5 * Math.PI);
-        else p = 0.80 - 0.50 * ((t - 0.65) / 0.35);
+        if (t < 0.12) p = 0.3 + 0.55 * (t / 0.12);
+        else if (t < 0.65) p = 0.85 + 0.15 * Math.sin((t - 0.12) / 0.53 * Math.PI);
+        else p = 0.85 - 0.55 * ((t - 0.65) / 0.35);
         downPts.push({
           x: downTopX + bowX,
-          y: downTopY + t * downLen,
+          y: downTopY + (downEndY - downTopY) * t,
           pressure: p,
         });
       }
@@ -255,12 +310,12 @@ export default function MatlackCanvas() {
       for (let i = 1; i <= 6; i++) {
         const t = i / 6;
         downPts.push({
-          x: flickStart.x + t * s * 0.06,
-          y: flickStart.y + t * s * 0.015,
-          pressure: 0.25 * (1 - t * t),
+          x: flickStart.x + t * s * 0.05,
+          y: flickStart.y + t * s * 0.02,
+          pressure: 0.20 * (1 - t * t),
         });
       }
-      renderer.drawStroke(downPts, 4.5 * dpr * (size / 120));
+      renderer.drawStroke(downPts, 4.0 * dpr * (size / 120));
     }
 
     function drawTestStrokes() {
