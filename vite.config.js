@@ -96,8 +96,47 @@ const drawPlugin = {
   },
 };
 
+// Telemetry endpoint: stores the latest stroke telemetry for inspection.
+let latestTelemetry = null;
+
+const telemetryPlugin = {
+  name: 'dossier-telemetry',
+  configureServer(server) {
+    server.middlewares.use('/api/telemetry', (req, res) => {
+      if (req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(latestTelemetry ?? []));
+        return;
+      }
+      if (req.method === 'DELETE') {
+        latestTelemetry = null;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+        return;
+      }
+      if (req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', () => {
+          try {
+            latestTelemetry = JSON.parse(body);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, strokes: latestTelemetry.length }));
+          } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Invalid JSON' }));
+          }
+        });
+        return;
+      }
+      res.writeHead(405);
+      res.end();
+    });
+  },
+};
+
 export default defineConfig({
-  plugins: [react(), syncPlugin, drawPlugin],
+  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin],
   server: {
     port: 3000,
     open: true,

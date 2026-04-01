@@ -838,6 +838,18 @@ function planStroke(waypoints, baseSpeed, stepSize, velocityModel = 'power-law')
     }
   }
 
+  // ── Telemetry: capture dense profile before downsampling to stamps ────────
+  const telemetry = new Array(N + 1);
+  for (let i = 0; i <= N; i++) {
+    const velNorm = Math.min(1, pts[i].v / (baseSpeed * 2));
+    telemetry[i] = {
+      s: +(pts[i].s / totalArc).toFixed(4),           // normalized arc fraction [0,1]
+      v: +pts[i].v.toFixed(2),                         // px/s
+      kappa: +pts[i].kappa.toFixed(6),                 // curvature
+      pressure: +(0.92 - 0.14 * velNorm).toFixed(3),   // derived pressure
+    };
+  }
+
   // Emit stamps at ~stepSize arc-length intervals
   const stamps = [];
   let nextS = 0;
@@ -863,6 +875,9 @@ function planStroke(waypoints, baseSpeed, stepSize, velocityModel = 'power-law')
     stamps[i].delayMs = avgV > 0.01 ? (dist / avgV) * 1000 : 0;
   }
 
+  stamps.telemetry = telemetry;
+  stamps.totalArc = +totalArc.toFixed(2);
+  stamps.velocityModel = velocityModel;
   return stamps;
 }
 
@@ -1048,6 +1063,7 @@ export async function animateText(canvasRef, command) {
     const wanderAmp   = size * WANDER_SCALE;
     const wanderPhase = Math.random() * 100; // unique per text block
     let charIdx = 0;
+    const telemetryLog = [];  // accumulate per-char, per-stroke telemetry
 
     for (const char of content) {
       if (cancelled) break;
@@ -1073,6 +1089,18 @@ export async function animateText(canvasRef, command) {
 
         // Plan smooth trajectory: cubic spline + 2/3 power law + min-jerk ramp.
         const stamps = planStroke(stroke, speed, step, velocity);
+
+        // Capture telemetry if available
+        if (stamps.telemetry) {
+          telemetryLog.push({
+            char,
+            charIdx,
+            stroke: si,
+            velocityModel: stamps.velocityModel,
+            totalArc: stamps.totalArc,
+            samples: stamps.telemetry,
+          });
+        }
         const tremorAmp = strokeRadius * TREMOR_SCALE;
         const tremorOffset = Math.random() * 100; // desync strokes
         let cumTimeS = 0;
@@ -1132,6 +1160,15 @@ export async function animateText(canvasRef, command) {
 
       cursorX += charW;
       charIdx++;
+    }
+
+    // Post telemetry to dev server (fire-and-forget)
+    if (telemetryLog.length > 0) {
+      fetch('/api/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(telemetryLog),
+      }).catch(() => {}); // silently ignore if server doesn't support it
     }
   })();
 
