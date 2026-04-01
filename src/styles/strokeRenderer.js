@@ -371,6 +371,86 @@ export function createStrokeRenderer(gl) {
       gl.disable(gl.BLEND);
     },
 
+    /**
+     * Draw a bowl shape as the subtraction of two filled ellipses.
+     * The bowl = outer ellipse minus inner ellipse.
+     * Both ellipses defined by: { cx, cy, a, b, tilt } in pixel coords.
+     * tilt is in degrees.
+     *
+     * @param {object} outer - { cx, cy, a, b, tilt }
+     * @param {object} inner - { cx, cy, a, b, tilt }
+     * @param {number} pressure - base ink pressure for the bowl [0,1]
+     */
+    drawBowl(outer, inner, pressure = 0.7) {
+      ensureFBO();
+
+      // Build filled ellipse geometry (triangle fan)
+      function filledEllipse(e, segments = 64) {
+        const count = segments + 2;
+        const positions = new Float32Array(count * 2);
+        const pressures = new Float32Array(count);
+        const edgeDists = new Float32Array(count);
+        const tiltR = (e.tilt || 0) * Math.PI / 180;
+        const cosT = Math.cos(tiltR), sinT = Math.sin(tiltR);
+
+        // Center vertex
+        positions[0] = e.cx; positions[1] = e.cy;
+        pressures[0] = pressure; edgeDists[0] = 0.0;
+
+        for (let i = 0; i <= segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          const lx = e.a * Math.cos(angle);
+          const ly = e.b * Math.sin(angle);
+          const vi = i + 1;
+          positions[vi * 2]     = e.cx + cosT * lx - sinT * ly;
+          positions[vi * 2 + 1] = e.cy + sinT * lx + cosT * ly;
+          pressures[vi] = pressure;
+          edgeDists[vi] = 0.0;  // all interior — no edge AA for filled shapes
+        }
+        return { positions, pressures, edgeDists, count };
+      }
+
+      // ── Pass 1: draw outer ellipse to coverage FBO ──────────────────
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.viewport(0, 0, fboW, fboH);
+      gl.clearColor(0.0, 0.0, 0.0, 0.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      gl.useProgram(covProg);
+      gl.uniform2f(cov_u_resolution, fboW, fboH);
+
+      // Draw outer with full coverage
+      gl.enable(gl.BLEND);
+      gl.blendEquation(gl.MAX);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      uploadCoverage(filledEllipse(outer), gl.TRIANGLE_FAN);
+
+      // ── Punch out inner ellipse: overwrite with zero coverage ──────
+      // Use standard blend with constant zero — fragments write 0 to R channel
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFuncSeparate(gl.ZERO, gl.ZERO, gl.ZERO, gl.ZERO);
+      uploadCoverage(filledEllipse(inner), gl.TRIANGLE_FAN);
+
+      // ── Pass 2: composite onto main canvas ─────────────────────────
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+      gl.useProgram(compProg);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, covTex);
+      gl.uniform1i(comp_u_coverage, 0);
+      gl.uniform3f(comp_u_inkColor, inkR, inkG, inkB);
+
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      gl.bindVertexArray(compVao);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindVertexArray(null);
+
+      gl.disable(gl.BLEND);
+    },
+
     clear() {
       gl.clearColor(1.0, 1.0, 1.0, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);

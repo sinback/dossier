@@ -196,28 +196,91 @@ export default function MatlackCanvas() {
       return pts;
     }
 
+    /**
+     * Draw a Matlack 'a' using the ellipse-subtraction model.
+     * Bowl = outer ellipse minus inner ellipse.
+     * Downstroke = separate thick stroke overlapping the right side.
+     *
+     * Consensus parameters from hand-traced refs (4x scale, normalized here):
+     *   inner: a=37, b=16, tilt=-45°, aspect=0.43
+     *   outer: a=53, b=29, tilt=-39°, aspect=0.54
+     *   nearly concentric (Δcenter ≈ -2, -1 at 4x)
+     */
+    function drawEllipseA(cx, cy, size) {
+      const dpr = window.devicePixelRatio || 1;
+      const s = size * dpr;
+      // Scale from 4x reference coords to target size
+      // Reference letter height ≈ 100px at 4x → normalize to that
+      const scale = s / 100;
+
+      const inner = {
+        cx: cx, cy: cy,
+        a: 37 * scale, b: 16 * scale,
+        tilt: -45,
+      };
+      const outer = {
+        cx: cx - 2 * scale, cy: cy - 1 * scale,
+        a: 53 * scale, b: 29 * scale,
+        tilt: -39,
+      };
+
+      // Draw the bowl as ellipse subtraction
+      renderer.drawBowl(outer, inner, 0.75);
+
+      // Downstroke: heavy vertical stroke on the right side of the bowl
+      // Positioned at the rightmost extent of the inner ellipse
+      const tiltR = inner.tilt * Math.PI / 180;
+      // Right side of inner ellipse: angle = 0 in local coords
+      const downTopX = cx + inner.a * Math.cos(tiltR) * 0.85;
+      const downTopY = cy + inner.a * Math.sin(tiltR) * 0.85;
+      const downLen = s * 0.85;
+
+      const downPts = [];
+      const downSteps = 35;
+      for (let i = 0; i <= downSteps; i++) {
+        const t = i / downSteps;
+        const bowX = -s * 0.02 * Math.sin(t * Math.PI);
+        let p;
+        if (t < 0.15) p = 0.3 + 0.5 * (t / 0.15);
+        else if (t < 0.65) p = 0.80 + 0.20 * Math.sin((t - 0.15) / 0.5 * Math.PI);
+        else p = 0.80 - 0.50 * ((t - 0.65) / 0.35);
+        downPts.push({
+          x: downTopX + bowX,
+          y: downTopY + t * downLen,
+          pressure: p,
+        });
+      }
+      // Exit flick
+      const flickStart = downPts[downPts.length - 1];
+      for (let i = 1; i <= 6; i++) {
+        const t = i / 6;
+        downPts.push({
+          x: flickStart.x + t * s * 0.06,
+          y: flickStart.y + t * s * 0.015,
+          pressure: 0.25 * (1 - t * t),
+        });
+      }
+      renderer.drawStroke(downPts, 4.5 * dpr * (size / 120));
+    }
+
     function drawTestStrokes() {
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.width;
       const h = canvas.height;
       const radius = 4.5 * dpr;
 
-      // Draw several instances of Matlack's 'a' at different sizes
-      // Large, centered
-      const a1 = matlackA(w * 0.3, h * 0.35, 120);
+      // Left column: stroke-based 'a' (existing model)
+      const a1 = matlackA(w * 0.2, h * 0.35, 120);
       renderer.drawStroke(a1, radius);
 
-      // Medium
-      const a2 = matlackA(w * 0.6, h * 0.35, 80);
+      // Right column: ellipse-subtraction 'a' (new model)
+      drawEllipseA(w * 0.55, h * 0.35, 120);
+
+      // Smaller versions for comparison
+      const a2 = matlackA(w * 0.2, h * 0.7, 80);
       renderer.drawStroke(a2, radius * 0.7);
 
-      // Small
-      const a3 = matlackA(w * 0.8, h * 0.35, 50);
-      renderer.drawStroke(a3, radius * 0.45);
-
-      // Another large with slight position variation (test consistency)
-      const a4 = matlackA(w * 0.3, h * 0.7, 120);
-      renderer.drawStroke(a4, radius);
+      drawEllipseA(w * 0.55, h * 0.7, 80);
     }
 
     resize();
