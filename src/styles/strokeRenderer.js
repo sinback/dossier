@@ -49,8 +49,8 @@ out vec4 fragColor;
 void main() {
   float edge = abs(v_edgeDist);
   float aa = 1.0 - smoothstep(0.7, 1.0, edge);
-  // Coverage: pressure-driven with soft knee — light touch visible but faint
-  float coverage = (0.15 + 0.85 * v_pressure) * v_pressure * aa;
+  // Coverage: linear ramp from faint to full — even light strokes are visible
+  float coverage = (0.08 + 0.92 * v_pressure) * aa;
   fragColor = vec4(coverage, 0.0, 0.0, 1.0);
 }
 `;
@@ -87,15 +87,24 @@ void main() {
 
 // ── Nib model ────────────────────────────────────────────────────────────────
 
-const NIB_ANGLE = (40 * Math.PI) / 180;
+const NIB_ANGLE = (52 * Math.PI) / 180;  // English round hand — steeper than generic 40°
 const NIB_SEMI_MAJOR = 1.0;
 const NIB_SEMI_MINOR_MIN = 0.06;   // tines closed — near-hairline
 const NIB_SEMI_MINOR_MAX = 0.5;    // tines splayed — heavy pressure
 
+// Ink drag factor: at low pressure (fast movement), the nib's effective angle
+// tilts toward the stroke tangent — ink smears along the direction of travel,
+// making the stroke thinner perpendicular to the tangent. At high pressure
+// (slow movement), the static nib shape dominates.
+const DRAG_BLEND = 0.3;  // max tangent-following at zero pressure
+
 function nibHalfWidth(tangentAngle, pressure, radius) {
   const b = NIB_SEMI_MINOR_MIN + (NIB_SEMI_MINOR_MAX - NIB_SEMI_MINOR_MIN) * pressure;
   const a = NIB_SEMI_MAJOR;
-  const delta = tangentAngle - NIB_ANGLE;
+  // Blend nib angle toward tangent at low pressure (ink drag)
+  const drag = DRAG_BLEND * (1 - pressure);
+  const effectiveNibAngle = NIB_ANGLE + drag * (tangentAngle - NIB_ANGLE);
+  const delta = tangentAngle - effectiveNibAngle;
   return Math.sqrt((a * Math.sin(delta)) ** 2 + (b * Math.cos(delta)) ** 2) * radius;
 }
 
