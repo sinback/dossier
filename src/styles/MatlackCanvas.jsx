@@ -228,72 +228,85 @@ export default function MatlackCanvas() {
     };
   }, []);
 
-  // Per-ref ellipse data from moment analysis (4x scale, null = flood fill leaked)
-  // cx, cy, semiMajor, semiMinor, tiltDeg, imgW, imgH
+  // Per-ref ellipse data (4x scale coordinates)
+  // inner = counter (negative space) via flood fill + area moments
+  // outer = ink outer edge via ray-cast boundary points + boundary moments (√2 corrected)
+  //         downstroke angular sector (-20° to 100°) excluded from ray-cast
   const ellipseData = {
-    '01': { cx: 55.0, cy: 41.9, a: 37.7, b: 14.0, tilt: -52.9, w: 124, h: 100 },
-    '02': { cx: 45.3, cy: 56.6, a: 33.2, b: 10.1, tilt: -51.7, w: 104, h: 120 },
-    '03': null,  // leaked
-    '04': { cx: 37.0, cy: 66.0, a: 33.8, b: 16.6, tilt: -68.0, w: 148, h: 120 },
-    '05': { cx: 63.0, cy: 48.0, a: 44.7, b: 17.2, tilt: -50.4, w: 132, h: 116 },
-    '06': { cx: 37.0, cy: 74.0, a: 37.0, b: 14.6, tilt: -51.1, w: 100, h: 120 },
-    '07': null,  // leaked
-    '08': null,  // leaked
-    '09': { cx: 57.4, cy: 46.9, a: 30.5, b: 10.5, tilt: -50.3, w: 132, h: 104 },
-    '10': { cx: 56.0, cy: 62.0, a: 38.4, b: 12.1, tilt: -43.0, w: 120, h: 112 },
+    '01': { w: 124, h: 100,
+            inner: { cx: 55.0, cy: 41.9, a: 37.7, b: 14.0, tilt: -52.9 },
+            outer: { cx: 46.0, cy: 34.0, a: 58.0, b: 23.2, tilt: -42.3 }},
+    '02': { w: 104, h: 120,
+            inner: { cx: 45.1, cy: 57.0, a: 33.2, b: 10.1, tilt: -51.7 },
+            outer: { cx: 35.0, cy: 50.0, a: 54.5, b: 23.1, tilt: -43.9 }},
+    '03': null,  // thrown out
+    '04': { w: 148, h: 120,
+            inner: null,
+            outer: { cx: 52.0, cy: 45.0, a: 50.7, b: 20.5, tilt: -41.4 }},
+    '05': { w: 144, h: 128,
+            inner: { cx: 63.3, cy: 47.8, a: 44.7, b: 17.2, tilt: -50.4 },
+            outer: { cx: 51.0, cy: 41.0, a: 65.4, b: 25.1, tilt: -41.0 }},
+    '06': { w: 100, h: 120,
+            inner: null,
+            outer: { cx: 40.0, cy: 62.0, a: 29.2, b: 9.5, tilt: -50.6 }},
+    '07': null,  // thrown out
+    '08': { w: 156, h: 148,
+            inner: null,
+            outer: { cx: 57.0, cy: 68.0, a: 32.4, b: 7.7, tilt: -50.6 }},
+    '09': { w: 132, h: 104,
+            inner: { cx: 57.4, cy: 46.9, a: 30.5, b: 10.5, tilt: -50.3 },
+            outer: { cx: 46.0, cy: 41.0, a: 51.6, b: 22.1, tilt: -41.7 }},
+    '10': { w: 120, h: 112,
+            inner: { cx: 56.0, cy: 62.0, a: 38.4, b: 12.1, tilt: -43.0 },
+            outer: { cx: 47.0, cy: 55.0, a: 53.3, b: 20.5, tilt: -40.9 }},
   };
 
-  // Display height for refs, used to compute scale factor from 4x px coords
   const REF_H = 80;
 
   function RefWithEllipse({ idx }) {
     const key = String(idx).padStart(2, '0');
     const src = `/ref/a/${key}.png`;
-    const e = ellipseData[key];
+    const d = ellipseData[key];
 
-    // We need scale: displayed size / 4x pixel size
-    // Images are displayed at REF_H height, aspect preserved
-    const imgW = e ? e.w : 100;
-    const imgH = e ? e.h : 100;
+    const imgW = d ? d.w : 100;
+    const imgH = d ? d.h : 100;
     const scale = REF_H / imgH;
     const dispW = imgW * scale;
 
+    const inner = d?.inner;
+    const outer = d?.outer;
+
     return (
-      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
         <div style={{ position: 'relative', width: dispW, height: REF_H }}>
           <img src={src} alt={`ref a ${key}`}
             style={{ width: dispW, height: REF_H, display: 'block',
                      border: '1px solid #ddd', borderRadius: 2 }} />
-          {e && (
-            <svg style={{ position: 'absolute', top: 0, left: 0, width: dispW, height: REF_H, pointerEvents: 'none' }}>
-              {/* Inner ellipse (counter) — cyan */}
+          <svg style={{ position: 'absolute', top: 0, left: 0, width: dispW, height: REF_H, pointerEvents: 'none' }}>
+            {inner && (
               <ellipse
-                cx={e.cx * scale} cy={e.cy * scale}
-                rx={e.a * scale} ry={e.b * scale}
-                transform={`rotate(${e.tilt} ${e.cx * scale} ${e.cy * scale})`}
-                fill="none" stroke="cyan" strokeWidth="1.2" opacity="0.8"
+                cx={inner.cx * scale} cy={inner.cy * scale}
+                rx={inner.a * scale} ry={inner.b * scale}
+                transform={`rotate(${inner.tilt} ${inner.cx * scale} ${inner.cy * scale})`}
+                fill="none" stroke="cyan" strokeWidth="1.2" opacity="0.85"
               />
-              {/* Outer ellipse (estimated) — magenta */}
-              {/* Offset down-right, larger, less tilted */}
+            )}
+            {outer && (
               <ellipse
-                cx={(e.cx + imgW * 0.03) * scale}
-                cy={(e.cy + imgH * 0.04) * scale}
-                rx={e.a * 1.55 * scale} ry={e.b * 2.8 * scale}
-                transform={`rotate(${e.tilt + 8} ${(e.cx + imgW * 0.03) * scale} ${(e.cy + imgH * 0.04) * scale})`}
+                cx={outer.cx * scale} cy={outer.cy * scale}
+                rx={outer.a * scale} ry={outer.b * scale}
+                transform={`rotate(${outer.tilt} ${outer.cx * scale} ${outer.cy * scale})`}
                 fill="none" stroke="magenta" strokeWidth="1.0" opacity="0.6"
                 strokeDasharray="3 2"
               />
-            </svg>
-          )}
+            )}
+          </svg>
         </div>
-        <div style={{ fontSize: 8, color: '#888', textAlign: 'center', lineHeight: '1.2', whiteSpace: 'nowrap' }}>
-          {e ? (
-            <>
-              {e.tilt.toFixed(0)}° a={e.a.toFixed(0)} b={e.b.toFixed(0)}
-              <br/>
-              r={e.b/e.a < 1 ? (e.b/e.a).toFixed(2) : '—'}
-            </>
-          ) : 'no fit'}
+        <div style={{ fontSize: 7, color: '#888', textAlign: 'center', lineHeight: '1.1', whiteSpace: 'nowrap' }}>
+          {inner ? (
+            <>in: {inner.tilt.toFixed(0)}° {(inner.b/inner.a).toFixed(2)}</>
+          ) : d ? 'in: —' : 'skip'}
+          {outer && (<><br/>out: {outer.tilt.toFixed(0)}° {(outer.b/outer.a).toFixed(2)}</>)}
         </div>
       </div>
     );
