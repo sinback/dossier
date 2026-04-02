@@ -291,35 +291,28 @@ const B_BOWL = {
   },
 };
 
-// ── 'b' stroke centerline ────────────────────────────────────────────────────
-// The pen path for the vertical stem. Traced from sinback's "b stroke" path.
-// This is the creative interpretation: non-cursive but calligraphic.
-// Starts at the top of the letter, descends to meet the bowl.
-const B_STROKE_SEGS = [
-  [[98.60,25.79],[100.19,21.41],[118.55,16.67],[117.18,20.42]],  // top curve (slight hook)
-  [[117.18,20.42],[119.68,33.60],[26.49,121.96],[33.99,120.26]], // main descent to bowl
-];
-
-// ── 'b' stroke outline ──────────────────────────────────────────────────────
-// The full ink boundary of the vertical stroke, traced as a closed path.
-// This is sinback's "b Stroke Outline Suggestion" — a creative interpretation
-// of Matlack's stroke adapted for non-cursive handwriting.
-// Rendered as a filled polygon that merges with the bowl in the coverage FBO.
-const B_STROKE_OUTLINE_SEGS = [
-  // The outline traces both edges of the stroke from top to bottom and back.
-  // Points are in ref b/01 coords (4x scale).
-  [[99.52,27.61],[99.52,27.61],[93.87,29.46],[93.87,29.46]],     // start (right side, mid-height)
-  [[93.87,29.46],[91.90,27.52],[98.88,20.17],[99.39,20.69]],     // up to the right-side top
-  [[99.39,20.69],[101.16,17.61],[116.79,16.29],[116.04,17.59]],  // across the top (right→left)
-  [[116.04,17.59],[118.15,15.21],[127.19,21.21],[120.78,28.76]], // down the left-side top
-  [[120.78,28.76],[103.02,45.51],[82.25,70.67],[83.67,69.36]],   // left edge descending
-  [[83.67,69.36],[69.50,80.87],[51.94,110.35],[56.08,107.20]],   // continuing down
-  [[56.08,107.20],[56.33,107.20],[17.11,129.01],[17.11,129.01]], // reaching the bowl zone
-  [[17.11,129.01],[12.70,128.76],[66.66,67.82],[68.08,67.90]],   // right edge going back up
-  [[68.08,67.90],[65.90,70.33],[94.72,49.63],[96.81,47.30]],     // continuing up
-  [[96.81,47.30],[96.81,47.30],[109.99,32.16],[109.99,32.16]],   // approaching the top
-  [[109.99,32.16],[112.24,27.99],[99.17,26.60],[96.91,30.62]],   // closing back to start
-];
+// ── 'b' bar-bowl ellipses ─────────────────────────────────────────────────────
+// The vertical stem of 'b' rendered as an elongated bowl (bar-bowl).
+// Hand-traced from ref b/01, optimized ellipse fit (scipy, aspect ~0.13-0.18).
+// Tilt is consistent with main bowl (~-49°). Very elongated (aspect 0.13 inner).
+// Bar-bowl and main bowl overlap where the stem meets the counter — the
+// renderer merges them in the same coverage FBO pass.
+const B_BAR_BOWL = {
+  inner: {
+    cx: 72.6,    // in ref b/01 coords — far upper-right of the main bowl
+    cy: 81.5,    // well above the main bowl center (149.2)
+    a: 63.6,     // very long semi-major — this is the "height" of the stem
+    b: 8.5,      // very narrow semi-minor — thin stem
+    tilt: -49.3  // consistent with main bowl and 'a' (~-44 to -51° range)
+  },
+  outer: {
+    cx: 72.4,    // nearly concentric with inner (offset: -0.2, -2.9)
+    cy: 78.6,
+    a: 85.5,     // inner→outer ratio: 1.34× (consistent with main bowl)
+    b: 16.8,     // inner→outer ratio: 1.98× (consistent with main bowl)
+    tilt: -48.6  // tilt diff from inner: 0.7° — very uniform width
+  },
+};
 
 // ── 'b' bowl width function ──────────────────────────────────────────────────
 // Same structure as 'a' but MIRRORED in arc space: (1 - arcFrac) flips
@@ -340,14 +333,28 @@ function bBowlWidth(arcFracRaw) {
   return smoothStep(0.45, 0.45, (f - 0.92) / 0.08);                // returning to stem zone
 }
 
-// ── 'b' bowl density function ────────────────────────────────────────────────
-// Same logic as 'a': mostly uniform dark ink, slightly lighter at the thin part.
-// Mirrored in arc space to match the mirrored width function.
+// ── 'b' main bowl density ────────────────────────────────────────────────────
 function bBowlDensity(arcFracRaw) {
   const f = (1.0 - arcFracRaw + BOWL_PHASE + 1) % 1.0;
-  if (f > 0.10 && f < 0.25) return 0.65;  // thin zone: slightly lighter
-  return 0.85;                              // everywhere else: solid dark
+  if (f > 0.10 && f < 0.25) return 0.65;
+  return 0.85;
 }
+
+// ── 'b' bar-bowl width function ──────────────────────────────────────────────
+// Very elongated shape (aspect ~0.13). Tilt diff is only 0.7° so width is
+// nearly uniform. Gentle variation: slightly thinner at tips (top/bottom),
+// full width through the middle of the stem.
+function bBarBowlWidth(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+  // For elongated ellipse: arcFrac ~0.0 and ~0.5 = tips, ~0.25 and ~0.75 = sides
+  if (f < 0.10) return smoothStep(0.40, 0.70, f / 0.10);
+  if (f < 0.40) return smoothStep(0.70, 1.0, (f - 0.10) / 0.30);
+  if (f < 0.60) return 1.0;
+  if (f < 0.90) return smoothStep(1.0, 0.70, (f - 0.60) / 0.30);
+  return smoothStep(0.70, 0.40, (f - 0.90) / 0.10);
+}
+
+function bBarBowlDensity() { return 0.85; }
 
 // ── 'b' geometry builders ────────────────────────────────────────────────────
 
@@ -394,25 +401,34 @@ export function renderA(renderer, cx, cy, size, dpr) {
 
 /**
  * Render a Matlack-style lowercase 'b'.
- * Vertical stroke (from hand-traced outline) + bowl (two-ellipse model).
+ * Two overlapping bowls: main bowl (lower, round) + bar-bowl (upper, elongated stem).
+ * They share an edge where they overlap — merged in the same coverage FBO.
  *
- * @param {number} cx - canvas x center of the BOWL (stem extends above)
- * @param {number} cy - canvas y center of the BOWL
+ * @param {number} cx - canvas x center of the MAIN BOWL (bar-bowl extends above)
+ * @param {number} cy - canvas y center of the MAIN BOWL
  */
 export function renderB(renderer, cx, cy, size, dpr) {
   const s = size * dpr;
   const scale = s / 100;
 
+  // Main bowl (lower, round — same as before)
   const inner = scaleEllipse(B_BOWL.inner, cx, cy, scale, B_REF_CENTER);
   const outer = scaleEllipse(B_BOWL.outer, cx, cy, scale, B_REF_CENTER);
 
-  // Stroke outline as filled polygon — merges with bowl in coverage FBO
-  const strokeBody = buildBStrokeOutline(cx, cy, scale);
+  // Bar-bowl (upper, elongated stem)
+  const bbInner = scaleEllipse(B_BAR_BOWL.inner, cx, cy, scale, B_REF_CENTER);
+  const bbOuter = scaleEllipse(B_BAR_BOWL.outer, cx, cy, scale, B_REF_CENTER);
 
+  // Render main bowl first
   renderer.drawBowl(outer, inner, {
     densityFn: bBowlDensity,
     widthFn: bBowlWidth,
-    extraFills: [{ points: strokeBody, pressure: 0.85 }],
+  });
+
+  // Render bar-bowl on top — they overlap and merge visually
+  renderer.drawBowl(bbOuter, bbInner, {
+    densityFn: bBarBowlDensity,
+    widthFn: bBarBowlWidth,
   });
 }
 
