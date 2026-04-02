@@ -225,6 +225,61 @@ export function renderAAnimated(renderer, cx, cy, size, dpr, progress) {
   }
 }
 
+/**
+ * Fade bowl in, then fade downstroke in. No sweep — just opacity.
+ * progress 0→0.5: bowl fades from 0 to full
+ * progress 0.5→1: downstroke fades from 0 to full (bowl stays)
+ */
+export function renderAFadeBowlThenStroke(renderer, cx, cy, size, dpr, progress) {
+  const s = size * dpr;
+  const scale = s / 100;
+
+  const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale);
+  const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale);
+  const dsCx = cx + A_DOWNSTROKE_OFFSET.dx * dpr;
+  const dsCy = cy + A_DOWNSTROKE_OFFSET.dy * dpr;
+
+  if (progress <= 0.5) {
+    // Bowl fading in
+    const bowlAlpha = progress / 0.5;
+    const fadeDensity = (f) => aBowlDensity(f) * bowlAlpha;
+    renderer.drawBowl(outer, inner, {
+      densityFn: fadeDensity,
+      widthFn: aBowlWidth,
+    });
+  } else {
+    // Bowl complete, downstroke fading in
+    const dsAlpha = (progress - 0.5) / 0.5;
+    const fullBody = buildADownstrokeBody(dsCx, dsCy, scale);
+    renderer.drawBowl(outer, inner, {
+      densityFn: aBowlDensity,
+      widthFn: aBowlWidth,
+      extraFills: [{ points: fullBody, pressure: 0.85 * dsAlpha }],
+    });
+  }
+}
+
+/**
+ * Fade entire letter (bowl + downstroke) from 0 to full simultaneously.
+ */
+export function renderAFadeAll(renderer, cx, cy, size, dpr, progress) {
+  const s = size * dpr;
+  const scale = s / 100;
+
+  const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale);
+  const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale);
+  const dsCx = cx + A_DOWNSTROKE_OFFSET.dx * dpr;
+  const dsCy = cy + A_DOWNSTROKE_OFFSET.dy * dpr;
+  const fullBody = buildADownstrokeBody(dsCx, dsCy, scale);
+
+  const fadeDensity = (f) => aBowlDensity(f) * progress;
+  renderer.drawBowl(outer, inner, {
+    densityFn: fadeDensity,
+    widthFn: aBowlWidth,
+    extraFills: [{ points: fullBody, pressure: 0.85 * progress }],
+  });
+}
+
 // ── Reference data for DOM overlays ──────────────────────────────────────────
 // Exported so MatlackCanvas can render SVG ellipses on reference images.
 export const ELLIPSE_DATA = {

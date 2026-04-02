@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { createStrokeRenderer } from './strokeRenderer.js';
-import { renderA, renderAAnimated, ELLIPSE_DATA } from './matlackGlyphs.js';
+import { renderA, renderAAnimated, renderAFadeBowlThenStroke, renderAFadeAll, ELLIPSE_DATA } from './matlackGlyphs.js';
 
 /**
  * Full-screen WebGL canvas for Matlack handwriting R&D.
@@ -11,6 +11,7 @@ export default function MatlackCanvas() {
   const rendererRef = useRef(null);
   const animRef = useRef(null);
   const [speed, setSpeed] = useState('1x');
+  const [mode, setMode] = useState('sweep');
   const [animating, setAnimating] = useState(false);
 
   const speedMs = { '0.25x': 8000, '0.5x': 4000, '1x': 2000, '2x': 1000, '4x': 500 };
@@ -69,9 +70,20 @@ export default function MatlackCanvas() {
       const elapsed = now - startTime;
       const progress = Math.min(1.0, elapsed / duration);
 
-      // Never clear during animation — ink is permanent.
       renderer.setInkColor(30, 38, 58);
-      renderAAnimated(renderer, canvas.width * 0.5, canvas.height * 0.45, 90, dpr, progress);
+      const cx = canvas.width * 0.5, cy = canvas.height * 0.45;
+      if (mode === 'sweep') {
+        // Bowl sweep + downstroke fade — don't clear (ink accumulates for bowl)
+        renderAAnimated(renderer, cx, cy, 90, dpr, progress);
+      } else if (mode === 'fade-parts') {
+        // Fade bowl then fade stroke — clear each frame
+        renderer.clear();
+        renderAFadeBowlThenStroke(renderer, cx, cy, 90, dpr, progress);
+      } else {
+        // Fade all — clear each frame
+        renderer.clear();
+        renderAFadeAll(renderer, cx, cy, 90, dpr, progress);
+      }
 
       if (progress < 1.0) {
         animRef.current = requestAnimationFrame(frame);
@@ -142,6 +154,12 @@ export default function MatlackCanvas() {
           <RefWithEllipse key={i} idx={i + 1} />
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <select value={mode} onChange={e => setMode(e.target.value)}
+            style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 4px' }}>
+            <option value="sweep">sweep</option>
+            <option value="fade-parts">fade bowl+stroke</option>
+            <option value="fade-all">fade all</option>
+          </select>
           <select value={speed} onChange={e => setSpeed(e.target.value)}
             style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 4px' }}>
             {Object.keys(speedMs).map(s => <option key={s} value={s}>{s}</option>)}
