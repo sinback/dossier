@@ -146,7 +146,11 @@ function buildStripGeometry(points, radius) {
 
     const nx = -ty, ny = tx;
     const tangentAngle = Math.atan2(ty, tx);
-    const hw = nibHalfWidth(tangentAngle, p.pressure, radius);
+    // Radius scales with pressure: heavy strokes are wider (ink spreads more
+    // when pen moves slowly / presses hard). Range: 0.3× at zero pressure to
+    // 2.0× at full pressure. Aggressive enough to override nib angle effects.
+    const pressureRadius = radius * (0.3 + 1.7 * p.pressure);
+    const hw = nibHalfWidth(tangentAngle, p.pressure, pressureRadius);
 
     const li = i * 2;
     positions[li * 2]     = p.x + nx * hw;
@@ -193,6 +197,71 @@ function buildCapGeometry(cx, cy, tangentAngle, pressure, radius, segments = 16)
   }
 
   return { positions, pressures, edgeDists, count };
+}
+
+// ── Ear-clipping triangulation for concave polygons ─────────────────────────
+
+function earClip(verts) {
+  const n = verts.length;
+  if (n < 3) return [];
+
+  // Determine polygon winding (positive = CCW)
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += verts[i][0] * verts[j][1];
+    area -= verts[j][0] * verts[i][1];
+  }
+  const ccw = area > 0;
+
+  function cross(o, a, b) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  }
+
+  function pointInTriangle(p, a, b, c) {
+    const d1 = cross(p, a, b), d2 = cross(p, b, c), d3 = cross(p, c, a);
+    const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    return !(hasNeg && hasPos);
+  }
+
+  const indices = Array.from({ length: n }, (_, i) => i);
+  const tris = [];
+
+  let safety = n * 3;
+  while (indices.length > 2 && safety-- > 0) {
+    let earFound = false;
+    for (let i = 0; i < indices.length; i++) {
+      const prev = indices[(i - 1 + indices.length) % indices.length];
+      const curr = indices[i];
+      const next = indices[(i + 1) % indices.length];
+
+      const c = cross(verts[prev], verts[curr], verts[next]);
+      const isConvex = ccw ? c > 0 : c < 0;
+      if (!isConvex) continue;
+
+      // Check no other vertex inside this triangle
+      let isEar = true;
+      for (let j = 0; j < indices.length; j++) {
+        const vi = indices[j];
+        if (vi === prev || vi === curr || vi === next) continue;
+        if (pointInTriangle(verts[vi], verts[prev], verts[curr], verts[next])) {
+          isEar = false;
+          break;
+        }
+      }
+
+      if (isEar) {
+        tris.push([prev, curr, next]);
+        indices.splice(i, 1);
+        earFound = true;
+        break;
+      }
+    }
+    if (!earFound) break;
+  }
+
+  return tris;
 }
 
 // ── WebGL helpers ────────────────────────────────────────────────────────────
@@ -499,6 +568,53 @@ export function createStrokeRenderer(gl) {
       gl.blendEquation(gl.MAX);
       gl.blendFunc(gl.ONE, gl.ONE);
       uploadCoverage(filledEllipse(outer, outerPressureFn), gl.TRIANGLE_FAN);
+
+      // ── Add extra geometry BEFORE the inner cutout ─────────────────
+      // Merges with the bowl coverage at the pixel level (MAX blend).
+      const { extraStrokes, extraFills } = opts;
+
+      // Filled strokes (triangle strips with nib width)
+      if (extraStrokes) {
+        for (const { points, radius } of extraStrokes) {
+          if (points.length < 2) continue;
+          const strip = buildStripGeometry(points, radius);
+          uploadCoverage(strip, gl.TRIANGLE_STRIP);
+          const p0 = points[0], pN = points[points.length - 1];
+          const t0a = Math.atan2(points[1].y - p0.y, points[1].x - p0.x);
+          const tNa = Math.atan2(pN.y - points[points.length - 2].y, pN.x - points[points.length - 2].x);
+          uploadCoverage(buildCapGeometry(p0.x, p0.y, t0a, p0.pressure, radius), gl.TRIANGLE_FAN);
+          uploadCoverage(buildCapGeometry(pN.x, pN.y, tNa, pN.pressure, radius), gl.TRIANGLE_FAN);
+        }
+      }
+
+      // Filled polygons (closed outlines, ear-clipping triangulation)
+      if (extraFills) {
+        for (const { points, pressure: fillPressure } of extraFills) {
+          if (points.length < 3) continue;
+          const fp = fillPressure || 0.85;
+
+          // Ear-clipping triangulation for potentially concave polygons
+          const verts = points.map(p => [p.x, p.y]);
+          const tris = earClip(verts);
+          if (tris.length === 0) continue;
+
+          const count = tris.length * 3;
+          const positions = new Float32Array(count * 2);
+          const pressures = new Float32Array(count);
+          const edgeDists = new Float32Array(count);
+          for (let i = 0; i < tris.length; i++) {
+            for (let j = 0; j < 3; j++) {
+              const vi = i * 3 + j;
+              const pt = verts[tris[i][j]];
+              positions[vi * 2] = pt[0];
+              positions[vi * 2 + 1] = pt[1];
+              pressures[vi] = fp;
+              edgeDists[vi] = 0;
+            }
+          }
+          uploadCoverage({ positions, pressures, edgeDists, count }, gl.TRIANGLES);
+        }
+      }
 
       // ── Punch out variable inner shape ─────────────────────────────
       gl.blendEquation(gl.FUNC_ADD);

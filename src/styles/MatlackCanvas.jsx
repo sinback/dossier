@@ -243,25 +243,25 @@ export default function MatlackCanvas() {
       function bowlWidth(arcFracRaw) {
         const arcFrac = (arcFracRaw + PHASE) % 1.0;
         if (arcFrac < 0.08) {
-          // Upper-right: moderate (transitions from downstroke)
-          return 0.45;
+          // Upper-right: downstroke zone — keep full gap so downstroke fills it
+          return 1.0;
         } else if (arcFrac < 0.25) {
           // Segment 1: top — thin, flat
           return 0.15;
         } else if (arcFrac < 0.55) {
           // Segment 2: thin → fat (decelerating pen)
           const t = (arcFrac - 0.25) / 0.30;
-          return 0.15 + 0.85 * t * t;  // quadratic ramp
+          return 0.15 + 0.85 * t * t;
         } else if (arcFrac < 0.75) {
           // Bottom-left: full width — peak
           return 1.0;
-        } else if (arcFrac < 0.92) {
-          // Segment 3: fat → thin (accelerating)
-          const t = (arcFrac - 0.75) / 0.17;
-          return 1.0 - 0.55 * t;
+        } else if (arcFrac < 0.88) {
+          // Segment 3: fat → moderate (accelerating)
+          const t = (arcFrac - 0.75) / 0.13;
+          return 1.0 - 0.35 * t;
         } else {
-          // Lower-right: moderate (approaching downstroke)
-          return 0.45;
+          // Lower-right: downstroke zone — keep full gap
+          return 1.0;
         }
       }
 
@@ -272,64 +272,111 @@ export default function MatlackCanvas() {
         return 0.85;
       }
 
+      // Build downstroke as a filled outline (not a stroke with width).
+      // The outline is the actual ink boundary traced from ref 09.
+      const dsOutlinePts = buildDownstrokeOutline(cx, cy, s);
+
       renderer.drawBowl(outer, inner, {
         densityFn: bowlDensity,
         widthFn: bowlWidth,
+        extraFills: [{ points: dsOutlinePts, pressure: 0.85 }],
       });
+    }
 
-      // ── Downstroke ─────────────────────────────────────────────────
-      // Overlaps the bowl's right edge. Starts at the upper-right of the
-      // bowl, runs down through the bowl's right side, extends below the
-      // bowl bottom, and flicks out at the bowl's tilt angle.
-      const oTiltR = outer.tilt * Math.PI / 180;
+    function buildDownstrokeOutline(cx, cy, s) {
+      // ── Downstroke as filled outline ───────────────────────────────
+      // Hand-traced closed path from ref 09 ("Downstroke Outline").
+      // This is the actual ink boundary — a filled shape, not a stroke.
+      const refCx = 55, refCy = 52;
+      const sc = s / 104;
+      function r2c(rx, ry) {
+        return { x: cx + (rx - refCx) * sc, y: cy + (ry - refCy) * sc };
+      }
 
-      // Sample a point on the outer ellipse at ~upper-right to anchor the top
-      const topAngle = -0.15;  // slightly above the rightmost point
-      const dsTopX = outer.cx + (outer.a * Math.cos(topAngle) * Math.cos(oTiltR)
-                                - outer.b * Math.sin(topAngle) * Math.sin(oTiltR));
-      const dsTopY = outer.cy + (outer.a * Math.cos(topAngle) * Math.sin(oTiltR)
-                                + outer.b * Math.sin(topAngle) * Math.cos(oTiltR));
+      // 8 cubic bezier segments forming a closed path
+      const segs = [
+        { p0:[91.91,23.16], p1:[90.96,21.94], p2:[103.61,11.21], p3:[106.13,14.45] },
+        { p0:[106.13,14.45], p1:[114.07,15.68], p2:[106.49,31.93], p3:[103.90,31.53] },
+        { p0:[103.90,31.53], p1:[101.87,42.03], p2:[77.43,75.10], p3:[78.97,67.12] },
+        { p0:[78.97,67.12], p1:[76.75,69.71], p2:[90.97,75.37], p3:[92.22,73.90] },
+        { p0:[92.22,73.90], p1:[96.41,75.43], p2:[107.74,68.41], p3:[107.18,68.42] },
+        { p0:[107.18,68.42], p1:[109.75,70.97], p2:[88.02,90.49], p3:[83.93,86.95] },
+        { p0:[83.93,86.95], p1:[82.72,88.15], p2:[51.45,76.09], p3:[57.73,69.87] },
+        { p0:[57.73,69.87], p1:[57.57,66.76], p2:[91.66,18.32], p3:[91.91,23.16] },
+      ];
 
-      // Bottom of downstroke: below the bowl's lowest point
-      const botAngle = Math.PI * 0.55;  // just past 6 o'clock in local coords
-      const dsBotX = outer.cx + (outer.a * Math.cos(botAngle) * Math.cos(oTiltR)
-                                - outer.b * Math.sin(botAngle) * Math.sin(oTiltR));
-      const dsBotY = outer.cy + (outer.a * Math.cos(botAngle) * Math.sin(oTiltR)
-                                + outer.b * Math.sin(botAngle) * Math.cos(oTiltR));
-      // Extend a bit past the bowl
-      const downEndX = dsBotX + s * 0.02;
-      const downEndY = dsBotY + s * 0.08;
+      const pts = [];
+      const n = 12; // samples per segment
+      for (let si = 0; si < segs.length; si++) {
+        const { p0, p1, p2, p3 } = segs[si];
+        const startI = si === 0 ? 0 : 1;
+        for (let i = startI; i <= n; i++) {
+          const t = i / n; const u = 1 - t;
+          const rx = u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0];
+          const ry = u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1];
+          pts.push(r2c(rx, ry));
+        }
+      }
+      return pts;
+    }
+
+    function buildDownstroke(cx, cy, s, dpr, size) {
+      // ── Downstroke (stroke-based, kept for reference) ──────────────
+      // Hand-traced from ref 09. Three phases:
+      //   1. Up-right loop (pen overshoots upward before descending)
+      //   2. Main descent (diagonal, follows bowl's right edge contour)
+      //   3. Exit flick (wide rightward curve, slightly upward)
+      //
+      // Bezier control points from sinback's GIMP trace (ref 09, 4x scale).
+      // Transformed to canvas coords relative to bowl center.
+      const refCx = 55, refCy = 52;  // bowl center in ref 09 at 4x
+      const dsScale = s / 104;       // ref 09 image height = 104 at 4x
+
+      function dsRef(rx, ry) {
+        return [cx + (rx - refCx) * dsScale, cy + (ry - refCy) * dsScale];
+      }
+
+      // Four cubic bezier segments traced from the downstroke
+      const dsBeziers = [
+        { p0:[87.6,38.0], p1:[90.6,39.8], p2:[102.8,24.7], p3:[100.0,23.0] },  // loop up
+        { p0:[100.0,23.0], p1:[97.0,25.9], p2:[64.2,76.2], p3:[71.6,68.9] },   // main descent
+        { p0:[71.6,68.9], p1:[65.3,79.2], p2:[82.7,84.2], p3:[83.5,82.8] },    // bottom curve
+        { p0:[83.5,82.8], p1:[85.2,85.1], p2:[103.1,77.5], p3:[101.2,74.8] },  // exit flick
+      ];
 
       const downPts = [];
-      const downSteps = 35;
-      for (let i = 0; i <= downSteps; i++) {
-        const t = i / downSteps;
-        // Slight leftward bow
-        const bowX = -s * 0.015 * Math.sin(t * Math.PI);
-        let p;
-        if (t < 0.12) p = 0.3 + 0.55 * (t / 0.12);
-        else if (t < 0.65) p = 0.85 + 0.15 * Math.sin((t - 0.12) / 0.53 * Math.PI);
-        else p = 0.85 - 0.50 * ((t - 0.65) / 0.35);
-        downPts.push({
-          x: dsTopX + (downEndX - dsTopX) * t + bowX,
-          y: dsTopY + (downEndY - dsTopY) * t,
-          pressure: p,
-        });
+      const stepsPerSeg = 12;
+      const totalSteps = dsBeziers.length * stepsPerSeg;
+
+      for (let seg = 0; seg < dsBeziers.length; seg++) {
+        const { p0, p1, p2, p3 } = dsBeziers[seg];
+        const startI = seg === 0 ? 0 : 1;
+        for (let i = startI; i <= stepsPerSeg; i++) {
+          const t = i / stepsPerSeg;
+          const u = 1 - t;
+          const rx = u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0];
+          const ry = u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1];
+          const [px, py] = dsRef(rx, ry);
+          const globalT = (seg * stepsPerSeg + i) / totalSteps;
+
+          // Pressure profile along the three phases
+          let p;
+          if (globalT < 0.25) {
+            // Loop: light → moderate
+            p = 0.10 + 0.40 * (globalT / 0.25);
+          } else if (globalT < 0.58) {
+            // Main descent: very heavy — this needs to rival the bowl width
+            p = 0.85 + 0.15 * Math.sin((globalT - 0.25) / 0.33 * Math.PI);
+          } else {
+            // Flick: drops off fast — should be thin
+            const ft = (globalT - 0.58) / 0.42;
+            p = 0.40 - 0.30 * ft;
+          }
+          downPts.push({ x: px, y: py, pressure: p });
+        }
       }
 
-      // Exit flick: curves up-right at roughly the bowl's tilt angle
-      const flickAngle = -oTiltR * 0.8;  // slightly less steep than bowl tilt
-      const flickLen = s * 0.12;
-      const flickStart = downPts[downPts.length - 1];
-      for (let i = 1; i <= 8; i++) {
-        const t = i / 8;
-        downPts.push({
-          x: flickStart.x + Math.cos(flickAngle) * flickLen * t,
-          y: flickStart.y - Math.sin(flickAngle) * flickLen * t,
-          pressure: 0.25 * (1 - t * t),
-        });
-      }
-      renderer.drawStroke(downPts, 4.0 * dpr * (size / 120));
+      return downPts;
     }
 
     function drawTestStrokes() {
