@@ -407,17 +407,22 @@ export function renderA(renderer, cx, cy, size, dpr) {
  * @param {number} cx - canvas x center of the MAIN BOWL (bar-bowl extends above)
  * @param {number} cy - canvas y center of the MAIN BOWL
  */
-export function renderB(renderer, cx, cy, size, dpr) {
+export function renderB(renderer, cx, cy, size, dpr, barBowlOffset) {
   const s = size * dpr;
   const scale = s / 100;
 
-  // Main bowl (lower, round — same as before)
+  // Main bowl (lower, round)
   const inner = scaleEllipse(B_BOWL.inner, cx, cy, scale, B_REF_CENTER);
   const outer = scaleEllipse(B_BOWL.outer, cx, cy, scale, B_REF_CENTER);
 
-  // Bar-bowl (upper, elongated stem)
-  const bbInner = scaleEllipse(B_BAR_BOWL.inner, cx, cy, scale, B_REF_CENTER);
-  const bbOuter = scaleEllipse(B_BAR_BOWL.outer, cx, cy, scale, B_REF_CENTER);
+  // Bar-bowl (upper, elongated stem).
+  // Default offset: dx=-4, dy=0 (grid-searched, position 4 of 3×3).
+  // Shifts the bar-bowl left 4 CSS px to close the whitespace gap at the junction.
+  const bbOff = barBowlOffset || { dx: -4, dy: 0 };
+  const bbDx = bbOff.dx * dpr;
+  const bbDy = bbOff.dy * dpr;
+  const bbInner = scaleEllipse(B_BAR_BOWL.inner, cx + bbDx, cy + bbDy, scale, B_REF_CENTER);
+  const bbOuter = scaleEllipse(B_BAR_BOWL.outer, cx + bbDx, cy + bbDy, scale, B_REF_CENTER);
 
   // Render main bowl first
   renderer.drawBowl(outer, inner, {
@@ -425,7 +430,7 @@ export function renderB(renderer, cx, cy, size, dpr) {
     widthFn: bBowlWidth,
   });
 
-  // Render bar-bowl on top — they overlap and merge visually
+  // Render bar-bowl on top
   renderer.drawBowl(bbOuter, bbInner, {
     densityFn: bBarBowlDensity,
     widthFn: bBarBowlWidth,
