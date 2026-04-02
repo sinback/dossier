@@ -213,15 +213,16 @@ export default function MatlackCanvas() {
       // Reference letter height ≈ 100px at 4x → normalize to that
       const scale = s / 100;
 
+      // Use ref 09's own ellipse params — matches the downstroke trace
       const inner = {
         cx: cx, cy: cy,
-        a: 37 * scale, b: 16 * scale,
-        tilt: -45,
+        a: 32.8 * scale, b: 14.1 * scale,
+        tilt: -44.9,
       };
       const outer = {
-        cx: cx - 2 * scale, cy: cy - 1 * scale,
-        a: 53 * scale, b: 29 * scale,
-        tilt: -39,
+        cx: cx + (51.7 - 55.1) * scale, cy: cy + (50.2 - 51.7) * scale,
+        a: 47.9 * scale, b: 26.5 * scale,
+        tilt: -40.3,
       };
 
       // ── Arc fraction mapping ────────────────────────────────────────
@@ -243,8 +244,8 @@ export default function MatlackCanvas() {
       function bowlWidth(arcFracRaw) {
         const arcFrac = (arcFracRaw + PHASE) % 1.0;
         if (arcFrac < 0.08) {
-          // Upper-right: downstroke zone — keep full gap so downstroke fills it
-          return 1.0;
+          // Upper-right: moderate — downstroke fill handles reinforcement
+          return 0.45;
         } else if (arcFrac < 0.25) {
           // Segment 1: top — thin, flat
           return 0.15;
@@ -255,13 +256,13 @@ export default function MatlackCanvas() {
         } else if (arcFrac < 0.75) {
           // Bottom-left: full width — peak
           return 1.0;
-        } else if (arcFrac < 0.88) {
-          // Segment 3: fat → moderate (accelerating)
-          const t = (arcFrac - 0.75) / 0.13;
-          return 1.0 - 0.35 * t;
+        } else if (arcFrac < 0.92) {
+          // Segment 3: fat → thin (accelerating)
+          const t = (arcFrac - 0.75) / 0.17;
+          return 1.0 - 0.55 * t;
         } else {
-          // Lower-right: downstroke zone — keep full gap
-          return 1.0;
+          // Lower-right: moderate — downstroke fill handles reinforcement
+          return 0.45;
         }
       }
 
@@ -272,52 +273,81 @@ export default function MatlackCanvas() {
         return 0.85;
       }
 
-      // Build downstroke as a filled outline (not a stroke with width).
-      // The outline is the actual ink boundary traced from ref 09.
-      const dsOutlinePts = buildDownstrokeOutline(cx, cy, s);
+      // Downstroke: two parts.
+      // 1. Main body (descent + flick + left edge) as filled outline
+      // 2. Top loop as thin stroke (it's a thin pen mark, not a filled blob)
+      const { body, loop } = buildDownstrokeParts(cx, cy, s, dpr, size);
 
       renderer.drawBowl(outer, inner, {
         densityFn: bowlDensity,
         widthFn: bowlWidth,
-        extraFills: [{ points: dsOutlinePts, pressure: 0.85 }],
+        extraFills: [{ points: body, pressure: 0.85 }],
+        // Loop omitted — TODO: revisit as thin hairline entry flourish
       });
     }
 
-    function buildDownstrokeOutline(cx, cy, s) {
-      // ── Downstroke as filled outline ───────────────────────────────
-      // Hand-traced closed path from ref 09 ("Downstroke Outline").
-      // This is the actual ink boundary — a filled shape, not a stroke.
-      const refCx = 55, refCy = 52;
-      const sc = s / 104;
+    function buildDownstrokeParts(cx, cy, s, dpr, size) {
+      // ── Downstroke split into body (fill) and loop (stroke) ────────
+      // The outline from ref 09 has 8 bezier segments:
+      //   Segs 0-1: top loop (thin pen mark, should be a stroke)
+      //   Segs 2-6: main body + flick (filled shape)
+      //   Seg 7: left edge back to start (part of filled shape)
+      //
+      // Body fill: segs 2-7 closing with a straight line to seg 2 start
+      // Loop stroke: segs 0-1 as a thin line
+      // Use the SAME coordinate system as the bowl ellipses.
+      // Bowl inner center in ref 09 = (55.1, 51.7) at 4x, image 132×104.
+      // Bowl in drawEllipseA uses scale = s / 100 and centers at (cx, cy).
+      const refCx = 55.1, refCy = 51.7;
+      const sc = s / 100;  // must match drawEllipseA's scale
       function r2c(rx, ry) {
         return { x: cx + (rx - refCx) * sc, y: cy + (ry - refCy) * sc };
       }
 
-      // 8 cubic bezier segments forming a closed path
-      const segs = [
-        { p0:[91.91,23.16], p1:[90.96,21.94], p2:[103.61,11.21], p3:[106.13,14.45] },
-        { p0:[106.13,14.45], p1:[114.07,15.68], p2:[106.49,31.93], p3:[103.90,31.53] },
-        { p0:[103.90,31.53], p1:[101.87,42.03], p2:[77.43,75.10], p3:[78.97,67.12] },
-        { p0:[78.97,67.12], p1:[76.75,69.71], p2:[90.97,75.37], p3:[92.22,73.90] },
-        { p0:[92.22,73.90], p1:[96.41,75.43], p2:[107.74,68.41], p3:[107.18,68.42] },
-        { p0:[107.18,68.42], p1:[109.75,70.97], p2:[88.02,90.49], p3:[83.93,86.95] },
-        { p0:[83.93,86.95], p1:[82.72,88.15], p2:[51.45,76.09], p3:[57.73,69.87] },
-        { p0:[57.73,69.87], p1:[57.57,66.76], p2:[91.66,18.32], p3:[91.91,23.16] },
-      ];
-
-      const pts = [];
-      const n = 12; // samples per segment
-      for (let si = 0; si < segs.length; si++) {
-        const { p0, p1, p2, p3 } = segs[si];
-        const startI = si === 0 ? 0 : 1;
-        for (let i = startI; i <= n; i++) {
+      function sampleBezier(p0, p1, p2, p3, n) {
+        const pts = [];
+        for (let i = 0; i <= n; i++) {
           const t = i / n; const u = 1 - t;
-          const rx = u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0];
-          const ry = u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1];
+          const rx = u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0];
+          const ry = u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1];
           pts.push(r2c(rx, ry));
         }
+        return pts;
       }
-      return pts;
+
+      const allSegs = [
+        [[91.91,23.16],[90.96,21.94],[103.61,11.21],[106.13,14.45]],  // 0: loop up
+        [[106.13,14.45],[114.07,15.68],[106.49,31.93],[103.90,31.53]], // 1: loop down
+        [[103.90,31.53],[101.87,42.03],[77.43,75.10],[78.97,67.12]],  // 2: descent
+        [[78.97,67.12],[76.75,69.71],[90.97,75.37],[92.22,73.90]],    // 3: bottom curve
+        [[92.22,73.90],[96.41,75.43],[107.74,68.41],[107.18,68.42]],  // 4: flick start
+        [[107.18,68.42],[109.75,70.97],[88.02,90.49],[83.93,86.95]],  // 5: flick bottom
+        [[83.93,86.95],[82.72,88.15],[51.45,76.09],[57.73,69.87]],    // 6: flick return
+        [[57.73,69.87],[57.57,66.76],[91.66,18.32],[91.91,23.16]],    // 7: left edge
+      ];
+
+      // Body fill: segs 2-7 (closed polygon)
+      const body = [];
+      for (let si = 2; si <= 7; si++) {
+        const pts = sampleBezier(...allSegs[si], 12);
+        const start = si === 2 ? 0 : 1; // skip junction dupes
+        for (let i = start; i < pts.length; i++) body.push(pts[i]);
+      }
+
+      // Loop stroke: segs 0-1 with pressure for thin rendering
+      const loop = [];
+      for (let si = 0; si <= 1; si++) {
+        const pts = sampleBezier(...allSegs[si], 10);
+        const start = si === 0 ? 0 : 1;
+        for (let i = start; i < pts.length; i++) {
+          const t = (si * 10 + i) / 20;
+          // Light at start, moderate at peak, fading back
+          const p = 0.15 + 0.45 * Math.sin(t * Math.PI);
+          loop.push({ ...pts[i], pressure: p });
+        }
+      }
+
+      return { body, loop };
     }
 
     function buildDownstroke(cx, cy, s, dpr, size) {
@@ -383,20 +413,56 @@ export default function MatlackCanvas() {
       const dpr = window.devicePixelRatio || 1;
       const w = canvas.width;
       const h = canvas.height;
-      const radius = 4.5 * dpr;
+      const sz = 90;
 
-      // Left column: stroke-based 'a' (existing model)
-      const a1 = matlackA(w * 0.2, h * 0.35, 120);
-      renderer.drawStroke(a1, radius);
+      // Locked offset: dx=4, dy=2 (position 'd' from grid search)
+      const offsets = [{ dx: 4, dy: 2 }];
 
-      // Right column: ellipse-subtraction 'a' (new model)
-      drawEllipseA(w * 0.55, h * 0.35, 120);
+      renderer.setInkColor(30, 38, 58);
+      for (let i = 0; i < offsets.length; i++) {
+        const cellCx = w * 0.5;
+        const cellCy = h * 0.45;
+        const { dx, dy } = offsets[i];
 
-      // Smaller versions for comparison
-      const a2 = matlackA(w * 0.2, h * 0.7, 80);
-      renderer.drawStroke(a2, radius * 0.7);
+        // Scale the offset by dpr
+        const dxPx = dx * dpr;
+        const dyPx = dy * dpr;
 
-      drawEllipseA(w * 0.55, h * 0.7, 80);
+        // Draw bowl at cell center
+        const s = sz * dpr;
+        const scale = s / 100;
+        const inner = {
+          cx: cellCx, cy: cellCy,
+          a: 32.8 * scale, b: 14.1 * scale, tilt: -44.9,
+        };
+        const outer = {
+          cx: cellCx + (51.7 - 55.1) * scale,
+          cy: cellCy + (50.2 - 51.7) * scale,
+          a: 47.9 * scale, b: 26.5 * scale, tilt: -40.3,
+        };
+
+        // Build downstroke with offset applied
+        const { body, loop } = buildDownstrokeParts(cellCx + dxPx, cellCy + dyPx, s, dpr, sz);
+
+        renderer.drawBowl(outer, inner, {
+          densityFn: (f) => {
+            const a = (f + 0.03) % 1.0;
+            if (a > 0.10 && a < 0.25) return 0.65;
+            return 0.85;
+          },
+          widthFn: (fRaw) => {
+            const a = (fRaw + 0.03) % 1.0;
+            if (a < 0.08) return 0.45;
+            if (a < 0.25) return 0.15;
+            if (a < 0.55) { const t = (a-0.25)/0.30; return 0.15+0.85*t*t; }
+            if (a < 0.75) return 1.0;
+            if (a < 0.92) { const t = (a-0.75)/0.17; return 1.0-0.55*t; }
+            return 0.45;
+          },
+          extraFills: [{ points: body, pressure: 0.85 }],
+          // Loop omitted — TODO: revisit as thin hairline entry flourish
+        });
+      }
     }
 
     resize();
