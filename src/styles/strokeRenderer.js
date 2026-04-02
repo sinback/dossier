@@ -563,11 +563,22 @@ export function createStrokeRenderer(gl) {
       gl.useProgram(covProg);
       gl.uniform2f(cov_u_resolution, fboW, fboH);
 
-      // Draw outer with varying coverage
+      // Draw outer with varying coverage.
+      // progress (0→1) limits how much of the outer arc to render.
+      const { progress = 1.0 } = opts;
       gl.enable(gl.BLEND);
       gl.blendEquation(gl.MAX);
       gl.blendFunc(gl.ONE, gl.ONE);
-      uploadCoverage(filledEllipse(outer, outerPressureFn), gl.TRIANGLE_FAN);
+
+      const outerGeom = filledEllipse(outer, outerPressureFn);
+      if (progress < 1.0) {
+        // Render only a partial arc: center vertex + first N rim vertices
+        // outerGeom.count = segments + 2 (center + segments+1 rim vertices)
+        const rimVerts = outerGeom.count - 1;  // total rim vertices
+        const showRim = Math.max(2, Math.ceil(rimVerts * progress));
+        outerGeom.count = showRim + 1;  // +1 for center
+      }
+      uploadCoverage(outerGeom, gl.TRIANGLE_FAN);
 
       // ── Add extra geometry BEFORE the inner cutout ─────────────────
       // Merges with the bowl coverage at the pixel level (MAX blend).

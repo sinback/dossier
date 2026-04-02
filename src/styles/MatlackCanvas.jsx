@@ -1,13 +1,19 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { createStrokeRenderer } from './strokeRenderer.js';
-import { renderA, ELLIPSE_DATA } from './matlackGlyphs.js';
+import { renderA, renderAAnimated, ELLIPSE_DATA } from './matlackGlyphs.js';
 
 /**
  * Full-screen WebGL canvas for Matlack handwriting R&D.
- * Renders letter(s) on mount and shows reference images with ellipse overlays.
+ * Renders letter(s) with optional animation and reference strip.
  */
 export default function MatlackCanvas() {
   const canvasRef = useRef(null);
+  const rendererRef = useRef(null);
+  const animRef = useRef(null);
+  const [speed, setSpeed] = useState('1x');
+  const [animating, setAnimating] = useState(false);
+
+  const speedMs = { '0.25x': 8000, '0.5x': 4000, '1x': 2000, '2x': 1000, '4x': 500 };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -18,12 +24,10 @@ export default function MatlackCanvas() {
       preserveDrawingBuffer: true,
       alpha: false,
     });
-    if (!gl) {
-      console.error('WebGL2 not available');
-      return;
-    }
+    if (!gl) return;
 
     const renderer = createStrokeRenderer(gl);
+    rendererRef.current = renderer;
 
     function resize() {
       const dpr = window.devicePixelRatio || 1;
@@ -32,23 +36,59 @@ export default function MatlackCanvas() {
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
       gl.viewport(0, 0, canvas.width, canvas.height);
-      renderer.clear();
-      draw(dpr);
-    }
-
-    function draw(dpr) {
-      const w = canvas.width;
-      const h = canvas.height;
-      renderer.setInkColor(30, 38, 58);
-      renderA(renderer, w * 0.5, h * 0.45, 90, dpr);
+      drawStatic(renderer, canvas, dpr);
     }
 
     resize();
     window.addEventListener('resize', resize);
-    return () => window.removeEventListener('resize', resize);
+    return () => {
+      window.removeEventListener('resize', resize);
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
   }, []);
 
-  // ── Reference strip with ellipse overlays ──────────────────────────────────
+  function drawStatic(renderer, canvas, dpr) {
+    renderer.clear();
+    renderer.setInkColor(30, 38, 58);
+    renderA(renderer, canvas.width * 0.5, canvas.height * 0.45, 90, dpr);
+  }
+
+  function startAnimation() {
+    const canvas = canvasRef.current;
+    const renderer = rendererRef.current;
+    if (!canvas || !renderer) return;
+
+    if (animRef.current) cancelAnimationFrame(animRef.current);
+    setAnimating(true);
+
+    const dpr = window.devicePixelRatio || 1;
+    const duration = speedMs[speed] || 2000;
+    const startTime = performance.now();
+
+    function frame(now) {
+      const elapsed = now - startTime;
+      const progress = Math.min(1.0, elapsed / duration);
+
+      renderer.clear();
+      renderer.setInkColor(30, 38, 58);
+      renderAAnimated(renderer, canvas.width * 0.5, canvas.height * 0.45, 90, dpr, progress);
+
+      if (progress < 1.0) {
+        animRef.current = requestAnimationFrame(frame);
+      } else {
+        // Final frame: render the complete static version (includes downstroke fill)
+        renderer.clear();
+        renderer.setInkColor(30, 38, 58);
+        renderA(renderer, canvas.width * 0.5, canvas.height * 0.45, 90, dpr);
+        setAnimating(false);
+        animRef.current = null;
+      }
+    }
+
+    animRef.current = requestAnimationFrame(frame);
+  }
+
+  // ── Reference strip ────────────────────────────────────────────────────────
   const REF_H = 80;
 
   function RefWithEllipse({ idx }) {
@@ -86,29 +126,37 @@ export default function MatlackCanvas() {
             )}
           </svg>
         </div>
-        <div style={{ fontSize: 7, color: '#888', textAlign: 'center', lineHeight: '1.1', whiteSpace: 'nowrap' }}>
-          {inner ? (<>in: {inner.tilt.toFixed(0)}° {(inner.b/inner.a).toFixed(2)}</>) : d ? 'in: —' : 'skip'}
-          {outer && (<><br/>out: {outer.tilt.toFixed(0)}° {(outer.b/outer.a).toFixed(2)}</>)}
-        </div>
       </div>
     );
   }
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {/* Top bar: references + controls */}
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1,
-        display: 'flex', alignItems: 'flex-start', gap: 4,
+        display: 'flex', alignItems: 'center', gap: 4,
         padding: '4px 8px',
         background: 'rgba(245,243,240,0.95)',
         borderBottom: '1px solid #ccc',
         fontFamily: 'monospace', fontSize: 11, color: '#666',
       }}>
-        <span style={{ alignSelf: 'center', marginRight: 4 }}>ref:</span>
+        <span style={{ marginRight: 4 }}>ref:</span>
         {Array.from({ length: 10 }, (_, i) => (
           <RefWithEllipse key={i} idx={i + 1} />
         ))}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <select value={speed} onChange={e => setSpeed(e.target.value)}
+            style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 4px' }}>
+            {Object.keys(speedMs).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <button onClick={startAnimation} disabled={animating}
+            style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
+            {animating ? 'drawing...' : 'animate'}
+          </button>
+        </div>
       </div>
+      {/* Canvas */}
       <canvas
         ref={canvasRef}
         style={{

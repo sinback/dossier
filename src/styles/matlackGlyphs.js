@@ -142,6 +142,50 @@ export function renderA(renderer, cx, cy, size, dpr) {
   });
 }
 
+/**
+ * Render a Matlack 'a' with animation progress.
+ * progress 0→1 controls how much of the letter has been drawn:
+ *   0.00–0.70: bowl arc sweeps CCW
+ *   0.70–1.00: downstroke body reveals top-to-bottom
+ *
+ * @param {number} progress - [0, 1]
+ */
+export function renderAAnimated(renderer, cx, cy, size, dpr, progress) {
+  const s = size * dpr;
+  const scale = s / 100;
+
+  const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale);
+  const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale);
+
+  const dsCx = cx + A_DOWNSTROKE_OFFSET.dx * dpr;
+  const dsCy = cy + A_DOWNSTROKE_OFFSET.dy * dpr;
+
+  if (progress <= 0.70) {
+    // Bowl phase: sweep the arc
+    const bowlProgress = progress / 0.70;
+    renderer.drawBowl(outer, inner, {
+      densityFn: aBowlDensity,
+      widthFn: aBowlWidth,
+      progress: bowlProgress,
+    });
+  } else {
+    // Downstroke phase: bowl complete, reveal downstroke body progressively
+    const dsProgress = (progress - 0.70) / 0.30;
+    const fullBody = buildADownstrokeBody(dsCx, dsCy, scale);
+
+    // Reveal body vertices progressively (top to bottom)
+    const showCount = Math.max(3, Math.ceil(fullBody.length * dsProgress));
+    const partialBody = fullBody.slice(0, showCount);
+
+    renderer.drawBowl(outer, inner, {
+      densityFn: aBowlDensity,
+      widthFn: aBowlWidth,
+      progress: 1.0,
+      extraFills: partialBody.length >= 3 ? [{ points: partialBody, pressure: 0.85 }] : undefined,
+    });
+  }
+}
+
 // ── Reference data for DOM overlays ──────────────────────────────────────────
 // Exported so MatlackCanvas can render SVG ellipses on reference images.
 export const ELLIPSE_DATA = {
