@@ -101,6 +101,26 @@ function buildADownstrokeBody(cx, cy, scale) {
   return body;
 }
 
+// ── Downstroke centerline (pen path, not outline) ────────────────────────────
+// From sinback's "Downstroke" trace on ref 09 — the path the pen tip follows.
+const A_DOWNSTROKE_CENTERLINE = [
+  [[87.61,37.96],[90.61,39.75],[102.82,24.65],[100.02,22.98]],  // loop up
+  [[100.02,22.98],[97.03,25.90],[64.18,76.16],[71.55,68.92]],   // main descent
+  [[71.55,68.92],[65.30,79.23],[82.65,84.17],[83.47,82.79]],    // bottom curve
+  [[83.47,82.79],[85.15,85.13],[103.10,77.45],[101.22,74.84]],  // exit flick
+];
+
+function buildADownstrokeCenterline(cx, cy, scale) {
+  const pts = [];
+  for (let si = 0; si < A_DOWNSTROKE_CENTERLINE.length; si++) {
+    const seg = A_DOWNSTROKE_CENTERLINE[si];
+    const samples = sampleBezier(seg[0], seg[1], seg[2], seg[3], 12, cx, cy, scale);
+    const start = si === 0 ? 0 : 1;
+    for (let i = start; i < samples.length; i++) pts.push(samples[i]);
+  }
+  return pts;
+}
+
 // ── Scale ellipse params from ref coords to canvas coords ────────────────────
 function scaleEllipse(e, cx, cy, scale) {
   return {
@@ -143,10 +163,31 @@ export function renderA(renderer, cx, cy, size, dpr) {
 }
 
 /**
+ * Map linear time to non-linear arc progress (velocity variation).
+ * Fast at top (segment 1), slow through bottom-left (segment 2 end),
+ * medium through segment 3. Makes the bowl feel hand-drawn, not robotic.
+ */
+function bowlTimingCurve(linearT) {
+  // Piecewise: fast start, decelerate in the middle, accelerate at end
+  if (linearT < 0.25) {
+    // Segment 1 (top): fast — cover 35% of arc in 25% of time
+    return (linearT / 0.25) * 0.35;
+  } else if (linearT < 0.65) {
+    // Segment 2 (left→bottom-left): slow — cover 35% of arc in 40% of time
+    const t = (linearT - 0.25) / 0.40;
+    return 0.35 + t * 0.35;
+  } else {
+    // Segment 3 + finish: medium — cover 30% of arc in 35% of time
+    const t = (linearT - 0.65) / 0.35;
+    return 0.70 + t * 0.30;
+  }
+}
+
+/**
  * Render a Matlack 'a' with animation progress.
  * progress 0→1 controls how much of the letter has been drawn:
- *   0.00–0.70: bowl arc sweeps CCW
- *   0.70–1.00: downstroke body reveals top-to-bottom
+ *   0.00–0.65: bowl arc sweeps CCW with velocity variation
+ *   0.65–1.00: downstroke reveals along centerline path
  *
  * @param {number} progress - [0, 1]
  */
@@ -160,28 +201,26 @@ export function renderAAnimated(renderer, cx, cy, size, dpr, progress) {
   const dsCx = cx + A_DOWNSTROKE_OFFSET.dx * dpr;
   const dsCy = cy + A_DOWNSTROKE_OFFSET.dy * dpr;
 
-  if (progress <= 0.70) {
-    // Bowl phase: sweep the arc
-    const bowlProgress = progress / 0.70;
+  if (progress <= 0.65) {
+    // Bowl phase: sweep with velocity variation
+    const linearT = progress / 0.65;
+    const bowlProgress = bowlTimingCurve(linearT);
     renderer.drawBowl(outer, inner, {
       densityFn: aBowlDensity,
       widthFn: aBowlWidth,
       progress: bowlProgress,
     });
   } else {
-    // Downstroke phase: bowl complete, reveal downstroke body progressively
-    const dsProgress = (progress - 0.70) / 0.30;
+    // Downstroke phase: fade in the filled polygon.
+    const dsProgress = (progress - 0.65) / 0.35;
     const fullBody = buildADownstrokeBody(dsCx, dsCy, scale);
-
-    // Reveal body vertices progressively (top to bottom)
-    const showCount = Math.max(3, Math.ceil(fullBody.length * dsProgress));
-    const partialBody = fullBody.slice(0, showCount);
+    const dsPressure = 0.85 * dsProgress;
 
     renderer.drawBowl(outer, inner, {
       densityFn: aBowlDensity,
       widthFn: aBowlWidth,
       progress: 1.0,
-      extraFills: partialBody.length >= 3 ? [{ points: partialBody, pressure: 0.85 }] : undefined,
+      extraFills: [{ points: fullBody, pressure: dsPressure }],
     });
   }
 }

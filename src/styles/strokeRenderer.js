@@ -477,7 +477,7 @@ export function createStrokeRenderer(gl) {
 
         for (let i = 0; i <= segments; i++) {
           const arcFrac = i / segments;
-          const angle = arcFrac * Math.PI * 2;
+          const angle = -arcFrac * Math.PI * 2;  // negative = CW in math = CCW on screen
           const lx = e.a * Math.cos(angle);
           const ly = e.b * Math.sin(angle);
           const vi = i + 1;
@@ -528,7 +528,7 @@ export function createStrokeRenderer(gl) {
 
         for (let i = 0; i <= segments; i++) {
           const arcFrac = i / segments;
-          const angle = arcFrac * Math.PI * 2;
+          const angle = -arcFrac * Math.PI * 2;  // match outer's CW winding
 
           // Inner ellipse point at this angle
           const ilx = e.a * Math.cos(angle);
@@ -636,6 +636,34 @@ export function createStrokeRenderer(gl) {
           : filledEllipse(inner, innerPressureFn),
         gl.TRIANGLE_FAN
       );
+
+      // ── Punch out additional zero-fill regions (animation masks) ───
+      const { zeroFills } = opts;
+      if (zeroFills) {
+        // Still in zero-blend mode from inner cutout
+        for (const { points } of zeroFills) {
+          if (points.length < 3) continue;
+          const n = points.length;
+          const count = n + 2;
+          const positions = new Float32Array(count * 2);
+          const pressures = new Float32Array(count);
+          const edgeDists = new Float32Array(count);
+          // Centroid
+          let mcx = 0, mcy = 0;
+          for (const p of points) { mcx += p.x; mcy += p.y; }
+          mcx /= n; mcy /= n;
+          positions[0] = mcx; positions[1] = mcy;
+          pressures[0] = 1; edgeDists[0] = 0;
+          for (let i = 0; i <= n; i++) {
+            const p = points[i % n];
+            const vi = i + 1;
+            positions[vi * 2] = p.x;
+            positions[vi * 2 + 1] = p.y;
+            pressures[vi] = 1; edgeDists[vi] = 0;
+          }
+          uploadCoverage({ positions, pressures, edgeDists, count }, gl.TRIANGLE_FAN);
+        }
+      }
 
       // ── Pass 2: composite onto main canvas ─────────────────────────
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);

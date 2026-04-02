@@ -36,7 +36,7 @@ export default function MatlackCanvas() {
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
       gl.viewport(0, 0, canvas.width, canvas.height);
-      drawStatic(renderer, canvas, dpr);
+      renderer.clear();  // start blank — animate button triggers first draw
     }
 
     resize();
@@ -69,17 +69,13 @@ export default function MatlackCanvas() {
       const elapsed = now - startTime;
       const progress = Math.min(1.0, elapsed / duration);
 
-      renderer.clear();
+      // Never clear during animation — ink is permanent.
       renderer.setInkColor(30, 38, 58);
       renderAAnimated(renderer, canvas.width * 0.5, canvas.height * 0.45, 90, dpr, progress);
 
       if (progress < 1.0) {
         animRef.current = requestAnimationFrame(frame);
       } else {
-        // Final frame: render the complete static version (includes downstroke fill)
-        renderer.clear();
-        renderer.setInkColor(30, 38, 58);
-        renderA(renderer, canvas.width * 0.5, canvas.height * 0.45, 90, dpr);
         setAnimating(false);
         animRef.current = null;
       }
@@ -150,6 +146,10 @@ export default function MatlackCanvas() {
             style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 4px' }}>
             {Object.keys(speedMs).map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+          <button onClick={() => rendererRef.current?.clear()}
+            style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
+            clear
+          </button>
           <button onClick={startAnimation} disabled={animating}
             style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
             {animating ? 'drawing...' : 'animate'}
