@@ -280,6 +280,102 @@ export function renderAFadeAll(renderer, cx, cy, size, dpr, progress) {
   });
 }
 
+// ── Glyph data: lowercase 'b' ───────────────────────────────────────────────
+// 'b' = tall vertical stroke + bowl on lower-right.
+// The bowl is like 'a's bowl mirrored — fat on bottom-right, thin at top
+// where it meets the vertical. The vertical and bowl share the left edge.
+//
+// No hand-traced data yet — estimated from 'a' bowl params + visual analysis
+// of refs b/01 and b/02. All coords in a normalized system where the letter
+// center is (0, 0) and scale = size * dpr / 100.
+
+// 'b' bowl: 'a's bowl flipped horizontally (reflected about the Y axis).
+// Fat on bottom-right instead of bottom-left.
+// Tilts are negated, and the outer offset is flipped in X.
+const B_BOWL = {
+  inner: { cx: 55.1, cy: 51.7, a: 32.8, b: 14.1, tilt: 44.9 },  // 'a' inner with tilt negated
+  outer: { cx: 58.5, cy: 53.2, a: 47.9, b: 26.5, tilt: 40.3 },  // 'a' outer with tilt negated, cx flipped
+};
+
+// Width function: 'a's width function but mirrored in arc space.
+// arcFrac 0.5 (left side in normal) becomes the thin part (where stem is),
+// arcFrac 0.0 (right side) and 0.75 (bottom) become the fat parts.
+function bBowlWidth(arcFracRaw) {
+  // Mirror: replace f with (1-f) to flip horizontally in arc space
+  const f = (1.0 - arcFracRaw + BOWL_PHASE + 1) % 1.0;
+  if (f < 0.08) return 0.45;
+  if (f < 0.25) return 0.15;
+  if (f < 0.55) { const t = (f - 0.25) / 0.30; return 0.15 + 0.85 * t * t; }
+  if (f < 0.75) return 1.0;
+  if (f < 0.92) { const t = (f - 0.75) / 0.17; return 1.0 - 0.55 * t; }
+  return 0.45;
+}
+
+function bBowlDensity(arcFracRaw) {
+  const f = (1.0 - arcFracRaw + BOWL_PHASE + 1) % 1.0;
+  if (f > 0.10 && f < 0.25) return 0.65;
+  return 0.85;
+}
+
+/**
+ * Render a Matlack-style lowercase 'b'.
+ * Tall vertical stem + bowl on the lower-right.
+ * Non-cursive: stem is a straight vertical, not swoopy.
+ *
+ * 'b' is ~2× the height of 'a'. The bowl occupies the bottom half,
+ * same size as 'a's bowl but mirrored. The stem runs the full height.
+ *
+ * cx, cy = center of the BOWL (not the full letter).
+ * The stem extends above cy.
+ */
+export function renderB(renderer, cx, cy, size, dpr) {
+  const s = size * dpr;
+  const scale = s / 100;
+
+  // Bowl: 'a's bowl mirrored. Same size ellipses, tilts negated.
+  const bowlInnerA = 32.8 * scale;
+  const bowlInnerB = 14.1 * scale;
+  const bowlOuterA = 47.9 * scale;
+  const bowlOuterB = 26.5 * scale;
+
+  const inner = {
+    cx: cx,
+    cy: cy,
+    a: bowlInnerA, b: bowlInnerB,
+    tilt: 44.9,  // 'a' was -44.9, mirrored
+  };
+  const outer = {
+    cx: cx + 3.4 * scale,   // 'a' offset was -3.4, mirrored
+    cy: cy + 1.5 * scale,
+    a: bowlOuterA, b: bowlOuterB,
+    tilt: 40.3,  // 'a' was -40.3, mirrored
+  };
+
+  // Stem: tall rectangle, ~2× letter height.
+  // Right edge of stem overlaps the left edge of the bowl outer ellipse.
+  // The leftmost point of the outer ellipse at its tilt:
+  const oTiltR = outer.tilt * Math.PI / 180;
+  const bowlLeftX = outer.cx - bowlOuterA * Math.cos(oTiltR);
+
+  const stemCenterX = bowlLeftX + s * 0.02;  // slightly into the bowl
+  const stemHalfW = s * 0.06;
+  const stemTop = cy - s * 0.85;  // ascender: ~2× bowl height above bowl center
+  const stemBot = cy + bowlInnerB + s * 0.04;  // just past bowl bottom
+
+  const stemPoly = [
+    { x: stemCenterX - stemHalfW, y: stemTop },
+    { x: stemCenterX + stemHalfW, y: stemTop },
+    { x: stemCenterX + stemHalfW, y: stemBot },
+    { x: stemCenterX - stemHalfW, y: stemBot },
+  ];
+
+  renderer.drawBowl(outer, inner, {
+    densityFn: bBowlDensity,
+    widthFn: bBowlWidth,
+    extraFills: [{ points: stemPoly, pressure: 0.85 }],
+  });
+}
+
 // ── Reference data for DOM overlays ──────────────────────────────────────────
 // Exported so MatlackCanvas can render SVG ellipses on reference images.
 export const ELLIPSE_DATA = {

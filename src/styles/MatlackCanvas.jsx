@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { createStrokeRenderer } from './strokeRenderer.js';
-import { renderA, renderAAnimated, renderAFadeBowlThenStroke, renderAFadeAll, ELLIPSE_DATA } from './matlackGlyphs.js';
+import { renderA, renderB, renderAAnimated, renderAFadeBowlThenStroke, renderAFadeAll, ELLIPSE_DATA } from './matlackGlyphs.js';
 
 /**
  * Full-screen WebGL canvas for Matlack handwriting R&D.
@@ -37,7 +37,11 @@ export default function MatlackCanvas() {
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
       gl.viewport(0, 0, canvas.width, canvas.height);
-      renderer.clear();  // start blank — animate button triggers first draw
+      renderer.clear();
+      renderer.setInkColor(30, 38, 58);
+      // Show both letters side by side
+      renderA(renderer, canvas.width * 0.35, canvas.height * 0.45, 90, dpr);
+      renderB(renderer, canvas.width * 0.60, canvas.height * 0.45, 90, dpr);
     }
 
     resize();
