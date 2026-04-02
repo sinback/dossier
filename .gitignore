@@ -5,3 +5,7 @@ note_to_self.txt
 resume_id.txt
 # Secrets!
 IMPORTANT_DOSSIER_FOR_CLAUDE.json
+# Claude image processing tempfile
+for_claude.png
+# Books are not code
+*.pdf
