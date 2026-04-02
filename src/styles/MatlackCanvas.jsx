@@ -1,10 +1,9 @@
 import { useRef, useEffect, useState } from 'react';
 import { createStrokeRenderer } from './strokeRenderer.js';
-import { renderA, renderB, renderAAnimated, renderAFadeBowlThenStroke, renderAFadeAll, ELLIPSE_DATA } from './matlackGlyphs.js';
+import { renderA, renderB, renderAAnimated, renderAFadeBowlThenStroke, renderAFadeAll, B_ELLIPSE_DATA } from './matlackGlyphs.js';
 
 /**
  * Full-screen WebGL canvas for Matlack handwriting R&D.
- * Renders letter(s) with optional animation and reference strip.
  */
 export default function MatlackCanvas() {
   const canvasRef = useRef(null);
@@ -21,9 +20,7 @@ export default function MatlackCanvas() {
     if (!canvas) return;
 
     const gl = canvas.getContext('webgl2', {
-      antialias: true,
-      preserveDrawingBuffer: true,
-      alpha: false,
+      antialias: true, preserveDrawingBuffer: true, alpha: false,
     });
     if (!gl) return;
 
@@ -39,9 +36,8 @@ export default function MatlackCanvas() {
       gl.viewport(0, 0, canvas.width, canvas.height);
       renderer.clear();
       renderer.setInkColor(30, 38, 58);
-      // Show both letters side by side
-      renderA(renderer, canvas.width * 0.35, canvas.height * 0.45, 90, dpr);
-      renderB(renderer, canvas.width * 0.60, canvas.height * 0.45, 90, dpr);
+      renderA(renderer, canvas.width * 0.30, canvas.height * 0.45, 90, dpr);
+      renderB(renderer, canvas.width * 0.60, canvas.height * 0.50, 90, dpr);
     }
 
     resize();
@@ -52,20 +48,12 @@ export default function MatlackCanvas() {
     };
   }, []);
 
-  function drawStatic(renderer, canvas, dpr) {
-    renderer.clear();
-    renderer.setInkColor(30, 38, 58);
-    renderA(renderer, canvas.width * 0.5, canvas.height * 0.45, 90, dpr);
-  }
-
   function startAnimation() {
     const canvas = canvasRef.current;
     const renderer = rendererRef.current;
     if (!canvas || !renderer) return;
-
     if (animRef.current) cancelAnimationFrame(animRef.current);
     setAnimating(true);
-
     const dpr = window.devicePixelRatio || 1;
     const duration = speedMs[speed] || 2000;
     const startTime = performance.now();
@@ -73,22 +61,17 @@ export default function MatlackCanvas() {
     function frame(now) {
       const elapsed = now - startTime;
       const progress = Math.min(1.0, elapsed / duration);
-
       renderer.setInkColor(30, 38, 58);
-      const cx = canvas.width * 0.5, cy = canvas.height * 0.45;
+      const cx = canvas.width * 0.30, cy = canvas.height * 0.45;
       if (mode === 'sweep') {
-        // Bowl sweep + downstroke fade — don't clear (ink accumulates for bowl)
         renderAAnimated(renderer, cx, cy, 90, dpr, progress);
       } else if (mode === 'fade-parts') {
-        // Fade bowl then fade stroke — clear each frame
         renderer.clear();
         renderAFadeBowlThenStroke(renderer, cx, cy, 90, dpr, progress);
       } else {
-        // Fade all — clear each frame
         renderer.clear();
         renderAFadeAll(renderer, cx, cy, 90, dpr, progress);
       }
-
       if (progress < 1.0) {
         animRef.current = requestAnimationFrame(frame);
       } else {
@@ -96,28 +79,19 @@ export default function MatlackCanvas() {
         animRef.current = null;
       }
     }
-
     animRef.current = requestAnimationFrame(frame);
   }
 
-  // ── Reference strip ────────────────────────────────────────────────────────
+  // ── Reference strip: 'b' refs with ellipse overlays ────────────────────────
   const REF_H = 80;
 
-  function RefWithEllipse({ idx }) {
-    const key = String(idx).padStart(2, '0');
-    const src = `/ref/a/${key}.png`;
-    const d = ELLIPSE_DATA[key];
-    const imgW = d ? d.w : 100;
-    const imgH = d ? d.h : 100;
-    const scale = REF_H / imgH;
-    const dispW = imgW * scale;
-    const inner = d?.inner;
-    const outer = d?.outer;
-
+  function RefImage({ src, w, h, inner, outer, label }) {
+    const scale = REF_H / h;
+    const dispW = w * scale;
     return (
       <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
         <div style={{ position: 'relative', width: dispW, height: REF_H }}>
-          <img src={src} alt={`ref a ${key}`}
+          <img src={src} alt={label}
             style={{ width: dispW, height: REF_H, display: 'block',
                      border: '1px solid #ddd', borderRadius: 2 }} />
           <svg style={{ position: 'absolute', top: 0, left: 0, width: dispW, height: REF_H, pointerEvents: 'none' }}>
@@ -138,24 +112,32 @@ export default function MatlackCanvas() {
             )}
           </svg>
         </div>
+        <div style={{ fontSize: 7, color: '#888', textAlign: 'center', lineHeight: '1.1' }}>{label}</div>
       </div>
     );
   }
 
+  const bRefs = [
+    { src: '/ref/b/01.png', key: '01', ...B_ELLIPSE_DATA['01'], label: 'b 01 ★' },
+    { src: '/ref/b/02.png', key: '02', ...B_ELLIPSE_DATA['02'], label: 'b 02' },
+    { src: '/ref/ab/01.png', key: 'ab', w: 192/4, h: 176/4, inner: null, outer: null, label: 'ab' },
+    { src: '/ref/bo/01.png', key: 'bo', w: 220/4, h: 192/4, inner: null, outer: null, label: 'bo' },
+  ];
+
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      {/* Top bar: references + controls */}
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1,
-        display: 'flex', alignItems: 'center', gap: 4,
+        display: 'flex', alignItems: 'center', gap: 6,
         padding: '4px 8px',
         background: 'rgba(245,243,240,0.95)',
         borderBottom: '1px solid #ccc',
         fontFamily: 'monospace', fontSize: 11, color: '#666',
       }}>
         <span style={{ marginRight: 4 }}>ref:</span>
-        {Array.from({ length: 10 }, (_, i) => (
-          <RefWithEllipse key={i} idx={i + 1} />
+        {bRefs.map(r => (
+          <RefImage key={r.key} src={r.src} w={r.w} h={r.h}
+            inner={r.inner} outer={r.outer} label={r.label} />
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
           <select value={mode} onChange={e => setMode(e.target.value)}
@@ -178,15 +160,9 @@ export default function MatlackCanvas() {
           </button>
         </div>
       </div>
-      {/* Canvas */}
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: 'fixed', top: 0, left: 0,
-          width: '100vw', height: '100vh',
-          display: 'block', cursor: 'crosshair',
-        }}
-      />
+      <canvas ref={canvasRef}
+        style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                 display: 'block', cursor: 'crosshair' }} />
     </div>
   );
 }
