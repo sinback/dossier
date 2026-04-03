@@ -368,6 +368,89 @@ function buildBStrokeOutline(cx, cy, scale) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'f'
+// Source: sinback's hand traces on context/fir/01 (4x upscaled Declaration)
+// 'f' = bar-bowl (the tall curved stem) + horizontal hairline crossbar.
+// The bar-bowl is the whole letter except the crossbar.
+// Matlack's 'f' extends well above cap-height and below baseline ("a BEAST").
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Reference anchor: center of 'f's inner bar-bowl ellipse in ref fir/01.
+// Image: matlack-declaration/reference/context/fir_4x/01.png (304×312 at 4x)
+const F_REF_CENTER = { x: 171.4, y: 74.6 };
+
+// ── 'f' bar-bowl ellipses ────────────────────────────────────────────────────
+// Both inner and outer are GOOD ellipse fits (residuals ~0.098).
+// Tilt is consistent with 'a' and 'b' (~-49° to -50°).
+// Very elongated: aspect 0.13 inner, 0.17 outer.
+const F_BAR_BOWL = {
+  inner: {
+    cx: 171.4,   // = F_REF_CENTER.x
+    cy: 74.6,    // = F_REF_CENTER.y
+    a: 52.9,     // semi-major (stem length)
+    b: 7.1,      // semi-minor (stem width) — very thin
+    tilt: -48.8  // consistent with other letters
+  },
+  outer: {
+    cx: 176.0,   // offset from inner: (+4.6, -2.8)
+    cy: 71.8,
+    a: 84.9,     // inner→outer ratio: 1.60×
+    b: 14.4,     // inner→outer ratio: 2.03×
+    tilt: -50.0  // tilt diff from inner: -1.2° (very uniform width)
+  },
+};
+
+// ── 'f' bar-bowl width function ──────────────────────────────────────────────
+// Same approach as 'b' bar-bowl: gentle variation, thinner at tips.
+// 'f' is taller than 'b's bar-bowl so the thin tips are more visible.
+function fBarBowlWidth(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+  if (f < 0.10) return smoothStep(0.35, 0.65, f / 0.10);          // top tip
+  if (f < 0.40) return smoothStep(0.65, 1.0, (f - 0.10) / 0.30);
+  if (f < 0.60) return 1.0;                                        // middle: full
+  if (f < 0.90) return smoothStep(1.0, 0.65, (f - 0.60) / 0.30);
+  return smoothStep(0.65, 0.35, (f - 0.90) / 0.10);               // bottom tip
+}
+
+function fBarBowlDensity() { return 0.85; }
+
+// ── 'f' hairline crossbar ────────────────────────────────────────────────────
+// Nearly flat horizontal line. Traced as two points from ref fir/01.
+// Extends from left of the bar-bowl to right side.
+const F_HAIRLINE = {
+  x1: 74.56, y1: 160.37,   // left end — extended 30% wider (was 81.56, delta ~7px each side)
+  x2: 143.24, y2: 159.03,  // right end — extended 30% wider (was 136.24)
+  halfHeight: 2.25,         // 50% thicker (was 1.5)
+};
+
+const F_HAIRLINE_OFFSET = {
+  dx: 8,
+  dy: -2,
+}
+
+// ── 'f' fat bar (descender stroke) ──────────────────────────────────────────
+// The thick downstroke extending below the bar-bowl. Runs from the base
+// of the bar-bowl down to the descender line. Oriented along the bar-bowl's
+// major axis (same ~-49° tilt). Has light bezier curvature.
+//
+// Traced from ref fir/01 as a centerline path with slight curve.
+const F_FAT_BAR_SEGS = [
+  [[119.46,138.92],[112.54,133.70],[56.44,231.26],[62.74,236.01]],
+  [[62.74,236.01],[62.74,236.01],[22.36,282.93],[22.36,282.93]],
+];
+
+// The fat bar width: should be slightly fatter than the bar-bowl's thickest
+// part. The bar-bowl outer minor axis is 14.4px at 4x, so the fat bar
+// half-width should be about 8-9px at 4x (full width ~16-18px).
+const F_FAT_BAR_HALF_WIDTH = 6.3;  // ~70% of original 9.0
+
+const F_FAT_BAR_OFFSET = {
+  dx: 4,
+  dy: -6,
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
 // PUBLIC RENDER FUNCTIONS
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -434,6 +517,73 @@ export function renderB(renderer, cx, cy, size, dpr, barBowlOffset) {
   renderer.drawBowl(bbOuter, bbInner, {
     densityFn: bBarBowlDensity,
     widthFn: bBarBowlWidth,
+  });
+}
+
+/**
+ * Render a Matlack-style lowercase 'f'.
+ * Three components:
+ *   1. Bar-bowl (curved top portion)
+ *   2. Fat bar (thick descender, same tilt as bar-bowl)
+ *   3. Hairline crossbar (thin horizontal)
+ *
+ * @param {number} cx - canvas x center of the bar-bowl
+ * @param {number} cy - canvas y center of the bar-bowl
+ * @param {boolean} [straightFatBar=false] - if true, render fat bar as straight line
+ */
+export function renderF(renderer, cx, cy, size, dpr, fatBarOffset = null, hairlineOffset = null) {
+  const s = size * dpr;
+  const scale = s / 100;
+
+  // ── Bar-bowl ──────────────────────────────────────────────────
+  const inner = scaleEllipse(F_BAR_BOWL.inner, cx, cy, scale, F_REF_CENTER);
+  const outer = scaleEllipse(F_BAR_BOWL.outer, cx, cy, scale, F_REF_CENTER);
+
+  // ── Hairline crossbar as thin filled rectangle ────────────────
+  const h = F_HAIRLINE;
+  const hl = refToCanvas(h.x1, h.y1, cx, cy, scale, F_REF_CENTER);
+  const hr = refToCanvas(h.x2, h.y2, cx, cy, scale, F_REF_CENTER);
+  hl.x += F_HAIRLINE_OFFSET.dx; hl.y += F_HAIRLINE_OFFSET.dy;
+  hr.x += F_HAIRLINE_OFFSET.dx; hr.y += F_HAIRLINE_OFFSET.dy;
+  const hh = h.halfHeight * scale;
+  // Build a thin parallelogram along the hairline direction
+  const hdx = hr.x - hl.x, hdy = hr.y - hl.y;
+  const hlen = Math.hypot(hdx, hdy);
+  const hnx = -hdy / hlen * hh, hny = hdx / hlen * hh;  // perpendicular offset
+  const hairline = [
+    { x: hl.x + hnx, y: hl.y + hny },
+    { x: hr.x + hnx, y: hr.y + hny },
+    { x: hr.x - hnx, y: hr.y - hny },
+    { x: hl.x - hnx, y: hl.y - hny },
+  ];
+
+  // ── Fat bar (descender) ───────────────────────────────────────
+  let fatBarPoly;
+  const hw = F_FAT_BAR_HALF_WIDTH * scale;
+
+  // Apply optional fat bar offset (CSS px, scaled by DPR)
+  const p0 = refToCanvas(119.46, 138.92, cx, cy, scale, F_REF_CENTER);
+  const p1 = refToCanvas(22.36, 282.93, cx, cy, scale, F_REF_CENTER);
+  p0.x += F_FAT_BAR_OFFSET.dx; p0.y += F_FAT_BAR_OFFSET.dy;
+  p1.x += F_FAT_BAR_OFFSET.dx; p1.y += F_FAT_BAR_OFFSET.dy;
+  const dx = p1.x - p0.x, dy = p1.y - p0.y;
+  const len = Math.hypot(dx, dy);
+  const nx = -dy / len * hw, ny = dx / len * hw;
+  fatBarPoly = [
+    { x: p0.x + nx, y: p0.y + ny },
+    { x: p1.x + nx, y: p1.y + ny },
+    { x: p1.x - nx, y: p1.y - ny },
+    { x: p0.x - nx, y: p0.y - ny },
+  ];
+
+  // ── Render: bar-bowl + fat bar + hairline in same pass ────────
+  renderer.drawBowl(outer, inner, {
+    densityFn: fBarBowlDensity,
+    widthFn: fBarBowlWidth,
+    extraFills: [
+      { points: fatBarPoly, pressure: 0.85 },
+      { points: hairline, pressure: 0.75 },  // hairline slightly lighter
+    ],
   });
 }
 
