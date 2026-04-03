@@ -38,6 +38,8 @@ React 19, Vite, WebGL2.
 
 Check `NPM_FUND_NOTES.txt` and throw a few bucks at the open source projects that made it possible.
 
+Also throw a few bucks at the Unicode Consortium, whose dedication to clear definition of semantic meaning across societies helps keep this projects intended use of AI clear.
+
 ## If you have feelings about AI
 This section is for transparency about how AI has been used in this project and how its use may evolve over time.
 
