@@ -1,92 +1,27 @@
-import { useRef, useEffect, useState } from 'react';
-import { createStrokeRenderer } from './strokeRenderer.js';
-import { renderA, renderB, renderF, renderAAnimated, renderAFadeBowlThenStroke, renderAFadeAll, B_ELLIPSE_DATA } from './matlackGlyphs.js';
+import { useRef, useCallback } from 'react';
+import { renderGlyph, B_ELLIPSE_DATA } from './matlackGlyphs.js';
+import MatlackRenderer from './MatlackRenderer.jsx';
 
 /**
- * Full-screen WebGL canvas for Matlack handwriting R&D.
+ * Full-screen Matlack R&D view with reference strip toolbar.
+ * Rendering is delegated to MatlackRenderer.
  */
 export default function MatlackCanvas() {
-  const canvasRef = useRef(null);
-  const rendererRef = useRef(null);
-  const animRef = useRef(null);
-  const [speed, setSpeed] = useState('1x');
-  const [mode, setMode] = useState('sweep');
-  const [animating, setAnimating] = useState(false);
+  const matlackRef = useRef(null);
 
-  const speedMs = { '0.25x': 8000, '0.5x': 4000, '1x': 2000, '2x': 1000, '4x': 500 };
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const gl = canvas.getContext('webgl2', {
-      antialias: true, preserveDrawingBuffer: true, alpha: false,
-    });
-    if (!gl) return;
-
-    const renderer = createStrokeRenderer(gl);
-    rendererRef.current = renderer;
-
-    function resize() {
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
-      gl.viewport(0, 0, canvas.width, canvas.height);
-      renderer.clear();
-      renderer.setInkColor(30, 38, 58);
-
-      const sz = 90;
-      const positions = [0.20, 0.40, 0.60, 0.80];
-      renderA(renderer, canvas.width * positions[0], canvas.height * 0.50, sz, dpr);
-      renderB(renderer, canvas.width * positions[1], canvas.height * 0.50, sz, dpr);
-      renderF(renderer, canvas.width * positions[2], canvas.height * 0.50, sz, dpr);
-    }
-
-    resize();
-    window.addEventListener('resize', resize);
-    return () => {
-      window.removeEventListener('resize', resize);
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
+  // Called by MatlackRenderer on mount + every resize — draws the static letter spread.
+  const handleDraw = useCallback((renderer, canvas) => {
+    renderer.clear();
+    renderer.setInkColor(30, 38, 58);
+    const dpr = window.devicePixelRatio || 1;
+    const sz  = 90;
+    const positions = [0.20, 0.40, 0.60, 0.80];
+    renderGlyph('a', renderer, canvas.width * positions[0], canvas.height * 0.50, sz, dpr);
+    renderGlyph('b', renderer, canvas.width * positions[1], canvas.height * 0.50, sz, dpr);
+    renderGlyph('f', renderer, canvas.width * positions[2], canvas.height * 0.50, sz, dpr);
   }, []);
 
-  function startAnimation() {
-    const canvas = canvasRef.current;
-    const renderer = rendererRef.current;
-    if (!canvas || !renderer) return;
-    if (animRef.current) cancelAnimationFrame(animRef.current);
-    setAnimating(true);
-    const dpr = window.devicePixelRatio || 1;
-    const duration = speedMs[speed] || 2000;
-    const startTime = performance.now();
-
-    function frame(now) {
-      const elapsed = now - startTime;
-      const progress = Math.min(1.0, elapsed / duration);
-      renderer.setInkColor(30, 38, 58);
-      const cx = canvas.width * 0.30, cy = canvas.height * 0.45;
-      if (mode === 'sweep') {
-        renderAAnimated(renderer, cx, cy, 90, dpr, progress);
-      } else if (mode === 'fade-parts') {
-        renderer.clear();
-        renderAFadeBowlThenStroke(renderer, cx, cy, 90, dpr, progress);
-      } else {
-        renderer.clear();
-        renderAFadeAll(renderer, cx, cy, 90, dpr, progress);
-      }
-      if (progress < 1.0) {
-        animRef.current = requestAnimationFrame(frame);
-      } else {
-        setAnimating(false);
-        animRef.current = null;
-      }
-    }
-    animRef.current = requestAnimationFrame(frame);
-  }
-
-  // ── Reference strip: 'b' refs with ellipse overlays ────────────────────────
+  // ── Reference strip ────────────────────────────────────────────────────────
   const REF_H = 80;
 
   function RefImage({ src, w, h, inner, outer, label }) {
@@ -102,14 +37,14 @@ export default function MatlackCanvas() {
             {inner && (
               <ellipse
                 cx={inner.cx * scale} cy={inner.cy * scale}
-                rx={inner.a * scale} ry={inner.b * scale}
+                rx={inner.a * scale}  ry={inner.b * scale}
                 transform={`rotate(${inner.tilt} ${inner.cx * scale} ${inner.cy * scale})`}
                 fill="none" stroke="cyan" strokeWidth="1.2" opacity="0.85" />
             )}
             {outer && (
               <ellipse
                 cx={outer.cx * scale} cy={outer.cy * scale}
-                rx={outer.a * scale} ry={outer.b * scale}
+                rx={outer.a * scale}  ry={outer.b * scale}
                 transform={`rotate(${outer.tilt} ${outer.cx * scale} ${outer.cy * scale})`}
                 fill="none" stroke="magenta" strokeWidth="1.0" opacity="0.6"
                 strokeDasharray="3 2" />
@@ -130,6 +65,7 @@ export default function MatlackCanvas() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      {/* Toolbar */}
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1,
         display: 'flex', alignItems: 'center', gap: 6,
@@ -144,29 +80,19 @@ export default function MatlackCanvas() {
             inner={r.inner} outer={r.outer} label={r.label} />
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <select value={mode} onChange={e => setMode(e.target.value)}
-            style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 4px' }}>
-            <option value="sweep">sweep</option>
-            <option value="fade-parts">fade bowl+stroke</option>
-            <option value="fade-all">fade all</option>
-          </select>
-          <select value={speed} onChange={e => setSpeed(e.target.value)}
-            style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 4px' }}>
-            {Object.keys(speedMs).map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <button onClick={() => rendererRef.current?.clear()}
+          <button onClick={() => matlackRef.current?.clear()}
             style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
             clear
           </button>
-          <button onClick={startAnimation} disabled={animating}
-            style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
-            {animating ? 'drawing...' : 'animate'}
-          </button>
         </div>
       </div>
-      <canvas ref={canvasRef}
-        style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                 display: 'block', cursor: 'crosshair' }} />
+
+      {/* Canvas */}
+      <MatlackRenderer
+        ref={matlackRef}
+        onDraw={handleDraw}
+        style={{ position: 'fixed', top: 0, left: 0, cursor: 'crosshair' }}
+      />
     </div>
   );
 }

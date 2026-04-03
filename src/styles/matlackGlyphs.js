@@ -49,6 +49,15 @@ function refToCanvas(rx, ry, cx, cy, scale, refCenter) {
   };
 }
 
+// ── Offset resolution ────────────────────────────────────────────────────────
+// Returns { dx, dy } in DPR-scaled canvas pixels.
+// If the overrides object has a key for this component, use it; otherwise fall
+// back to the baked-in default. All values are CSS px before DPR.
+function resolveOffset(componentName, defaults, overrides, dpr) {
+  const raw = overrides[componentName] ?? defaults;
+  return { dx: (raw.dx ?? 0) * dpr, dy: (raw.dy ?? 0) * dpr };
+}
+
 // ── Cubic bezier sampler ─────────────────────────────────────────────────────
 // Samples n+1 points along a cubic bezier curve defined by 4 control points.
 // Each control point is [x, y] in ref coords. Output is in canvas coords.
@@ -144,7 +153,6 @@ const A_BOWL = {
 //
 // Segments 0-1: the top loop (pen goes up before going down — Matlack quirk).
 //   Currently OMITTED from rendering — too thin to fill properly.
-//   TODO: render as a hairline stroke for the entry flourish.
 //
 // Segments 2-7: the main body (descent + flick + left edge).
 //   Rendered as a filled polygon via ear-clipping triangulation.
@@ -168,16 +176,6 @@ const A_DOWNSTROKE_OFFSET = {
   dy: 2,  // shift down 2 CSS pixels
 };
 
-// ── 'a' downstroke centerline ────────────────────────────────────────────────
-// The path the pen tip follows (not the ink outline).
-// Traced from sinback's "Downstroke" path on ref a/09.
-// Used for animation (the pen traces this path over time).
-const A_DOWNSTROKE_CENTERLINE = [
-  [[87.61,37.96],[90.61,39.75],[102.82,24.65],[100.02,22.98]],  // loop up
-  [[100.02,22.98],[97.03,25.90],[64.18,76.16],[71.55,68.92]],   // main descent
-  [[71.55,68.92],[65.30,79.23],[82.65,84.17],[83.47,82.79]],    // bottom curve
-  [[83.47,82.79],[85.15,85.13],[103.10,77.45],[101.22,74.84]],  // exit flick
-];
 
 // ── 'a' bowl width function ──────────────────────────────────────────────────
 // Returns [0, 1] controlling how much of the outer-inner ellipse gap to fill.
@@ -250,14 +248,7 @@ function buildADownstrokeBody(cx, cy, scale) {
   );
 }
 
-// Build the downstroke centerline (pen path) for animation.
-function buildADownstrokeCenterline(cx, cy, scale) {
-  return sampleSegments(
-    A_DOWNSTROKE_CENTERLINE,
-    [0, 1, 2, 3],  // all segments
-    12, cx, cy, scale, A_REF_CENTER
-  );
-}
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'b'
@@ -356,16 +347,7 @@ function bBarBowlWidth(arcFracRaw) {
 
 function bBarBowlDensity() { return 0.85; }
 
-// ── 'b' geometry builders ────────────────────────────────────────────────────
 
-// Build the stroke outline as a filled polygon. All segments included.
-function buildBStrokeOutline(cx, cy, scale) {
-  return sampleSegments(
-    B_STROKE_OUTLINE_SEGS,
-    Array.from({ length: B_STROKE_OUTLINE_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, B_REF_CENTER
-  );
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'f'
@@ -431,13 +413,8 @@ const F_HAIRLINE_OFFSET = {
 // ── 'f' fat bar (descender stroke) ──────────────────────────────────────────
 // The thick downstroke extending below the bar-bowl. Runs from the base
 // of the bar-bowl down to the descender line. Oriented along the bar-bowl's
-// major axis (same ~-49° tilt). Has light bezier curvature.
-//
-// Traced from ref fir/01 as a centerline path with slight curve.
-const F_FAT_BAR_SEGS = [
-  [[119.46,138.92],[112.54,133.70],[56.44,231.26],[62.74,236.01]],
-  [[62.74,236.01],[62.74,236.01],[22.36,282.93],[22.36,282.93]],
-];
+// major axis (same ~-49° tilt). Rendered as a straight filled rectangle
+// using the two endpoint coords from the original traced bezier path.
 
 // The fat bar width: should be slightly fatter than the bar-bowl's thickest
 // part. The bar-bowl outer minor axis is 14.4px at 4x, so the fat bar
@@ -445,8 +422,8 @@ const F_FAT_BAR_SEGS = [
 const F_FAT_BAR_HALF_WIDTH = 6.3;  // ~70% of original 9.0
 
 const F_FAT_BAR_OFFSET = {
-  dx: 4,
-  dy: -6,
+  dx: 8,
+  dy: -10,
 }
 
 
@@ -455,65 +432,75 @@ const F_FAT_BAR_OFFSET = {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
- * Render a Matlack-style lowercase 'a'.
+ * Glyph-rendering dispatcher.
  *
+ * Shared preamble (scale computation) lives here. Each letter's render function
+ * receives scale + an overrides object keyed by component name. Overrides let
+ * grid-search callers vary individual component offsets without touching
+ * function signatures.
+ *
+ * @param {string} glyph - single-letter key ('a', 'b', 'f', …)
  * @param {object} renderer - from createStrokeRenderer(gl)
  * @param {number} cx - canvas x center of the bowl (pixels, DPR-scaled)
  * @param {number} cy - canvas y center of the bowl
  * @param {number} size - font size in CSS pixels (before DPR)
  * @param {number} dpr - window.devicePixelRatio
+ * @param {object} [overrides={}] - per-component offset overrides, keyed by
+ *   component name. Each value: { dx, dy } in CSS pixels (before DPR).
+ *   Replaces the letter's baked-in default for that component.
+ *   Example: { hairline: { dx: 8, dy: -2 }, fatBar: { dx: 4, dy: -6 } }
  */
-export function renderA(renderer, cx, cy, size, dpr) {
-  const s = size * dpr;
-  const scale = s / 100;  // 100 = ref normalization factor (roughly letter height at 4x)
+export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) {
+  const scale = (size * dpr) / 100;
+  switch(glyph) {
+    case 'a':
+      return renderA(renderer, cx, cy, scale, dpr, overrides)
+    case 'b':
+      return renderB(renderer, cx, cy, scale, dpr, overrides)
+    case 'f':
+      return renderF(renderer, cx, cy, scale, dpr, overrides)
+    default:
+      throw new Error(`Glyph ${glyph} not yet supported`)
+  }
+}
 
+/**
+ * Render a Matlack-style lowercase 'a'.
+ * Components: bowl, downstroke.
+ */
+function renderA(renderer, cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale, A_REF_CENTER);
   const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale, A_REF_CENTER);
 
-  // Downstroke body: offset from bowl center by the grid-searched amount
-  const dsCx = cx + A_DOWNSTROKE_OFFSET.dx * dpr;
-  const dsCy = cy + A_DOWNSTROKE_OFFSET.dy * dpr;
-  const body = buildADownstrokeBody(dsCx, dsCy, scale);
+  const dsOff = resolveOffset('downstroke', A_DOWNSTROKE_OFFSET, overrides, dpr);
+  const body = buildADownstrokeBody(cx + dsOff.dx, cy + dsOff.dy, scale);
 
   renderer.drawBowl(outer, inner, {
     densityFn: aBowlDensity,
     widthFn: aBowlWidth,
-    extraFills: [{ points: body, pressure: 0.85 }],  // 0.85 = solid dark ink
+    extraFills: [{ points: body, pressure: 0.85 }],
   });
 }
 
 /**
  * Render a Matlack-style lowercase 'b'.
- * Two overlapping bowls: main bowl (lower, round) + bar-bowl (upper, elongated stem).
- * They share an edge where they overlap — merged in the same coverage FBO.
- *
- * @param {number} cx - canvas x center of the MAIN BOWL (bar-bowl extends above)
- * @param {number} cy - canvas y center of the MAIN BOWL
+ * Components: bowl, barBowl.
  */
-export function renderB(renderer, cx, cy, size, dpr, barBowlOffset) {
-  const s = size * dpr;
-  const scale = s / 100;
-
+function renderB(renderer, cx, cy, scale, dpr, overrides) {
   // Main bowl (lower, round)
   const inner = scaleEllipse(B_BOWL.inner, cx, cy, scale, B_REF_CENTER);
   const outer = scaleEllipse(B_BOWL.outer, cx, cy, scale, B_REF_CENTER);
 
-  // Bar-bowl (upper, elongated stem).
-  // Default offset: dx=-4, dy=0 (grid-searched, position 4 of 3×3).
-  // Shifts the bar-bowl left 4 CSS px to close the whitespace gap at the junction.
-  const bbOff = barBowlOffset || { dx: -4, dy: 0 };
-  const bbDx = bbOff.dx * dpr;
-  const bbDy = bbOff.dy * dpr;
-  const bbInner = scaleEllipse(B_BAR_BOWL.inner, cx + bbDx, cy + bbDy, scale, B_REF_CENTER);
-  const bbOuter = scaleEllipse(B_BAR_BOWL.outer, cx + bbDx, cy + bbDy, scale, B_REF_CENTER);
+  // Bar-bowl (upper, elongated stem)
+  const bbOff = resolveOffset('barBowl', { dx: -4, dy: 0 }, overrides, dpr);
+  const bbInner = scaleEllipse(B_BAR_BOWL.inner, cx + bbOff.dx, cy + bbOff.dy, scale, B_REF_CENTER);
+  const bbOuter = scaleEllipse(B_BAR_BOWL.outer, cx + bbOff.dx, cy + bbOff.dy, scale, B_REF_CENTER);
 
-  // Render main bowl first
   renderer.drawBowl(outer, inner, {
     densityFn: bBowlDensity,
     widthFn: bBowlWidth,
   });
 
-  // Render bar-bowl on top
   renderer.drawBowl(bbOuter, bbInner, {
     densityFn: bBarBowlDensity,
     widthFn: bBarBowlWidth,
@@ -522,34 +509,24 @@ export function renderB(renderer, cx, cy, size, dpr, barBowlOffset) {
 
 /**
  * Render a Matlack-style lowercase 'f'.
- * Three components:
- *   1. Bar-bowl (curved top portion)
- *   2. Fat bar (thick descender, same tilt as bar-bowl)
- *   3. Hairline crossbar (thin horizontal)
- *
- * @param {number} cx - canvas x center of the bar-bowl
- * @param {number} cy - canvas y center of the bar-bowl
- * @param {boolean} [straightFatBar=false] - if true, render fat bar as straight line
+ * Components: barBowl (anchor), fatBar, hairline.
  */
-export function renderF(renderer, cx, cy, size, dpr, fatBarOffset = null, hairlineOffset = null) {
-  const s = size * dpr;
-  const scale = s / 100;
-
-  // ── Bar-bowl ──────────────────────────────────────────────────
+function renderF(renderer, cx, cy, scale, dpr, overrides) {
+  // ── Bar-bowl (anchor — no offset) ─────────────────────────────
   const inner = scaleEllipse(F_BAR_BOWL.inner, cx, cy, scale, F_REF_CENTER);
   const outer = scaleEllipse(F_BAR_BOWL.outer, cx, cy, scale, F_REF_CENTER);
 
-  // ── Hairline crossbar as thin filled rectangle ────────────────
+  // ── Hairline crossbar ─────────────────────────────────────────
+  const hlOff = resolveOffset('hairline', F_HAIRLINE_OFFSET, overrides, dpr);
   const h = F_HAIRLINE;
   const hl = refToCanvas(h.x1, h.y1, cx, cy, scale, F_REF_CENTER);
   const hr = refToCanvas(h.x2, h.y2, cx, cy, scale, F_REF_CENTER);
-  hl.x += F_HAIRLINE_OFFSET.dx; hl.y += F_HAIRLINE_OFFSET.dy;
-  hr.x += F_HAIRLINE_OFFSET.dx; hr.y += F_HAIRLINE_OFFSET.dy;
+  hl.x += hlOff.dx; hl.y += hlOff.dy;
+  hr.x += hlOff.dx; hr.y += hlOff.dy;
   const hh = h.halfHeight * scale;
-  // Build a thin parallelogram along the hairline direction
   const hdx = hr.x - hl.x, hdy = hr.y - hl.y;
   const hlen = Math.hypot(hdx, hdy);
-  const hnx = -hdy / hlen * hh, hny = hdx / hlen * hh;  // perpendicular offset
+  const hnx = -hdy / hlen * hh, hny = hdx / hlen * hh;
   const hairline = [
     { x: hl.x + hnx, y: hl.y + hny },
     { x: hr.x + hnx, y: hr.y + hny },
@@ -558,18 +535,16 @@ export function renderF(renderer, cx, cy, size, dpr, fatBarOffset = null, hairli
   ];
 
   // ── Fat bar (descender) ───────────────────────────────────────
-  let fatBarPoly;
+  const fbOff = resolveOffset('fatBar', F_FAT_BAR_OFFSET, overrides, dpr);
   const hw = F_FAT_BAR_HALF_WIDTH * scale;
-
-  // Apply optional fat bar offset (CSS px, scaled by DPR)
   const p0 = refToCanvas(119.46, 138.92, cx, cy, scale, F_REF_CENTER);
   const p1 = refToCanvas(22.36, 282.93, cx, cy, scale, F_REF_CENTER);
-  p0.x += F_FAT_BAR_OFFSET.dx; p0.y += F_FAT_BAR_OFFSET.dy;
-  p1.x += F_FAT_BAR_OFFSET.dx; p1.y += F_FAT_BAR_OFFSET.dy;
+  p0.x += fbOff.dx; p0.y += fbOff.dy;
+  p1.x += fbOff.dx; p1.y += fbOff.dy;
   const dx = p1.x - p0.x, dy = p1.y - p0.y;
   const len = Math.hypot(dx, dy);
   const nx = -dy / len * hw, ny = dx / len * hw;
-  fatBarPoly = [
+  const fatBarPoly = [
     { x: p0.x + nx, y: p0.y + ny },
     { x: p1.x + nx, y: p1.y + ny },
     { x: p1.x - nx, y: p1.y - ny },
@@ -582,104 +557,12 @@ export function renderF(renderer, cx, cy, size, dpr, fatBarOffset = null, hairli
     widthFn: fBarBowlWidth,
     extraFills: [
       { points: fatBarPoly, pressure: 0.85 },
-      { points: hairline, pressure: 0.75 },  // hairline slightly lighter
+      { points: hairline, pressure: 0.75 },
     ],
   });
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// ANIMATION FUNCTIONS (for 'a' — 'b' animation TODO)
-// ═════════════════════════════════════════════════════════════════════════════
 
-/**
- * Map linear time to non-linear arc progress (velocity variation).
- * Makes the bowl sweep feel hand-drawn: fast at top, slow at bottom-left.
- *
- * Input: linearT [0,1] = uniform time progress
- * Output: arcProgress [0,1] = how much of the arc to show
- *
- * The mapping is piecewise linear with different speeds per zone:
- *   25% of time → 35% of arc (fast: segment 1, top)
- *   40% of time → 35% of arc (slow: segment 2, left/bottom)
- *   35% of time → 30% of arc (medium: segment 3, bottom-right)
- */
-function bowlTimingCurve(linearT) {
-  if (linearT < 0.25) {
-    return (linearT / 0.25) * 0.35;
-  } else if (linearT < 0.65) {
-    const t = (linearT - 0.25) / 0.40;
-    return 0.35 + t * 0.35;
-  } else {
-    const t = (linearT - 0.65) / 0.35;
-    return 0.70 + t * 0.30;
-  }
-}
-
-/** Animated 'a': bowl sweeps then downstroke fades in. */
-export function renderAAnimated(renderer, cx, cy, size, dpr, progress) {
-  const s = size * dpr;
-  const scale = s / 100;
-  const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale, A_REF_CENTER);
-  const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale, A_REF_CENTER);
-  const dsCx = cx + A_DOWNSTROKE_OFFSET.dx * dpr;
-  const dsCy = cy + A_DOWNSTROKE_OFFSET.dy * dpr;
-
-  if (progress <= 0.65) {
-    // Bowl phase: arc sweeps CCW with velocity variation
-    const bowlProgress = bowlTimingCurve(progress / 0.65);
-    renderer.drawBowl(outer, inner, {
-      densityFn: aBowlDensity, widthFn: aBowlWidth, progress: bowlProgress,
-    });
-  } else {
-    // Downstroke phase: fade in the filled polygon
-    const dsAlpha = (progress - 0.65) / 0.35;  // 0→1 over the remaining time
-    const fullBody = buildADownstrokeBody(dsCx, dsCy, scale);
-    renderer.drawBowl(outer, inner, {
-      densityFn: aBowlDensity, widthFn: aBowlWidth, progress: 1.0,
-      extraFills: [{ points: fullBody, pressure: 0.85 * dsAlpha }],
-    });
-  }
-}
-
-/** Animated 'a': bowl fades in, then downstroke fades in. */
-export function renderAFadeBowlThenStroke(renderer, cx, cy, size, dpr, progress) {
-  const s = size * dpr;
-  const scale = s / 100;
-  const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale, A_REF_CENTER);
-  const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale, A_REF_CENTER);
-  const dsCx = cx + A_DOWNSTROKE_OFFSET.dx * dpr;
-  const dsCy = cy + A_DOWNSTROKE_OFFSET.dy * dpr;
-
-  if (progress <= 0.5) {
-    const alpha = progress / 0.5;
-    renderer.drawBowl(outer, inner, {
-      densityFn: (f) => aBowlDensity(f) * alpha, widthFn: aBowlWidth,
-    });
-  } else {
-    const dsAlpha = (progress - 0.5) / 0.5;
-    const fullBody = buildADownstrokeBody(dsCx, dsCy, scale);
-    renderer.drawBowl(outer, inner, {
-      densityFn: aBowlDensity, widthFn: aBowlWidth,
-      extraFills: [{ points: fullBody, pressure: 0.85 * dsAlpha }],
-    });
-  }
-}
-
-/** Animated 'a': entire letter fades in simultaneously. */
-export function renderAFadeAll(renderer, cx, cy, size, dpr, progress) {
-  const s = size * dpr;
-  const scale = s / 100;
-  const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale, A_REF_CENTER);
-  const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale, A_REF_CENTER);
-  const dsCx = cx + A_DOWNSTROKE_OFFSET.dx * dpr;
-  const dsCy = cy + A_DOWNSTROKE_OFFSET.dy * dpr;
-  const fullBody = buildADownstrokeBody(dsCx, dsCy, scale);
-
-  renderer.drawBowl(outer, inner, {
-    densityFn: (f) => aBowlDensity(f) * progress, widthFn: aBowlWidth,
-    extraFills: [{ points: fullBody, pressure: 0.85 * progress }],
-  });
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // REFERENCE DATA FOR DOM OVERLAYS

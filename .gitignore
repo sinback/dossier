@@ -7,5 +7,7 @@ resume_id.txt
 IMPORTANT_DOSSIER_FOR_CLAUDE.json
 # Claude image processing tempfile
 for_claude.png
+# Review judgment data (generated, not source)
+reviews/
 # Books are not code
 *.pdf

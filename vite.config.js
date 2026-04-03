@@ -135,8 +135,35 @@ const telemetryPlugin = {
   },
 };
 
+const reviewPlugin = {
+  name: 'dossier-review',
+  configureServer(server) {
+    server.middlewares.use('/api/review', (req, res) => {
+      if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          const letter = data.letter || 'unknown';
+          const ts = new Date().toISOString().replace(/[:.]/g, '-');
+          const filename = `matlack-review-${letter}-${ts}.json`;
+          const filepath = path.resolve(__dirname, 'reviews', filename);
+          fs.mkdirSync(path.resolve(__dirname, 'reviews'), { recursive: true });
+          fs.writeFileSync(filepath, JSON.stringify(data, null, 2));
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, file: filename }));
+        } catch {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to save' }));
+        }
+      });
+    });
+  },
+};
+
 export default defineConfig({
-  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin],
+  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin, reviewPlugin],
   server: {
     port: 3000,
     open: true,
