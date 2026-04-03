@@ -71,6 +71,8 @@ The JSON format:
 
 The `reviews/` directory is gitignored. Overrides are in CSS pixels before DPR scaling.
 
+**Do not productionize the review endpoint.** The `/api/review` route has no authentication, rate limiting, or input size validation — it writes directly to disk via the Vite dev server. It is a local development tool only.
+
 ## Stack
 
 React 19, Vite, WebGL2.
