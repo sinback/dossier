@@ -135,6 +135,42 @@ const telemetryPlugin = {
   },
 };
 
+const outlinePlugin = {
+  name: 'dossier-outlines',
+  configureServer(server) {
+    server.middlewares.use('/api/outlines', async (req, res) => {
+      if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
+      const url = new URL(req.url, 'http://localhost');
+      const letter = url.searchParams.get('letter');
+      if (!letter) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing ?letter= parameter' }));
+        return;
+      }
+      const overridesRaw = url.searchParams.get('overrides');
+      let overrides = {};
+      if (overridesRaw) {
+        try { overrides = JSON.parse(overridesRaw); }
+        catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid overrides JSON' }));
+          return;
+        }
+      }
+      try {
+        // Use Vite's ssrLoadModule to import the glyph module server-side
+        const mod = await server.ssrLoadModule('/src/styles/matlackGlyphs.js');
+        const outlines = mod.exportGlyphOutlines(letter, overrides);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ letter, overrides, outlines }));
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+  },
+};
+
 const reviewPlugin = {
   name: 'dossier-review',
   configureServer(server) {
@@ -163,7 +199,7 @@ const reviewPlugin = {
 };
 
 export default defineConfig({
-  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin, reviewPlugin],
+  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin, outlinePlugin, reviewPlugin],
   server: {
     port: 3000,
     open: true,

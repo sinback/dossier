@@ -565,6 +565,123 @@ function renderF(renderer, cx, cy, scale, dpr, overrides) {
 
 
 // ═════════════════════════════════════════════════════════════════════════════
+// OUTLINE EXPORT (for Hypothesis / Shapely intersection checks)
+//
+// Exports component outlines as coordinate arrays in ref-pixel space.
+// No canvas, no DPR — just raw geometry with overrides applied.
+// Python side: json.load → Shapely Polygon for each component.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Sample N points around an ellipse. Returns [[x,y], ...] for Shapely.
+// Ellipse defined in ref coords: { cx, cy, a, b, tilt (degrees) }.
+function sampleEllipse(e, n = 64) {
+  const rad = e.tilt * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const theta = (2 * Math.PI * i) / n;
+    const lx = e.a * Math.cos(theta);
+    const ly = e.b * Math.sin(theta);
+    pts.push([
+      e.cx + lx * cos - ly * sin,
+      e.cy + lx * sin + ly * cos,
+    ]);
+  }
+  return pts;
+}
+
+// Build a 4-corner parallelogram from two endpoints and a half-width.
+// Returns [[x,y], ...] (4 points) for Shapely.
+function buildBar(x0, y0, x1, y1, halfWidth) {
+  const dx = x1 - x0, dy = y1 - y0;
+  const len = Math.hypot(dx, dy);
+  const nx = -dy / len * halfWidth, ny = dx / len * halfWidth;
+  return [
+    [x0 + nx, y0 + ny],
+    [x1 + nx, y1 + ny],
+    [x1 - nx, y1 - ny],
+    [x0 - nx, y0 - ny],
+  ];
+}
+
+// Resolve an override in ref-pixel space (no DPR).
+function resolveRefOffset(componentName, defaults, overrides) {
+  const raw = overrides[componentName] ?? defaults;
+  return { dx: raw.dx ?? 0, dy: raw.dy ?? 0 };
+}
+
+function exportOutlinesA(overrides) {
+  const dsOff = resolveRefOffset('downstroke', A_DOWNSTROKE_OFFSET, overrides);
+  // Downstroke body: sample bezier segments in ref coords (cx=0, cy=0 relative to REF_CENTER)
+  const body = sampleSegments(
+    A_DOWNSTROKE_SEGS,
+    [2, 3, 4, 5, 6, 7],
+    12, dsOff.dx, dsOff.dy, 1, { x: 0, y: 0 }
+  ).map(p => [p.x + A_REF_CENTER.x, p.y + A_REF_CENTER.y]);
+
+  return {
+    bowl: { inner: sampleEllipse(A_BOWL.inner), outer: sampleEllipse(A_BOWL.outer) },
+    downstroke: body,
+  };
+}
+
+function exportOutlinesB(overrides) {
+  const bbOff = resolveRefOffset('barBowl', { dx: -4, dy: 0 }, overrides);
+  const shifted = {
+    inner: { ...B_BAR_BOWL.inner, cx: B_BAR_BOWL.inner.cx + bbOff.dx, cy: B_BAR_BOWL.inner.cy + bbOff.dy },
+    outer: { ...B_BAR_BOWL.outer, cx: B_BAR_BOWL.outer.cx + bbOff.dx, cy: B_BAR_BOWL.outer.cy + bbOff.dy },
+  };
+  return {
+    bowl: { inner: sampleEllipse(B_BOWL.inner), outer: sampleEllipse(B_BOWL.outer) },
+    barBowl: { inner: sampleEllipse(shifted.inner), outer: sampleEllipse(shifted.outer) },
+  };
+}
+
+function exportOutlinesF(overrides) {
+  const hlOff = resolveRefOffset('hairline', F_HAIRLINE_OFFSET, overrides);
+  const fbOff = resolveRefOffset('fatBar', F_FAT_BAR_OFFSET, overrides);
+
+  const h = F_HAIRLINE;
+  const hairline = buildBar(
+    h.x1 + hlOff.dx, h.y1 + hlOff.dy,
+    h.x2 + hlOff.dx, h.y2 + hlOff.dy,
+    h.halfHeight,
+  );
+
+  const fatBar = buildBar(
+    119.46 + fbOff.dx, 138.92 + fbOff.dy,
+    22.36 + fbOff.dx, 282.93 + fbOff.dy,
+    F_FAT_BAR_HALF_WIDTH,
+  );
+
+  return {
+    barBowl: { inner: sampleEllipse(F_BAR_BOWL.inner), outer: sampleEllipse(F_BAR_BOWL.outer) },
+    fatBar,
+    hairline,
+  };
+}
+
+/**
+ * Export component outlines as coordinate arrays for geometric analysis.
+ * All coordinates are in ref-pixel space (4x upscaled reference image coords).
+ *
+ * Bowl components return { inner: [[x,y],...], outer: [[x,y],...] }.
+ * Polygon components (fatBar, hairline, downstroke) return [[x,y],...].
+ *
+ * @param {string} glyph - letter key
+ * @param {object} [overrides={}] - same format as renderGlyph overrides
+ * @returns {object} keyed by component name
+ */
+export function exportGlyphOutlines(glyph, overrides = {}) {
+  switch (glyph) {
+    case 'a': return exportOutlinesA(overrides);
+    case 'b': return exportOutlinesB(overrides);
+    case 'f': return exportOutlinesF(overrides);
+    default: throw new Error(`Glyph ${glyph} not yet supported`);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // REFERENCE DATA FOR DOM OVERLAYS
 // Exported so MatlackCanvas.jsx can render SVG ellipses on reference images.
 // ═════════════════════════════════════════════════════════════════════════════
