@@ -1,0 +1,24 @@
+[project]
+name = "dossier-analysis"
+version = "0.1.0"
+description = "Analysis tools for Dossier handwriting and glyph systems"
+requires-python = ">=3.9"
+dependencies = [
+    "scipy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "hypothesis",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest",
+    "hypothesis",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]

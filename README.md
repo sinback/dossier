@@ -73,6 +73,37 @@ The `reviews/` directory is gitignored. Overrides are in CSS pixels before DPR s
 
 **Do not productionize the review endpoint.** The `/api/review` route has no authentication, rate limiting, or input size validation — it writes directly to disk via the Vite dev server. It is a local development tool only.
 
+## Python analysis tools
+
+The `matlack-declaration/tools/` directory contains analysis scripts for handwriting and glyph development.
+
+### Setup
+
+```bash
+# Ensure you have Python 3.9+ via pyenv (or your preferred version manager)
+pyenv local 3.13  # or your preferred version
+
+# Install dependencies via uv
+uv sync
+```
+
+Then run analysis scripts from the repo root:
+
+```bash
+python3 matlack-declaration/tools/fit_paths.py <svg_path_file>
+python3 matlack-declaration/tools/fit_paths.py <svg_path_file> --egg  # also fit egg curves
+```
+
+### Development
+
+Run tests:
+
+```bash
+uv run pytest
+```
+
+Tests use pytest and Hypothesis for property-based testing.
+
 ## Stack
 
 React 19, Vite, WebGL2.
