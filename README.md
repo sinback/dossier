@@ -26,6 +26,51 @@ npm run dev
 
 Then open `http://localhost:3000` to play with the paper physics sim tools, or `http://localhost:3000/matlack` if you're developing letter synthesis.
 
+### Review grid
+
+`http://localhost:3000/review?letter=f`
+
+A 3×3 candidate scoring tool for evaluating letter variations during development. The `?letter=` query parameter is required (supported: `a`, `b`, `f`).
+
+Each candidate card shows a rendered letter with a specific set of component offset overrides (displayed on the card), and provides:
+- Red / yellow / green judgment
+- "Talk about it later" checkbox for flagging interesting candidates
+- Free-text comment (140 chars)
+
+Clicking **Save JSON** writes a timestamped file to `reviews/`:
+
+```
+reviews/matlack-review-f-2026-04-03T22-46-07-356Z.json
+```
+
+The JSON format:
+```json
+{
+  "savedAt": "2026-04-03T22:46:07.352Z",
+  "letter": "f",
+  "candidates": [
+    {
+      "id": "candidate-1",
+      "title": "Candidate 1",
+      "renderSpec": {
+        "kind": "grid-search",
+        "overrides": {
+          "fatBar": { "dx": 0, "dy": -10 },
+          "hairline": { "dx": 8, "dy": -2 }
+        }
+      },
+      "judgment": {
+        "label": "red",
+        "talkAboutLater": false,
+        "comment": "fat bar barely overlaps bar-bowl"
+      }
+    }
+  ]
+}
+```
+
+The `reviews/` directory is gitignored. Overrides are in CSS pixels before DPR scaling.
+
 ## Stack
 
 React 19, Vite, WebGL2.
