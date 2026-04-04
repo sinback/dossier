@@ -428,6 +428,71 @@ const F_FAT_BAR_OFFSET = {
 
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'o'
+// Source: automated crescent fit on o/03 from high-res 1823 facsimile.
+// 'o' is the simplest letter: just a bowl, no extra components.
+// Confirmed tilt consistency with a/b/f at -45.5°.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Reference anchor: center of 'o's inner ellipse in ref o/03.
+// Image: reference/lowercase/o/03.png (75×66, 1x from high-res facsimile)
+const O_REF_CENTER = { x: 40.3, y: 33.5 };
+
+// ── 'o' bowl ellipses ────────────────────────────────────────────────────────
+// Automated fit via scipy Nelder-Mead crescent model (93.8% → 86.2% constrained).
+// Tilt constrained to match across inner/outer (known from a/b/f).
+// Inner/outer ratio: a=0.54, b=0.71 — similar to 'a'.
+const O_BOWL = {
+  inner: {
+    cx: 40.3,    // = O_REF_CENTER.x
+    cy: 33.5,    // = O_REF_CENTER.y
+    a: 20.8,     // semi-major
+    b: 10.8,     // semi-minor
+    tilt: -45.5  // consistent with a (-44.9), b (-43.5), f (-48.8)
+  },
+  outer: {
+    cx: 38.2,    // offset from inner: (-2.1, -0.4) — nearly concentric
+    cy: 33.1,
+    a: 38.8,     // outer/inner ratio: 1.87× (very close to a's 1.46× and b's 1.89×)
+    b: 15.3,     // outer/inner ratio: 1.42×
+    tilt: -45.5  // same as inner — 0° tilt diff (most uniform of all letters)
+  },
+};
+
+// ── 'o' bowl width function ──────────────────────────────────────────────────
+// Very similar to 'a' — thickest on the bottom-left (pen slowest),
+// thinnest at the top (pen fastest). No downstroke overlap zone,
+// so the upper-right is just thin like the top.
+// 'o' is slightly more uniform than 'a' since there's no downstroke
+// interaction distorting the width profile.
+function oBowlWidth(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+
+  // Top: thin. Pen moves fast across the top of the bowl.
+  if (f < 0.20) return 0.25;
+
+  // Left side: thin→fat. Pen decelerates.
+  if (f < 0.50) { const t = (f - 0.20) / 0.30; return smoothStep(0.25, 1.0, t); }
+
+  // Bottom-left: peak width. Pen at slowest.
+  if (f < 0.70) return 1.0;
+
+  // Bottom-right: fat→thin. Pen accelerates back up.
+  if (f < 0.95) return smoothStep(1.0, 0.25, (f - 0.70) / 0.25);
+
+  // Upper-right: thin, returning to top.
+  return 0.25;
+}
+
+// ── 'o' bowl density ─────────────────────────────────────────────────────────
+function oBowlDensity(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+  // Slightly lighter at the thin top, solid everywhere else.
+  if (f < 0.20) return 0.70;
+  return 0.85;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // PUBLIC RENDER FUNCTIONS
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -459,6 +524,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderB(renderer, cx, cy, scale, dpr, overrides)
     case 'f':
       return renderF(renderer, cx, cy, scale, dpr, overrides)
+    case 'o':
+      return renderO(renderer, cx, cy, scale, dpr, overrides)
     default:
       throw new Error(`Glyph ${glyph} not yet supported`)
   }
@@ -562,6 +629,20 @@ function renderF(renderer, cx, cy, scale, dpr, overrides) {
   });
 }
 
+/**
+ * Render a Matlack-style lowercase 'o'.
+ * Components: bowl (only).
+ */
+function renderO(renderer, cx, cy, scale, dpr, overrides) {
+  const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
+  const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
+
+  renderer.drawBowl(outer, inner, {
+    densityFn: oBowlDensity,
+    widthFn: oBowlWidth,
+  });
+}
+
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -661,6 +742,12 @@ function exportOutlinesF(overrides) {
   };
 }
 
+function exportOutlinesO() {
+  return {
+    bowl: { inner: sampleEllipse(O_BOWL.inner), outer: sampleEllipse(O_BOWL.outer) },
+  };
+}
+
 /**
  * Export component outlines as coordinate arrays for geometric analysis.
  * All coordinates are in ref-pixel space (4x upscaled reference image coords).
@@ -677,6 +764,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'a': return exportOutlinesA(overrides);
     case 'b': return exportOutlinesB(overrides);
     case 'f': return exportOutlinesF(overrides);
+    case 'o': return exportOutlinesO();
     default: throw new Error(`Glyph ${glyph} not yet supported`);
   }
 }

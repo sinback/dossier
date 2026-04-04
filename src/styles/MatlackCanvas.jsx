@@ -15,10 +15,8 @@ export default function MatlackCanvas() {
     renderer.setInkColor(30, 38, 58);
     const dpr = window.devicePixelRatio || 1;
     const sz  = 90;
-    const positions = [0.20, 0.40, 0.60, 0.80];
-    renderGlyph('a', renderer, canvas.width * positions[0], canvas.height * 0.50, sz, dpr);
-    renderGlyph('b', renderer, canvas.width * positions[1], canvas.height * 0.50, sz, dpr);
-    renderGlyph('f', renderer, canvas.width * positions[2], canvas.height * 0.50, sz, dpr);
+    const positions = [0.15];
+    renderGlyph('o', renderer, canvas.width * positions[0], canvas.height * 0.50, sz, dpr);
   }, []);
 
   // ── Reference strip ────────────────────────────────────────────────────────
@@ -56,11 +54,25 @@ export default function MatlackCanvas() {
     );
   }
 
-  const bRefs = [
-    { src: '/ref/b/01.png', key: '01', ...B_ELLIPSE_DATA['01'], label: 'b 01 ★' },
-    { src: '/ref/b/02.png', key: '02', ...B_ELLIPSE_DATA['02'], label: 'b 02' },
-    { src: '/ref/ab/01.png', key: 'ab', w: 192/4, h: 176/4, inner: null, outer: null, label: 'ab' },
-    { src: '/ref/bo/01.png', key: 'bo', w: 220/4, h: 192/4, inner: null, outer: null, label: 'bo' },
+  // Automated ellipse fits from crescent model (scipy Nelder-Mead, 1x coords)
+  const C_FIT = {
+    '01': { w: 67, h: 67,
+            inner: { cx: 39.7, cy: 27.5, a: 14.5, b: 7.1, tilt: -41.6 },
+            outer: { cx: 32.2, cy: 28.4, a: 34.5, b: 9.0, tilt: -44.1 }},
+    '02': { w: 68, h: 78, inner: null, outer: null },
+  };
+  const O_FIT = {
+    '03': { w: 75, h: 66,
+            inner: { cx: 40.3, cy: 33.5, a: 20.8, b: 10.8, tilt: -45.5 },
+            outer: { cx: 38.2, cy: 33.1, a: 38.8, b: 15.3, tilt: -45.5 }},
+  };
+
+  const refs = [
+    { src: '/ref/c/01.png', key: 'c01', ...C_FIT['01'], label: 'c 01 (auto)' },
+    { src: '/ref/c/02.png', key: 'c02', ...C_FIT['02'], label: 'c 02' },
+    { src: '/ref/o/03.png', key: 'o03', ...O_FIT['03'], label: 'o 03 (auto)' },
+    { src: '/ref/o/02.png', key: 'o02', w: 79, h: 74, inner: null, outer: null, label: 'o 02' },
+    { src: '/ref/b/01.png', key: 'b01', ...B_ELLIPSE_DATA['01'], label: 'b 01 ★' },
   ];
 
   return (
@@ -75,7 +87,7 @@ export default function MatlackCanvas() {
         fontFamily: 'monospace', fontSize: 11, color: '#666',
       }}>
         <span style={{ marginRight: 4 }}>ref:</span>
-        {bRefs.map(r => (
+        {refs.map(r => (
           <RefImage key={r.key} src={r.src} w={r.w} h={r.h}
             inner={r.inner} outer={r.outer} label={r.label} />
         ))}
