@@ -19,13 +19,15 @@ are what happens before and after the bowl.
 - **c**: Open bowl — no downstroke, no closure at right side. Just the crescent.
 - **e**: Like 'c' but with a horizontal cross-stroke at midline.
 
-### Implementation order (proposed)
-1. **a** — we're doing this now. Establishes bowl + downstroke pattern.
-2. **o** — simplest bowl, validates the arc primitive in isolation.
-3. **c** — open bowl, tests partial arc without closure.
-4. **d** — reuses 'a' bowl with taller downstroke, tests RULED ascender line.
-5. **e** — adds cross-stroke to bowl family.
-6. **g, q** — descenders, tests RULED descender line.
+### Implementation status
+1. **a** — ✅ Done. Bowl + downstroke. Hand-traced, grid-searched offsets.
+2. **o** — ✅ Done. Bowl only. First letter via automated crescent fit.
+3. **c** — In progress. ~260° partial arc. Automated fit attempted but
+   neighboring letter contamination makes isolation hard. Tilted-crop
+   capture strategy planned.
+4. **d** — Next. Reuses 'a' bowl with taller downstroke, tests RULED ascender line.
+5. **e** — Adds cross-stroke to bowl family.
+6. **g, q** — Descenders, tests RULED descender line.
 
 ### What transfers from 'a' to the family
 - Bowl arc shape, speed, and pressure profile should be nearly identical across all members.
@@ -39,7 +41,16 @@ are what happens before and after the bowl.
 These share a dominant full-height vertical stroke. Cross-strokes and loops
 differentiate them.
 
-*(To be populated when we start these letters.)*
+### Implementation status
+- **b** — ✅ Done. Two overlapping bowls (main + bar-bowl stem). Hand-traced.
+- **f** — ✅ Done. Bar-bowl + fat bar (descender) + hairline crossbar.
+  Hand-traced. Straight fat bar chosen over curved for legibility at font sizes.
+- Others not yet started.
+
+### Shared primitive: bar-bowl
+The elongated elliptical stem used by 'b' and 'f' (and likely 'l', 'h', 'k')
+is the same two-ellipse model as a round bowl, just with a very low aspect
+ratio (~0.13-0.17). Tilt is consistent with round bowls (~-48° to -50°).
 
 ---
 

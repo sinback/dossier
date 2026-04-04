@@ -73,6 +73,22 @@ The `reviews/` directory is gitignored. Overrides are in CSS pixels before DPR s
 
 **Do not productionize the review endpoint.** The `/api/review` route has no authentication, rate limiting, or input size validation — it writes directly to disk via the Vite dev server. It is a local development tool only.
 
+### Outline export
+
+`GET http://localhost:3000/api/outlines?letter=f`
+
+Returns component outlines as coordinate arrays in ref-pixel space, for geometric analysis with Shapely or similar tools. Accepts an optional `overrides` query param (URL-encoded JSON, same format as `renderGlyph` overrides).
+
+```bash
+# Default offsets
+curl 'http://localhost:3000/api/outlines?letter=f'
+
+# With overrides
+curl 'http://localhost:3000/api/outlines?letter=f&overrides={"fatBar":{"dx":12,"dy":-8}}'
+```
+
+Bowl components return `{ inner: [[x,y],...], outer: [[x,y],...] }`. Polygon components (fatBar, hairline, downstroke) return `[[x,y],...]`.
+
 ## Python analysis tools
 
 The `matlack-declaration/tools/` directory contains analysis scripts for handwriting and glyph development.

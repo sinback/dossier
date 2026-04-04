@@ -1,7 +1,10 @@
 # Bowl Ellipse Model — Cross-Letter Findings
 
-The two-ellipse model (outer - inner = ink) is validated across 'a' and 'b'.
-All hand-traced bowls fit ellipses with residuals < 0.08.
+The two-ellipse model (outer - inner = ink) is validated across 'a', 'b', 'f',
+and 'o'. Hand-traced bowls fit ellipses with residuals < 0.08. Automated
+crescent fitting (scipy Nelder-Mead on thresholded reference images) has also
+been validated for 'o', confirming the model works for both manual and
+automated extraction pipelines.
 
 ## Consistent properties across letters
 
@@ -47,12 +50,45 @@ stroke width varies around the bowl:
 
 This is a simple, powerful parameter for controlling per-letter personality.
 
-## Predictions for other bowl letters
+### Lowercase 'f' — bar-bowl (ref fir/01, 4x scale)
+- The bar-bowl (elongated stem) uses the same two-ellipse model.
+- Inner: cx=171.4, cy=74.6, a=52.9, b=7.1, tilt=-48.8°, aspect=0.13
+- Outer: cx=176.0, cy=71.8, a=84.9, b=14.4, tilt=-50.0°, aspect=0.17
+- Tilt difference: **1.2°** — very uniform width (like 'b')
+- Extremely elongated (aspect 0.13-0.17) — this is a stem, not a round bowl.
+- Additional components: fat bar (descender), hairline crossbar.
 
-Based on the pattern, expect:
-- **'o':** Similar tilt (~-44°), maybe even less tilt difference than 'b'
-  since it's the simplest bowl with no attached stroke.
+### Lowercase 'o' (ref 03, 1x from high-res facsimile — automated fit)
+- Inner: cx=40.3, cy=33.5, a=20.8, b=10.8, tilt=-45.5°
+- Outer: cx=38.2, cy=33.1, a=38.8, b=15.3, tilt=-45.5°
+- Center offset: (-2.1, -0.4) — nearly concentric
+- Tilt difference: **0.0°** — most uniform width of all letters (predicted!)
+- Outer/inner ratio: a=1.87×, b=1.42×
+- Fitted via automated crescent model, not hand-traced.
+
+## Confirmed predictions
+
+- **'o' tilt: -45.5°** — confirmed, matching the ~-44° hand constant.
+- **'o' tilt diff: 0°** — even less than 'b' (1.3°), as predicted.
+- **'f' tilt: -48.8°/-50.0°** — slightly steeper but within the hand's range.
+
+## Remaining predictions
+
 - **'d':** Similar to 'a' (bowl + tall stroke), probably similar tilt diff.
-- **'c':** Partial bowl, may not close cleanly for ellipse fitting.
-  The open side is the thin part (right side).
+- **'c':** Partial bowl (~260° arc). Automated fitting attempted but
+  contamination from neighboring letters makes isolation harder.
+  Tilted-crop capture strategy may improve results.
 - **'g', 'q':** Bowl + descender. Bowl should match 'a'/'b' in shape.
+
+## Automated fitting notes
+
+For simple, isolated bowls (like 'o'), automated crescent fitting works well:
+1. Threshold image to binary (ink < 140 for high-res facsimile)
+2. Find largest connected component
+3. Optimize two-ellipse crescent (outer - inner) to minimize pixel mismatch
+4. Constrain inner/outer tilt difference to < 5° (known from hand data)
+
+For compound letters or letters with cursive connections, hand-traced paths
+remain more reliable. The tilted-crop technique (rotating the source image
+by ~45° before rectangle-selecting) may help isolate letters whose strokes
+overlap with neighbors due to the consistent writing slant.
