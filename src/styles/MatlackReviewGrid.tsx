@@ -7,7 +7,7 @@ import { useTheme } from './theme.jsx';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MatlackRenderer = _MatlackRenderer as any;
 
-const SUPPORTED_LETTERS = ['a', 'b', 'f', 'o'] as const;
+const SUPPORTED_LETTERS = ['a', 'b', 'c', 'f', 'o'] as const;
 
 const LABEL_OPTIONS = [
   { value: 'red',    label: '🔴 Red'    },
@@ -20,6 +20,7 @@ const LABEL_OPTIONS = [
 const LOCKED_OFFSETS = {
   a: { downstroke: { dx: 4, dy: 2 } },
   b: { barBowl: { dx: -4, dy: 0 } },
+  c: { topBlob: { dx: -4, dy: 4 } },  // review round 4, candidate 1
   f: { fatBar: { dx: 8, dy: -10 }, hairline: { dx: 8, dy: -2 } },
   o: {},  // no offset components — just a bowl
 };

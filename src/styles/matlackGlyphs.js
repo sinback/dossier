@@ -428,6 +428,93 @@ const F_FAT_BAR_OFFSET = {
 
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'c'
+// Source: hand-traced inner + outer arcs on c/02 from high-res facsimile,
+// ellipse fit via least-squares with tilt constrained to [-40, -52].
+// 'c' is a partial bowl (~260° arc, gap on the right side).
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Reference anchor: center of 'c's inner ellipse in ref c/02 (68×78, 1x).
+const C_REF_CENTER = { x: 40.5, y: 43.1 };
+
+// ── 'c' bowl ellipses ────────────────────────────────────────────────────────
+// Hand-traced arcs fitted with tilt constrained to known hand range.
+// Outer residual 0.178, inner 0.125 — higher than full bowls due to partial arc.
+const C_BOWL = {
+  inner: {
+    cx: 40.5,
+    cy: 43.1,
+    a: 24.6,
+    b: 16.4,
+    tilt: -52.0
+  },
+  outer: {
+    cx: 30.8,
+    cy: 42.1,
+    a: 35.0,
+    b: 19.7,
+    tilt: -52.0
+  },
+};
+
+// ── 'c' top blob (entry ink pooling) ─────────────────────────────────────────
+// Closed bezier loop where the pen pauses at the top of the arc.
+// Hand-traced from c/02. Rendered as a filled polygon.
+const C_TOP_BLOB_SEGS = [
+  [[48.97,10.11],[48.97,10.11],[45.13,19.64],[45.13,19.64]],
+  [[45.13,19.64],[43.98,19.57],[43.23,29.91],[46.29,30.09]],
+  [[46.29,30.09],[47.87,32.36],[57.77,20.41],[57.14,19.50]],
+  [[57.14,19.50],[64.23,8.85],[52.53,4.77],[48.97,10.11]],
+];
+
+// ── 'c' bottom hairline (exit flick) ────────────────────────────────────────
+// Short curved stroke at the bottom-right exit of the arc.
+// Hand-traced from c/02. Rendered as a thin parallelogram.
+const C_BOTTOM_HAIRLINE = {
+  x1: 27.39, y1: 67.26,   // start (lower-left)
+  x2: 48.94, y2: 59.57,   // end (lower-right)
+  halfHeight: 1.5,         // thin stroke
+};
+
+// ── 'c' bowl width function ──────────────────────────────────────────────────
+// Like 'a' but with the right side (~0.85-0.15 in arcFrac) tapered to zero.
+// The gap creates the open mouth of the 'c'.
+// Taper at endpoints prevents a hard edge where the stroke cuts off.
+function cBowlWidth(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+
+  // Gap region: wide open mouth on the right side.
+  // Exit taper (bottom-right): arc fades in slowly.
+  if (f < 0.14) return smoothStep(0, 0.20, f / 0.14);
+
+  // Entry taper (top → top-right): arc fades out early, well before
+  // the right side, so the gap is wide and 'c' reads as open, not 'o'.
+  // Blob handles all visual weight in the top-right.
+  if (f > 0.82) return 0;                                        // gap: fully open
+  if (f > 0.65) return smoothStep(0.25, 0, (f - 0.65) / 0.17);  // taper into gap
+
+  // Thin top
+  if (f < 0.22) return 0.25;
+
+  // Left side: thin→fat
+  if (f < 0.50) { const t = (f - 0.22) / 0.28; return smoothStep(0.25, 1.0, t); }
+
+  // Bottom-left: peak
+  if (f < 0.70) return 1.0;
+
+  // Bottom-right: fat→thin approaching the exit
+  return smoothStep(1.0, 0.25, (f - 0.70) / 0.15);
+}
+
+function cBowlDensity(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+  // Fade density at exit taper only — entry stays solid to merge with blob
+  if (f < 0.05) return smoothStep(0, 0.75, f / 0.05);
+  if (f < 0.20) return 0.70;
+  return 0.85;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'o'
 // Source: automated crescent fit on o/03 from high-res 1823 facsimile.
 // 'o' is the simplest letter: just a bowl, no extra components.
@@ -522,6 +609,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderA(renderer, cx, cy, scale, dpr, overrides)
     case 'b':
       return renderB(renderer, cx, cy, scale, dpr, overrides)
+    case 'c':
+      return renderC(renderer, cx, cy, scale, dpr, overrides)
     case 'f':
       return renderF(renderer, cx, cy, scale, dpr, overrides)
     case 'o':
@@ -625,6 +714,60 @@ function renderF(renderer, cx, cy, scale, dpr, overrides) {
     extraFills: [
       { points: fatBarPoly, pressure: 0.85 },
       { points: hairline, pressure: 0.75 },
+    ],
+  });
+}
+
+/**
+ * Render a Matlack-style lowercase 'c'.
+ * Components: bowl (partial arc), topBlob (filled), bottomHairline (thin stroke).
+ */
+function renderC(renderer, cx, cy, scale, dpr, overrides) {
+  const inner = scaleEllipse(C_BOWL.inner, cx, cy, scale, C_REF_CENTER);
+  const outer = scaleEllipse(C_BOWL.outer, cx, cy, scale, C_REF_CENTER);
+
+  // Top blob: sample bezier segments into a filled polygon
+  const blobOff = resolveOffset('topBlob', { dx: 0, dy: 0 }, overrides, dpr);
+  const blob = sampleSegments(
+    C_TOP_BLOB_SEGS,
+    [0, 1, 2, 3],
+    12, cx + blobOff.dx, cy + blobOff.dy, scale, C_REF_CENTER
+  );
+
+  // Bottom hairline: thin parallelogram
+  const h = C_BOTTOM_HAIRLINE;
+  const hl = refToCanvas(h.x1, h.y1, cx, cy, scale, C_REF_CENTER);
+  const hr = refToCanvas(h.x2, h.y2, cx, cy, scale, C_REF_CENTER);
+  const hh = h.halfHeight * scale;
+  const hdx = hr.x - hl.x, hdy = hr.y - hl.y;
+  const hlen = Math.hypot(hdx, hdy);
+  const hnx = -hdy / hlen * hh, hny = hdx / hlen * hh;
+  const hairline = [
+    { x: hl.x + hnx, y: hl.y + hny },
+    { x: hr.x + hnx, y: hr.y + hny },
+    { x: hr.x - hnx, y: hr.y - hny },
+    { x: hl.x - hnx, y: hl.y - hny },
+  ];
+
+  // Pass 1: bowl arc + bottom hairline (inner ellipse punches out the counter)
+  renderer.drawBowl(outer, inner, {
+    densityFn: cBowlDensity,
+    widthFn: cBowlWidth,
+    extraFills: [
+      { points: hairline, pressure: 0.70 },
+    ],
+  });
+
+  // Pass 2: top blob in its own pass — no inner cutout, so the blob
+  // won't be erased by the bowl's counter punch-out.
+  // Uses a tiny dummy ellipse pair (zero-size inner) to avoid cutout.
+  const blobCenter = {
+    cx: cx + blobOff.dx, cy: cy + blobOff.dy,
+    a: 0.01, b: 0.01, tilt: 0,
+  };
+  renderer.drawBowl(blobCenter, blobCenter, {
+    extraFills: [
+      { points: blob, pressure: 0.85 },
     ],
   });
 }
@@ -742,6 +885,12 @@ function exportOutlinesF(overrides) {
   };
 }
 
+function exportOutlinesC() {
+  return {
+    bowl: { inner: sampleEllipse(C_BOWL.inner), outer: sampleEllipse(C_BOWL.outer) },
+  };
+}
+
 function exportOutlinesO() {
   return {
     bowl: { inner: sampleEllipse(O_BOWL.inner), outer: sampleEllipse(O_BOWL.outer) },
@@ -763,6 +912,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
   switch (glyph) {
     case 'a': return exportOutlinesA(overrides);
     case 'b': return exportOutlinesB(overrides);
+    case 'c': return exportOutlinesC();
     case 'f': return exportOutlinesF(overrides);
     case 'o': return exportOutlinesO();
     default: throw new Error(`Glyph ${glyph} not yet supported`);

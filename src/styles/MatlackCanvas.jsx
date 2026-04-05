@@ -15,8 +15,8 @@ export default function MatlackCanvas() {
     renderer.setInkColor(30, 38, 58);
     const dpr = window.devicePixelRatio || 1;
     const sz  = 90;
-    const positions = [0.15];
-    renderGlyph('o', renderer, canvas.width * positions[0], canvas.height * 0.50, sz, dpr);
+    renderGlyph('c', renderer, canvas.width * 0.15, canvas.height * 0.50, sz, dpr);
+    renderGlyph('o', renderer, canvas.width * 0.40, canvas.height * 0.50, sz, dpr);
   }, []);
 
   // ── Reference strip ────────────────────────────────────────────────────────
