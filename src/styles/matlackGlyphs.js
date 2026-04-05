@@ -749,24 +749,14 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
     { x: hl.x - hnx, y: hl.y - hny },
   ];
 
-  // Pass 1: bowl arc + bottom hairline (inner ellipse punches out the counter)
   renderer.drawBowl(outer, inner, {
     densityFn: cBowlDensity,
     widthFn: cBowlWidth,
     extraFills: [
       { points: hairline, pressure: 0.70 },
     ],
-  });
-
-  // Pass 2: top blob in its own pass — no inner cutout, so the blob
-  // won't be erased by the bowl's counter punch-out.
-  // Uses a tiny dummy ellipse pair (zero-size inner) to avoid cutout.
-  const blobCenter = {
-    cx: cx + blobOff.dx, cy: cy + blobOff.dy,
-    a: 0.01, b: 0.01, tilt: 0,
-  };
-  renderer.drawBowl(blobCenter, blobCenter, {
-    extraFills: [
+    // Blob renders after inner cutout so it isn't erased by the counter.
+    overlayFills: [
       { points: blob, pressure: 0.85 },
     ],
   });
