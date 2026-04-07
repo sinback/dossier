@@ -85,6 +85,13 @@ EOF
 
   snap)
     # Just screenshot, no draw command
+    echo "Hard-refreshing Firefox..."
+    hyprctl dispatch focuswindow class:firefox > /dev/null 2>&1
+    sleep 0.3
+    wtype -M ctrl -M shift -k r -m shift -m ctrl
+    sleep 1.5
+    hyprctl dispatch focuswindow class:kitty > /dev/null 2>&1
+    echo "Done."
     ;;
 
   *)

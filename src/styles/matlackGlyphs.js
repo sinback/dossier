@@ -116,6 +116,23 @@ function sampleSegments(segs, segIndices, n, cx, cy, scale, refCenter) {
 // off from the reference images. Value found empirically during 'a' iteration.
 const BOWL_PHASE = 0.03;  // ~10° of a full 360° revolution
 
+// ── Bowl arc zone boundaries ─────────────────────────────────────────────────
+// Named by what the pen is doing at each transition point.
+// These are arcFrac values AFTER BOWL_PHASE is applied (the 'f' variable
+// in width functions). All bowl-family letters share these boundaries;
+// only the width values at each zone differ per letter.
+//
+//   ENTRY (0.00) → pen enters bowl (upper-right). Start of the arc.
+//   LIFT  (0.22) → pen lightens / accelerates. Thin zone ends.
+//   PRESS (0.55) → pen hits peak pressure. Thickest zone starts.
+//   RISE  (0.78) → pen accelerates out. Peak zone ends.
+//
+// The cycle is: ENTRY → thin top → LIFT → left descent → PRESS → peak → RISE → right ascent → ENTRY
+const ARC_ENTRY = 0.00;  // upper-right: pen enters
+const ARC_LIFT  = 0.22;  // top-left: pen lightens
+const ARC_PRESS = 0.55;  // bottom-left: peak pressure begins
+const ARC_RISE  = 0.78;  // bottom-right: pen starts rising
+
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'a'
 // Source: sinback's hand traces on ref a/09 (4x upscaled Declaration facsimile)
@@ -207,18 +224,18 @@ function aBowlWidth(arcFracRaw) {
 
   // Zone: segment 1 — thin top. Pen is moving fast here.
   // Floor 0.20 = 20% of max gap. Visible but clearly thinner than the fat zones.
-  if (f < 0.22) return 0.20;
+  if (f < ARC_LIFT) return 0.20;
 
   // Transition: segment 2 — thin→fat. Pen decelerates through the left side.
   // Duration: 33% of arc (~120°). Cosine ease for smooth thickening.
-  if (f < 0.55) { const t = (f - 0.22) / 0.33; return smoothStep(0.20, 1.0, t); }
+  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / 0.33; return smoothStep(0.20, 1.0, t); }
 
   // Zone: bottom-left — peak width. Maximum ink deposit, pen at slowest.
-  if (f < 0.75) return 1.0;
+  if (f < ARC_RISE) return 1.0;
 
   // Transition: segment 3 — fat→moderate. Pen accelerates out of the bottom.
-  // Duration: 17% of arc (~60°). Eases back to the moderate downstroke zone.
-  if (f < 0.92) return smoothStep(1.0, 0.45, (f - 0.75) / 0.17);
+  // Duration: 14% of arc (~50°). Eases back to the moderate downstroke zone.
+  if (f < 0.92) return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.14);
 
   // Zone: lower-right — moderate, returning to downstroke territory.
   return smoothStep(0.45, 0.45, (f - 0.92) / 0.08);
@@ -317,10 +334,10 @@ function bBowlWidth(arcFracRaw) {
   const f = (1.0 - arcFracRaw + BOWL_PHASE + 1) % 1.0;
   if (f < 0.05) return smoothStep(0.45, 0.45, f / 0.05);           // stem side: stable
   if (f < 0.12) return smoothStep(0.45, 0.30, (f - 0.05) / 0.07);  // ease into thin
-  if (f < 0.22) return 0.30;                                        // thin floor (higher than 'a')
-  if (f < 0.55) { const t = (f - 0.22) / 0.33; return smoothStep(0.30, 1.0, t); }  // thin→fat
-  if (f < 0.75) return 1.0;                                         // peak width (bottom-right)
-  if (f < 0.92) return smoothStep(1.0, 0.45, (f - 0.75) / 0.17);   // fat→moderate
+  if (f < ARC_LIFT) return 0.30;                                        // thin floor (higher than 'a')
+  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / 0.33; return smoothStep(0.30, 1.0, t); }  // thin→fat
+  if (f < ARC_RISE) return 1.0;                                         // peak width (bottom-right)
+  if (f < 0.92) return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.14);   // fat→moderate
   return smoothStep(0.45, 0.45, (f - 0.92) / 0.08);                // returning to stem zone
 }
 
@@ -494,22 +511,133 @@ function cBowlWidth(arcFracRaw) {
   if (f > 0.65) return smoothStep(0.25, 0, (f - 0.65) / 0.17);  // taper into gap
 
   // Thin top
-  if (f < 0.22) return 0.25;
+  if (f < ARC_LIFT) return 0.25;
 
   // Left side: thin→fat
-  if (f < 0.50) { const t = (f - 0.22) / 0.28; return smoothStep(0.25, 1.0, t); }
+  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / (ARC_PRESS - ARC_LIFT); return smoothStep(0.25, 1.0, t); }
 
   // Bottom-left: peak
-  if (f < 0.70) return 1.0;
+  if (f < ARC_RISE) return 1.0;
 
   // Bottom-right: fat→thin approaching the exit
-  return smoothStep(1.0, 0.25, (f - 0.70) / 0.15);
+  return smoothStep(1.0, 0.25, (f - ARC_RISE) / 0.12);
 }
 
 function cBowlDensity(arcFracRaw) {
   const f = (arcFracRaw + BOWL_PHASE) % 1.0;
   // Fade density at exit taper only — entry stays solid to merge with blob
   if (f < 0.05) return smoothStep(0, 0.75, f / 0.05);
+  if (f < 0.20) return 0.70;
+  return 0.85;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'd'
+// Source: hand-traced on d/01 from high-res 1823 facsimile (151×156, 1x).
+// Structure: bowl (like 'a') + straight downstroke extending above.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const D_REF_CENTER = { x: 41.2, y: 121.2 };  // inner ellipse center
+
+const D_BOWL = {
+  inner: {
+    cx: 41.2, cy: 121.2,
+    a: 28.8, b: 10.8, tilt: -44.5   // tilt in hand's range, aspect 0.38
+  },
+  outer: {
+    cx: 38.0, cy: 123.3,
+    a: 39.5, b: 15.9, tilt: -38.2   // tilt diff 5.4° — like 'a', dramatic variation
+  },
+};
+
+// Downstroke: straight line from top-right to bottom-left.
+// Endpoints from hand-traced path d/01.
+const D_DOWNSTROKE = {
+  x1: 139.45, y1: 5.14,    // top (extends well above bowl — ascender)
+  x2: 53.86,  y2: 134.02,  // bottom (meets bowl)
+};
+const D_DOWNSTROKE_HALF_WIDTH = 4.5;  // measured from reference image
+
+// Offset for downstroke position relative to bowl center (grid-searchable).
+const D_DOWNSTROKE_OFFSET = { dx: 0, dy: 0 };
+
+// 'd' bowl width: same as 'a' — thick bottom-left, thin top.
+// The tilt diff (5.4°) already creates good variation; widthFn reinforces it.
+// Top is fat (0.80) to merge with downstroke.
+function dBowlWidth(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+
+  // Fat top — merges with downstroke
+  if (f < ARC_LIFT) return 0.80;
+
+  // Left side: thin→fat
+  if (f < ARC_PRESS) { const t = (f - 0.26) / 0.36; return smoothStep(0.80, 1.0, t); }
+
+  // Bottom-left: peak
+  if (f < ARC_RISE) return 1.0;
+
+  // Bottom-right: fat→moderate
+  return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.10);
+}
+
+function dBowlDensity(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+  if (f > 0.10 && f < 0.25) return 0.65;
+  return 0.85;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'q'
+// Source: hand-traced on q/01 from high-res 1823 facsimile (84×117, 1x).
+// Structure: bowl + straight downstroke extending below (descender).
+// Very similar to 'd' but the downstroke goes down instead of up.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const Q_REF_CENTER = { x: 36.6, y: 40.3 };  // inner ellipse center
+
+const Q_BOWL = {
+  inner: {
+    cx: 36.6, cy: 40.3,
+    a: 21.9, b: 7.7, tilt: -48.6    // tilt in hand's range, aspect 0.35
+  },
+  outer: {
+    cx: 30.9, cy: 46.0,
+    a: 31.9, b: 13.1, tilt: -49.1   // tilt diff 0.4° — nearly zero, like 'o'
+  },
+};
+
+// Downstroke: straight line from top-right to bottom-left (descender).
+const Q_DOWNSTROKE = {
+  x1: 67.33, y1: 14.62,   // top (starts above bowl)
+  x2: 6.55,  y2: 111.00,  // bottom (extends below — descender)
+};
+const Q_DOWNSTROKE_HALF_WIDTH = 6.5;  // measured from reference image
+
+const Q_DOWNSTROKE_OFFSET = { dx: 0, dy: 4 };
+
+// 'q' bowl width: nearly uniform (tilt diff ~0°, like 'o').
+// Top is fat (0.80) to merge with downstroke, same approach as 'd'.
+function qBowlWidth(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
+
+  // Fat top — merges with downstroke
+  if (f < ARC_LIFT) return 0.80;
+
+  // Left side: fat top→peak
+  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / 0.33; return smoothStep(0.80, 1.0, t); }
+
+  // Bottom-left: peak
+  if (f < ARC_RISE) return 1.0;
+
+  // Bottom-right: fat→moderate
+  if (f < 0.85) { return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.07) };
+
+  // Upper-right: thin, returning to top
+  return 0.80;
+}
+
+function qBowlDensity(arcFracRaw) {
+  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
   if (f < 0.20) return 0.70;
   return 0.85;
 }
@@ -559,13 +687,13 @@ function oBowlWidth(arcFracRaw) {
   if (f < 0.20) return 0.25;
 
   // Left side: thin→fat. Pen decelerates.
-  if (f < 0.50) { const t = (f - 0.20) / 0.30; return smoothStep(0.25, 1.0, t); }
+  if (f < ARC_PRESS) { const t = (f - 0.20) / (ARC_PRESS - 0.20); return smoothStep(0.25, 1.0, t); }
 
   // Bottom-left: peak width. Pen at slowest.
-  if (f < 0.70) return 1.0;
+  if (f < ARC_RISE) return 1.0;
 
   // Bottom-right: fat→thin. Pen accelerates back up.
-  if (f < 0.95) return smoothStep(1.0, 0.25, (f - 0.70) / 0.25);
+  if (f < 0.95) return smoothStep(1.0, 0.25, (f - ARC_RISE) / 0.17);
 
   // Upper-right: thin, returning to top.
   return 0.25;
@@ -602,6 +730,20 @@ function oBowlDensity(arcFracRaw) {
  *   Replaces the letter's baked-in default for that component.
  *   Example: { hairline: { dx: 8, dy: -2 }, fatBar: { dx: 4, dy: -6 } }
  */
+// Returns { outer, refCenter } for a glyph — used for debug tick marks.
+export function glyphOuterEllipse(glyph) {
+  const map = {
+    a: { outer: A_BOWL.outer, refCenter: A_REF_CENTER },
+    b: { outer: B_BOWL.outer, refCenter: B_REF_CENTER },
+    c: { outer: C_BOWL.outer, refCenter: C_REF_CENTER },
+    d: { outer: D_BOWL.outer, refCenter: D_REF_CENTER },
+    f: { outer: F_BAR_BOWL.outer, refCenter: F_REF_CENTER },
+    o: { outer: O_BOWL.outer, refCenter: O_REF_CENTER },
+    q: { outer: Q_BOWL.outer, refCenter: Q_REF_CENTER },
+  };
+  return map[glyph] ?? null;
+}
+
 export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) {
   const scale = (size * dpr) / 100;
   switch(glyph) {
@@ -611,10 +753,14 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderB(renderer, cx, cy, scale, dpr, overrides)
     case 'c':
       return renderC(renderer, cx, cy, scale, dpr, overrides)
+    case 'd':
+      return renderD(renderer, cx, cy, scale, dpr, overrides)
     case 'f':
       return renderF(renderer, cx, cy, scale, dpr, overrides)
     case 'o':
       return renderO(renderer, cx, cy, scale, dpr, overrides)
+    case 'q':
+      return renderQ(renderer, cx, cy, scale, dpr, overrides)
     default:
       throw new Error(`Glyph ${glyph} not yet supported`)
   }
@@ -766,6 +912,74 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'o'.
  * Components: bowl (only).
  */
+/**
+ * Render a Matlack-style lowercase 'd'.
+ * Components: bowl, downstroke (ascender).
+ */
+function renderD(renderer, cx, cy, scale, dpr, overrides) {
+  const inner = scaleEllipse(D_BOWL.inner, cx, cy, scale, D_REF_CENTER);
+  const outer = scaleEllipse(D_BOWL.outer, cx, cy, scale, D_REF_CENTER);
+
+  // Downstroke: straight fat bar from top to bottom
+  const dsOff = resolveOffset('downstroke', D_DOWNSTROKE_OFFSET, overrides, dpr);
+  const hw = D_DOWNSTROKE_HALF_WIDTH * scale;
+  const p0 = refToCanvas(D_DOWNSTROKE.x1, D_DOWNSTROKE.y1, cx, cy, scale, D_REF_CENTER);
+  const p1 = refToCanvas(D_DOWNSTROKE.x2, D_DOWNSTROKE.y2, cx, cy, scale, D_REF_CENTER);
+  p0.x += dsOff.dx; p0.y += dsOff.dy;
+  p1.x += dsOff.dx; p1.y += dsOff.dy;
+  const dx = p1.x - p0.x, dy = p1.y - p0.y;
+  const len = Math.hypot(dx, dy);
+  const nx = -dy / len * hw, ny = dx / len * hw;
+  const downstroke = [
+    { x: p0.x + nx, y: p0.y + ny },
+    { x: p1.x + nx, y: p1.y + ny },
+    { x: p1.x - nx, y: p1.y - ny },
+    { x: p0.x - nx, y: p0.y - ny },
+  ];
+
+  renderer.drawBowl(outer, inner, {
+    densityFn: dBowlDensity,
+    widthFn: dBowlWidth,
+    overlayFills: [
+      { points: downstroke, pressure: 0.85 },
+    ],
+  });
+}
+
+/**
+ * Render a Matlack-style lowercase 'q'.
+ * Components: bowl, downstroke (descender).
+ */
+function renderQ(renderer, cx, cy, scale, dpr, overrides) {
+  const inner = scaleEllipse(Q_BOWL.inner, cx, cy, scale, Q_REF_CENTER);
+  const outer = scaleEllipse(Q_BOWL.outer, cx, cy, scale, Q_REF_CENTER);
+
+  // Downstroke: straight fat bar from top to bottom (descender)
+  const dsOff = resolveOffset('downstroke', Q_DOWNSTROKE_OFFSET, overrides, dpr);
+  const hw = Q_DOWNSTROKE_HALF_WIDTH * scale;
+  const p0 = refToCanvas(Q_DOWNSTROKE.x1, Q_DOWNSTROKE.y1, cx, cy, scale, Q_REF_CENTER);
+  const p1 = refToCanvas(Q_DOWNSTROKE.x2, Q_DOWNSTROKE.y2, cx, cy, scale, Q_REF_CENTER);
+  p0.x += dsOff.dx; p0.y += dsOff.dy;
+  p1.x += dsOff.dx; p1.y += dsOff.dy;
+  const dx = p1.x - p0.x, dy = p1.y - p0.y;
+  const len = Math.hypot(dx, dy);
+  const nx = -dy / len * hw, ny = dx / len * hw;
+  const downstroke = [
+    { x: p0.x + nx, y: p0.y + ny },
+    { x: p1.x + nx, y: p1.y + ny },
+    { x: p1.x - nx, y: p1.y - ny },
+    { x: p0.x - nx, y: p0.y - ny },
+  ];
+
+  renderer.drawBowl(outer, inner, {
+    densityFn: qBowlDensity,
+    widthFn: qBowlWidth,
+    overlayFills: [
+      { points: downstroke, pressure: 0.85 },
+    ],
+  });
+}
+
 function renderO(renderer, cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
   const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
@@ -875,6 +1089,32 @@ function exportOutlinesF(overrides) {
   };
 }
 
+function exportOutlinesD(overrides) {
+  const dsOff = resolveRefOffset('downstroke', D_DOWNSTROKE_OFFSET, overrides);
+  const downstroke = buildBar(
+    D_DOWNSTROKE.x1 + dsOff.dx, D_DOWNSTROKE.y1 + dsOff.dy,
+    D_DOWNSTROKE.x2 + dsOff.dx, D_DOWNSTROKE.y2 + dsOff.dy,
+    D_DOWNSTROKE_HALF_WIDTH,
+  );
+  return {
+    bowl: { inner: sampleEllipse(D_BOWL.inner), outer: sampleEllipse(D_BOWL.outer) },
+    downstroke,
+  };
+}
+
+function exportOutlinesQ(overrides) {
+  const dsOff = resolveRefOffset('downstroke', Q_DOWNSTROKE_OFFSET, overrides);
+  const downstroke = buildBar(
+    Q_DOWNSTROKE.x1 + dsOff.dx, Q_DOWNSTROKE.y1 + dsOff.dy,
+    Q_DOWNSTROKE.x2 + dsOff.dx, Q_DOWNSTROKE.y2 + dsOff.dy,
+    Q_DOWNSTROKE_HALF_WIDTH,
+  );
+  return {
+    bowl: { inner: sampleEllipse(Q_BOWL.inner), outer: sampleEllipse(Q_BOWL.outer) },
+    downstroke,
+  };
+}
+
 function exportOutlinesC() {
   return {
     bowl: { inner: sampleEllipse(C_BOWL.inner), outer: sampleEllipse(C_BOWL.outer) },
@@ -903,8 +1143,10 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'a': return exportOutlinesA(overrides);
     case 'b': return exportOutlinesB(overrides);
     case 'c': return exportOutlinesC();
+    case 'd': return exportOutlinesD(overrides);
     case 'f': return exportOutlinesF(overrides);
     case 'o': return exportOutlinesO();
+    case 'q': return exportOutlinesQ(overrides);
     default: throw new Error(`Glyph ${glyph} not yet supported`);
   }
 }
