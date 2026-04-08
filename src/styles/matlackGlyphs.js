@@ -58,6 +58,20 @@ function resolveOffset(componentName, defaults, overrides, dpr) {
   return { dx: (raw.dx ?? 0) * dpr, dy: (raw.dy ?? 0) * dpr };
 }
 
+// ── Scale polygon around centroid ─────────────────────────────────────────────
+// Scales an array of {x, y} points by (sx, sy) around their centroid.
+// Used for review-grid scale variations on blobs, flicks, etc.
+function scalePolygon(points, sx, sy) {
+  if (!points.length || (sx === 1 && sy === 1)) return points;
+  let mcx = 0, mcy = 0;
+  for (const p of points) { mcx += p.x; mcy += p.y; }
+  mcx /= points.length; mcy /= points.length;
+  return points.map(p => ({
+    x: mcx + (p.x - mcx) * sx,
+    y: mcy + (p.y - mcy) * sy,
+  }));
+}
+
 // ── Tapered ribbon builder ────────────────────────────────────────────────────
 // Builds a closed polygon from a centerline polyline with power-law width taper.
 // Used for flicks (pen exit strokes) where width decays from startWidth to zero.
@@ -954,11 +968,13 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
 
   // Top blob: sample bezier segments into a filled polygon
   const blobOff = resolveOffset('topBlob', { dx: 0, dy: 0 }, overrides, dpr);
-  const blob = sampleSegments(
+  const blobScale = overrides.topBlob ?? {};
+  let blob = sampleSegments(
     C_TOP_BLOB_SEGS,
     [0, 1, 2, 3],
     12, cx + blobOff.dx, cy + blobOff.dy, scale, C_REF_CENTER
   );
+  blob = scalePolygon(blob, blobScale.sx ?? 1, blobScale.sy ?? 1);
 
   // Bottom flick: tapered ribbon (params + offset overrideable via review grid)
   const flickParams = overrides.flick ?? C_FLICK;
@@ -972,7 +988,11 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
     flickParams.taperPower ?? C_FLICK.taperPower,
     flickParams.liftPoint ?? C_FLICK.liftPoint,
   );
-  const flickFills = flickQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  const flickScale = overrides.flick ?? {};
+  const flickFills = flickQuads.map(quad => ({
+    points: scalePolygon(quad, flickScale.sx ?? 1, flickScale.sy ?? 1),
+    pressure: 0.85,
+  }));
 
   renderer.drawBowl(outer, inner, {
     densityFn: cBowlDensity,

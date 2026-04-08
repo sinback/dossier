@@ -15,42 +15,81 @@ const LABEL_OPTIONS = [
   { value: 'green',  label: '🟢 Green'  },
 ];
 
-// Default locked offsets per letter, keyed by component name.
-// These are the grid-search winners — variations spread around them.
-const LOCKED_OFFSETS = {
-  a: { downstroke: { dx: 4, dy: 2 } },
-  b: { barBowl: { dx: -4, dy: 0 } },
-  c: { flickPos: { dx: 0, dy: 0 } },  // varying flick position
-  d: { downstroke: { dx: 0, dy: 0 } },  // review round 1, candidate 5
-  f: { fatBar: { dx: 8, dy: -10 }, hairline: { dx: 8, dy: -2 } },
-  o: {},  // no offset components — just a bowl
-  q: { downstroke: { dx: 0, dy: 4 } },  // review round 1, candidate 8
+// Adjustable parameters per letter. Each component lists the parameter
+// groups that can be varied in the review grid. The first group is the
+// default when the page loads. Values are the locked grid-search winners.
+const LETTER_PARAMS = {
+  a: {
+    downstroke: { position: { dx: 4, dy: 2 }, scale: { sx: 1.0, sy: 1.0 } },
+  },
+  b: {
+    barBowl: { position: { dx: -4, dy: 0 } },
+  },
+  c: {
+    topBlob:  { position: { dx: -4, dy: 4 }, scale: { sx: 1.0, sy: 1.0 } },
+    flickPos: { position: { dx: -4, dy: 0 } },
+    flick:    { taper: { startWidth: 4.55, taperPower: 0.63 }, scale: { sx: 1.0, sy: 1.0 } },
+  },
+  d: {
+    downstroke: { position: { dx: 0, dy: 0 }, scale: { sx: 1.0, sy: 1.0 } },
+    flick:      { taper: { startWidth: 4.5, taperPower: 1.7 } },
+  },
+  f: {
+    fatBar:   { position: { dx: 8, dy: -10 }, scale: { sx: 1.0, sy: 1.0 } },
+    hairline: { position: { dx: 8, dy: -2 }, scale: { sx: 1.0, sy: 1.0 } },
+  },
+  o: {},
+  q: {
+    downstroke: { position: { dx: 0, dy: 4 }, scale: { sx: 1.0, sy: 1.0 } },
+  },
 };
 
-// Generate 9 candidates with a 3×3 spread around the locked defaults.
-// Varies the first component's two parameters (dx/dy, or startWidth/taperPower, etc.)
-function makeCandidates(letter: string) {
-  const defaults = LOCKED_OFFSETS[letter] ?? {};
-  const componentNames = Object.keys(defaults);
-  if (componentNames.length === 0) {
-    // No components to vary (e.g. 'o') — return 9 identical candidates
+// Build the full overrides object with all locked values for a letter.
+function getLockedOverrides(letter: string) {
+  const params = LETTER_PARAMS[letter] ?? {};
+  const overrides = {};
+  for (const [comp, groups] of Object.entries(params)) {
+    // Merge all parameter groups for this component into a single overrides entry
+    for (const values of Object.values(groups as Record<string, any>)) {
+      overrides[comp] = { ...(overrides[comp] ?? {}), ...values };
+    }
+  }
+  return overrides;
+}
+
+// Get the list of component + parameter group options for the selector buttons.
+function getVariationOptions(letter: string) {
+  const params = LETTER_PARAMS[letter] ?? {};
+  const options: Array<{ component: string, group: string, label: string }> = [];
+  for (const [comp, groups] of Object.entries(params)) {
+    for (const group of Object.keys(groups as Record<string, any>)) {
+      options.push({ component: comp, group, label: `${comp} · ${group}` });
+    }
+  }
+  return options;
+}
+
+// Generate 9 candidates varying one component's parameter group in a 3×3 grid.
+function makeCandidates(letter: string, component: string, group: string) {
+  const params = LETTER_PARAMS[letter] ?? {};
+  const base = params[component]?.[group] ?? {};
+  const locked = getLockedOverrides(letter);
+  const keys = Object.keys(base);
+
+  if (keys.length < 2) {
     return Array.from({ length: 9 }, (_, i) => ({
       id: `candidate-${i + 1}`,
       title: `Candidate ${i + 1}`,
-      renderSpec: { kind: 'grid-search', overrides: {} },
+      renderSpec: { kind: 'grid-search', overrides: locked },
       judgment: { label: '', talkAboutLater: false, comment: '' },
     }));
   }
 
-  const varyComponent = componentNames[0];
-  const base = defaults[varyComponent];
-  const keys = Object.keys(base);
   const key0 = keys[0];  // column axis
   const key1 = keys[1];  // row axis
 
-  // Step sizes: 4 for dx/dy (CSS pixels), smaller for other params
-  const step0 = (key0 === 'dx' || key0 === 'dy') ? 4 : (base[key0] * 0.3) || 0.5;
-  const step1 = (key1 === 'dx' || key1 === 'dy') ? 4 : (base[key1] * 0.3) || 0.5;
+  const step0 = (key0 === 'dx' || key0 === 'dy') ? 4 : (Math.abs(base[key0]) * 0.3) || 0.5;
+  const step1 = (key1 === 'dx' || key1 === 'dy') ? 4 : (Math.abs(base[key1]) * 0.3) || 0.5;
 
   const candidates: Array<any> = [];
   for (let row = -1; row <= 1; row++) {
@@ -64,8 +103,8 @@ function makeCandidates(letter: string) {
         renderSpec: {
           kind: 'grid-search',
           overrides: {
-            ...defaults,
-            [varyComponent]: varied,
+            ...locked,
+            [component]: { ...(locked[component] ?? {}), ...varied },
           },
         },
         judgment: { label: '', talkAboutLater: false, comment: '' },
@@ -214,7 +253,23 @@ export default function MatlackReviewGrid() {
   const rawLetter = searchParams.get('letter');
   const letter = rawLetter && (SUPPORTED_LETTERS as readonly string[]).includes(rawLetter) ? rawLetter : null;
 
-  const [candidates, setCandidates] = useState(() => makeCandidates(letter));
+  const variationOptions = letter ? getVariationOptions(letter) : [];
+  const [selectedVariation, setSelectedVariation] = useState(0);
+  const currentOpt = variationOptions[selectedVariation] ?? null;
+
+  const [candidates, setCandidates] = useState(() =>
+    currentOpt ? makeCandidates(letter!, currentOpt.component, currentOpt.group) : []
+  );
+
+  // Regenerate candidates when variation selection changes
+  function switchVariation(idx: number) {
+    setSelectedVariation(idx);
+    const opt = variationOptions[idx];
+    if (opt && letter) {
+      setCandidates(makeCandidates(letter, opt.component, opt.group));
+      setLastSavedAt(null);
+    }
+  }
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   if (!letter) {
@@ -289,6 +344,23 @@ export default function MatlackReviewGrid() {
             <p style={{ fontFamily: f.mono, fontSize: 11, color: c.textMuted, marginTop: 4 }}>
               3×3 candidate scoring — letter: {letter}
             </p>
+            {variationOptions.length > 1 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {variationOptions.map((opt, i) => (
+                  <button key={opt.label} onClick={() => switchVariation(i)}
+                    style={{
+                      fontFamily: f.mono, fontSize: 11, padding: '3px 10px',
+                      cursor: 'pointer', borderRadius: 4,
+                      border: `1px solid ${i === selectedVariation ? c.accent : c.border}`,
+                      background: i === selectedVariation ? c.accent : c.surface,
+                      color: i === selectedVariation ? c.bg : c.text,
+                      fontWeight: i === selectedVariation ? 600 : 400,
+                    }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
@@ -330,7 +402,7 @@ export default function MatlackReviewGrid() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
           {candidates.map((candidate) => (
             <CandidateCard
-              key={candidate.id}
+              key={`${selectedVariation}-${candidate.id}`}
               candidate={candidate}
               letter={letter}
               onChange={updateJudgment}
