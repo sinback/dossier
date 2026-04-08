@@ -20,42 +20,59 @@ const LABEL_OPTIONS = [
 const LOCKED_OFFSETS = {
   a: { downstroke: { dx: 4, dy: 2 } },
   b: { barBowl: { dx: -4, dy: 0 } },
-  c: { topBlob: { dx: -4, dy: 4 } },  // review round 4, candidate 1
+  c: { flickPos: { dx: 0, dy: 0 } },  // varying flick position
   d: { downstroke: { dx: 0, dy: 0 } },  // review round 1, candidate 5
   f: { fatBar: { dx: 8, dy: -10 }, hairline: { dx: 8, dy: -2 } },
   o: {},  // no offset components — just a bowl
   q: { downstroke: { dx: 0, dy: 4 } },  // review round 1, candidate 8
 };
 
-// Generate 9 candidates with a 3×3 spread of offsets for one component.
-// The center cell (index 4) uses the locked defaults.
+// Generate 9 candidates with a 3×3 spread around the locked defaults.
+// Varies the first component's two parameters (dx/dy, or startWidth/taperPower, etc.)
 function makeCandidates(letter: string) {
   const defaults = LOCKED_OFFSETS[letter] ?? {};
-  // Pick the first component with an offset to vary
   const componentNames = Object.keys(defaults);
-  const varyComponent = componentNames[0]; // vary the primary component
-  const base = defaults[varyComponent] ?? { dx: 0, dy: 0 };
-
-  const step = 4; // CSS px per grid step — wide enough to see differences
-  const offsets: Array<{dx: number, dy: number}> = [];
-  for (let row = -1; row <= 1; row++) {
-    for (let col = -1; col <= 1; col++) {
-      offsets.push({ dx: base.dx + col * step, dy: base.dy + row * step });
-    }
+  if (componentNames.length === 0) {
+    // No components to vary (e.g. 'o') — return 9 identical candidates
+    return Array.from({ length: 9 }, (_, i) => ({
+      id: `candidate-${i + 1}`,
+      title: `Candidate ${i + 1}`,
+      renderSpec: { kind: 'grid-search', overrides: {} },
+      judgment: { label: '', talkAboutLater: false, comment: '' },
+    }));
   }
 
-  return offsets.map((offset, index) => ({
-    id: `candidate-${index + 1}`,
-    title: `Candidate ${index + 1}`,
-    renderSpec: {
-      kind: 'grid-search',
-      overrides: {
-        ...defaults,
-        [varyComponent]: offset,
-      },
-    },
-    judgment: { label: '', talkAboutLater: false, comment: '' },
-  }));
+  const varyComponent = componentNames[0];
+  const base = defaults[varyComponent];
+  const keys = Object.keys(base);
+  const key0 = keys[0];  // column axis
+  const key1 = keys[1];  // row axis
+
+  // Step sizes: 4 for dx/dy (CSS pixels), smaller for other params
+  const step0 = (key0 === 'dx' || key0 === 'dy') ? 4 : (base[key0] * 0.3) || 0.5;
+  const step1 = (key1 === 'dx' || key1 === 'dy') ? 4 : (base[key1] * 0.3) || 0.5;
+
+  const candidates: Array<any> = [];
+  for (let row = -1; row <= 1; row++) {
+    for (let col = -1; col <= 1; col++) {
+      const varied = { ...base };
+      varied[key0] = Math.round((base[key0] + col * step0) * 100) / 100;
+      varied[key1] = Math.round((base[key1] + row * step1) * 100) / 100;
+      candidates.push({
+        id: `candidate-${candidates.length + 1}`,
+        title: `Candidate ${candidates.length + 1}`,
+        renderSpec: {
+          kind: 'grid-search',
+          overrides: {
+            ...defaults,
+            [varyComponent]: varied,
+          },
+        },
+        judgment: { label: '', talkAboutLater: false, comment: '' },
+      });
+    }
+  }
+  return candidates;
 }
 
 async function saveReview(data) {

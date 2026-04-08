@@ -548,10 +548,11 @@ const C_FLICK_SEGS = [
   [[36.83,67.84],[36.83,67.84],[48.94,59.57],[48.94,59.57]],
 ];
 const C_FLICK = {
-  startWidth: 3.5,    // thinner than 'd' — 'c' has no fat bar to match
-  taperPower: 0.9,    // gentler decay so the thin stroke persists longer
+  startWidth: 4.55,   // from review grid candidate 3
+  taperPower: 0.63,   // gentle decay — thin stroke persists
   liftPoint: 0.95,
 };
+const C_FLICK_OFFSET = { dx: -4, dy: 0 };
 
 // ── 'c' bowl width function ──────────────────────────────────────────────────
 // Like 'a' but with the right side (~0.85-0.15 in arcFrac) tapered to zero.
@@ -959,15 +960,17 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
     12, cx + blobOff.dx, cy + blobOff.dy, scale, C_REF_CENTER
   );
 
-  // Bottom flick: tapered ribbon
+  // Bottom flick: tapered ribbon (params + offset overrideable via review grid)
+  const flickParams = overrides.flick ?? C_FLICK;
+  const flickOff = resolveOffset('flickPos', C_FLICK_OFFSET, overrides, dpr);
   const flickCenter = sampleSegments(
-    C_FLICK_SEGS, [0, 1], 12, cx, cy, scale, C_REF_CENTER
+    C_FLICK_SEGS, [0, 1], 12, cx + flickOff.dx, cy + flickOff.dy, scale, C_REF_CENTER
   );
   const flickQuads = buildTaperedRibbon(
     flickCenter,
-    C_FLICK.startWidth * scale,
-    C_FLICK.taperPower,
-    C_FLICK.liftPoint,
+    (flickParams.startWidth ?? C_FLICK.startWidth) * scale,
+    flickParams.taperPower ?? C_FLICK.taperPower,
+    flickParams.liftPoint ?? C_FLICK.liftPoint,
   );
   const flickFills = flickQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
