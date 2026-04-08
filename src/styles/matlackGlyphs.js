@@ -58,6 +58,62 @@ function resolveOffset(componentName, defaults, overrides, dpr) {
   return { dx: (raw.dx ?? 0) * dpr, dy: (raw.dy ?? 0) * dpr };
 }
 
+// ── Tapered ribbon builder ────────────────────────────────────────────────────
+// Builds a closed polygon from a centerline polyline with power-law width taper.
+// Used for flicks (pen exit strokes) where width decays from startWidth to zero.
+//
+// Params:
+//   centerline: array of {x, y} points (canvas coords, from sampleSegments)
+//   startWidth: half-width at the base (canvas pixels)
+//   taperPower: exponent for (1-t)^p decay. ~1.7 for Matlack.
+//   liftPoint:  fraction [0,1] of path where ink reaches zero. Default 1.0.
+//
+// Returns an array of quad polygons (each is 4 {x,y} points), one per segment.
+// Rendering as individual quads avoids ear-clipping artifacts on thin polygons.
+function buildTaperedRibbon(centerline, startWidth, taperPower, liftPoint = 1.0) {
+  const n = centerline.length;
+  if (n < 2) return [];
+
+  // Compute cumulative arc length for parameterization
+  const arcLen = [0];
+  for (let i = 1; i < n; i++) {
+    const dx = centerline[i].x - centerline[i - 1].x;
+    const dy = centerline[i].y - centerline[i - 1].y;
+    arcLen.push(arcLen[i - 1] + Math.hypot(dx, dy));
+  }
+  const totalLen = arcLen[n - 1] || 1;
+
+  // Compute offset points at each centerline position
+  const tops = [];
+  const bots = [];
+  for (let i = 0; i < n; i++) {
+    const t = arcLen[i] / totalLen;
+    let hw;
+    if (t >= liftPoint) {
+      hw = 0;
+    } else {
+      hw = startWidth * Math.pow(1 - t / liftPoint, taperPower);
+    }
+    if (hw < 0.3) break;
+
+    const prev = centerline[Math.max(0, i - 1)];
+    const next = centerline[Math.min(n - 1, i + 1)];
+    const tdx = next.x - prev.x, tdy = next.y - prev.y;
+    const tlen = Math.hypot(tdx, tdy) || 1;
+    const pnx = -tdy / tlen * hw, pny = tdx / tlen * hw;
+
+    tops.push({ x: centerline[i].x + pnx, y: centerline[i].y + pny });
+    bots.push({ x: centerline[i].x - pnx, y: centerline[i].y - pny });
+  }
+
+  // Build quads between consecutive pairs of offset points
+  const quads = [];
+  for (let i = 0; i < tops.length - 1; i++) {
+    quads.push([tops[i], tops[i + 1], bots[i + 1], bots[i]]);
+  }
+  return quads;
+}
+
 // ── Cubic bezier sampler ─────────────────────────────────────────────────────
 // Samples n+1 points along a cubic bezier curve defined by 4 control points.
 // Each control point is [x, y] in ref coords. Output is in canvas coords.
@@ -561,6 +617,25 @@ const D_DOWNSTROKE_HALF_WIDTH = 4.5;  // measured from reference image
 // Offset for downstroke position relative to bowl center (grid-searchable).
 const D_DOWNSTROKE_OFFSET = { dx: 0, dy: 0 };
 
+// ── 'd' flick (bottom-right exit curve) ──────────────────────────────────────
+// Short curve at the base of the downstroke, extending right.
+// Hand-traced from d/01. Starts within ~1px of downstroke bottom endpoint.
+const D_FLICK_SEGS = [
+  [[54.18,134.93],[53.22,135.28],[51.94,144.30],[54.91,143.23]],
+  [[54.91,143.23],[55.17,145.03],[64.41,146.01],[64.23,144.76]],
+  [[64.23,144.76],[68.35,145.68],[82.92,142.69],[80.41,142.13]],
+  [[80.41,142.13],[80.41,142.13],[116.08,123.91],[116.08,123.91]],
+];
+// Flick taper parameters:
+//   startWidth: half-width at the base (should match departing stroke)
+//   taperPower: exponent for power-law decay (~1.7 for Matlack's hand)
+//   liftPoint:  fraction of path where ink stops (1.0 = full path tapers)
+const D_FLICK = {
+  startWidth: D_DOWNSTROKE_HALF_WIDTH,  // match the downstroke thickness
+  taperPower: 1.7,
+  liftPoint: 0.85,  // taper over 85% of the path
+};
+
 // 'd' bowl width: same as 'a' — thick bottom-left, thin top.
 // The tilt diff (5.4°) already creates good variation; widthFn reinforces it.
 // Top is fat (0.80) to merge with downstroke.
@@ -937,11 +1012,36 @@ function renderD(renderer, cx, cy, scale, dpr, overrides) {
     { x: p0.x - nx, y: p0.y - ny },
   ];
 
+  // Flick: tapered ribbon anchored to the downstroke's bottom endpoint.
+  // Sample the bezier path in ref coords, then shift so the flick's start
+  // matches p1 (the downstroke bottom) exactly — stays connected when
+  // downstroke offset is grid-searched.
+  const flickRef = sampleSegments(
+    D_FLICK_SEGS, [0, 1, 2, 3], 12, cx, cy, scale, D_REF_CENTER
+  );
+  // Nudge anchor slightly up the downstroke direction so the flick's
+  // first quad overlaps the fat bar by ~2px, eliminating the seam gap.
+  const dsNx = (p0.x - p1.x) / len, dsNy = (p0.y - p1.y) / len;  // unit vector up the downstroke
+  const overlap = 2 * scale;
+  const anchorDx = (p1.x + dsNx * overlap) - flickRef[0].x;
+  const anchorDy = (p1.y + dsNy * overlap) - flickRef[0].y;
+  const flickCenter = flickRef.map(p => ({ x: p.x + anchorDx, y: p.y + anchorDy }));
+  const flick = buildTaperedRibbon(
+    flickCenter,
+    D_FLICK.startWidth * scale,
+    D_FLICK.taperPower,
+    D_FLICK.liftPoint,
+  );
+
+  // flick is an array of quads — each quad is 4 {x,y} points
+  const flickFills = flick.map(quad => ({ points: quad, pressure: 0.85 }));
+
   renderer.drawBowl(outer, inner, {
     densityFn: dBowlDensity,
     widthFn: dBowlWidth,
     overlayFills: [
       { points: downstroke, pressure: 0.85 },
+      ...flickFills,
     ],
   });
 }
