@@ -540,13 +540,17 @@ const C_TOP_BLOB_SEGS = [
   [[57.14,19.50],[64.23,8.85],[52.53,4.77],[48.97,10.11]],
 ];
 
-// ── 'c' bottom hairline (exit flick) ────────────────────────────────────────
+// ── 'c' bottom flick (exit curve) ────────────────────────────────────────────
 // Short curved stroke at the bottom-right exit of the arc.
-// Hand-traced from c/02. Rendered as a thin parallelogram.
-const C_BOTTOM_HAIRLINE = {
-  x1: 27.39, y1: 67.26,   // start (lower-left)
-  x2: 48.94, y2: 59.57,   // end (lower-right)
-  halfHeight: 1.5,         // thin stroke
+// Hand-traced from c/02. Rendered as a tapered ribbon.
+const C_FLICK_SEGS = [
+  [[27.39,67.26],[28.24,67.12],[36.83,67.84],[36.83,67.84]],
+  [[36.83,67.84],[36.83,67.84],[48.94,59.57],[48.94,59.57]],
+];
+const C_FLICK = {
+  startWidth: 3.5,    // thinner than 'd' — 'c' has no fat bar to match
+  taperPower: 0.9,    // gentler decay so the thin stroke persists longer
+  liftPoint: 0.95,
 };
 
 // ── 'c' bowl width function ──────────────────────────────────────────────────
@@ -955,30 +959,25 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
     12, cx + blobOff.dx, cy + blobOff.dy, scale, C_REF_CENTER
   );
 
-  // Bottom hairline: thin parallelogram
-  const h = C_BOTTOM_HAIRLINE;
-  const hl = refToCanvas(h.x1, h.y1, cx, cy, scale, C_REF_CENTER);
-  const hr = refToCanvas(h.x2, h.y2, cx, cy, scale, C_REF_CENTER);
-  const hh = h.halfHeight * scale;
-  const hdx = hr.x - hl.x, hdy = hr.y - hl.y;
-  const hlen = Math.hypot(hdx, hdy);
-  const hnx = -hdy / hlen * hh, hny = hdx / hlen * hh;
-  const hairline = [
-    { x: hl.x + hnx, y: hl.y + hny },
-    { x: hr.x + hnx, y: hr.y + hny },
-    { x: hr.x - hnx, y: hr.y - hny },
-    { x: hl.x - hnx, y: hl.y - hny },
-  ];
+  // Bottom flick: tapered ribbon
+  const flickCenter = sampleSegments(
+    C_FLICK_SEGS, [0, 1], 12, cx, cy, scale, C_REF_CENTER
+  );
+  const flickQuads = buildTaperedRibbon(
+    flickCenter,
+    C_FLICK.startWidth * scale,
+    C_FLICK.taperPower,
+    C_FLICK.liftPoint,
+  );
+  const flickFills = flickQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
   renderer.drawBowl(outer, inner, {
     densityFn: cBowlDensity,
     widthFn: cBowlWidth,
-    extraFills: [
-      { points: hairline, pressure: 0.70 },
-    ],
-    // Blob renders after inner cutout so it isn't erased by the counter.
+    // Blob and flick render after inner cutout so they aren't erased by the counter.
     overlayFills: [
       { points: blob, pressure: 0.85 },
+      ...flickFills,
     ],
   });
 }
