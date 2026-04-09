@@ -1231,6 +1231,48 @@ function kExitWidth(t, scale) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'l'
+// Source: hand-traced on l/01 from high-res 1823 facsimile (136×171, 1x).
+// Structure: single continuous loop stroke, like 'e' but taller (ascender).
+// Rendered as a variable-width ribbon following the loop centerline.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const L_REF_CENTER = { x: 68.0, y: 85.0 };  // approximate center
+
+const L_LOOP_SEGS = [
+  [[6.45,115.73],[8.73,122.60],[78.00,88.13],[92.15,63.53]],
+  [[92.15,63.53],[92.94,64.21],[114.44,26.63],[108.32,21.33]],
+  [[108.32,21.33],[106.84,14.70],[65.05,56.32],[65.99,60.52]],
+  [[65.99,60.52],[66.01,59.89],[36.11,100.64],[35.99,103.79]],
+  [[35.99,103.79],[35.88,103.58],[8.60,139.55],[10.89,143.86]],
+  [[10.89,143.86],[9.35,144.16],[7.42,152.94],[17.84,150.92]],
+  [[17.84,150.92],[18.02,151.85],[28.03,151.23],[27.72,149.62]],
+  [[27.72,149.62],[27.72,149.62],[56.60,129.42],[56.60,129.42]],
+];
+
+// Width function for l loop. Same shape as 'e' but the top portion
+// is longer (ascender extends well above x-height).
+function lLoopWidth(t, scale) {
+  // Entry: thin (pen coming in from left)
+  if (t < 0.10) return 1.5 * scale;
+
+  // Rising to the top: slight thickening
+  if (t < 0.25) return smoothStep(1.5, 2.5, (t - 0.10) / 0.15) * scale;
+
+  // Top loop and descent: thickening through the long downstroke
+  if (t < 0.50) return smoothStep(2.5, 5.5, (t - 0.25) / 0.25) * scale;
+
+  // Bottom: peak width
+  if (t < 0.65) return 5.5 * scale;
+
+  // Right ascent + exit: thinning
+  if (t < 0.85) return smoothStep(5.5, 1.5, (t - 0.65) / 0.20) * scale;
+
+  // Exit flick
+  return smoothStep(1.5, 0.5, (t - 0.85) / 0.15) * scale;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'o'
 // Source: automated crescent fit on o/03 from high-res 1823 facsimile.
 // 'o' is the simplest letter: just a bowl, no extra components.
@@ -1357,6 +1399,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderJ(renderer, cx, cy, scale, dpr, overrides)
     case 'k':
       return renderK(renderer, cx, cy, scale, dpr, overrides)
+    case 'l':
+      return renderL(renderer, cx, cy, scale, dpr, overrides)
     case 'o':
       return renderO(renderer, cx, cy, scale, dpr, overrides)
     case 'q':
@@ -1942,6 +1986,21 @@ function renderK(renderer, cx, cy, scale, dpr, overrides) {
   });
 }
 
+/**
+ * Render a Matlack-style lowercase 'l'.
+ * Single continuous loop stroke, like 'e' but taller.
+ */
+function renderL(renderer, cx, cy, scale, dpr, overrides) {
+  const loopCenter = sampleSegments(
+    L_LOOP_SEGS,
+    [0, 1, 2, 3, 4, 5, 6, 7],
+    12, cx, cy, scale, L_REF_CENTER
+  );
+  const loopQuads = buildRibbon(loopCenter, (t) => lLoopWidth(t, scale));
+  const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  renderer.drawFills(loopFills);
+}
+
 function renderO(renderer, cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
   const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
@@ -2128,6 +2187,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'h': return { barBowl: { inner: sampleEllipse(H_BAR_BOWL.inner), outer: sampleEllipse(H_BAR_BOWL.outer) } };
     case 'i': return { downstroke: 'tapered-ribbon', dot: 'filled-blob' };
     case 'j': return { barBowl: { inner: sampleEllipse(J_BAR_BOWL.inner), outer: sampleEllipse(J_BAR_BOWL.outer) } };
+    case 'l': return { loop: 'single-stroke' };
     case 'k': return {
       barBowl: { inner: sampleEllipse(K_BAR_BOWL.inner), outer: sampleEllipse(K_BAR_BOWL.outer) },
       crescent: { inner: sampleEllipse(K_CRESCENT.inner), outer: sampleEllipse(K_CRESCENT.outer) },
