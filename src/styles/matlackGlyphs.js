@@ -933,6 +933,99 @@ function gDownstrokeWidth(t, scale) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'h'
+// Source: hand-traced on h/01 from high-res 1823 facsimile (160×182, 1x).
+// Structure: entrance flick + bar-bowl (tall stem) + fat bar (short downstroke)
+//            + variable-width hump.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Reference center: use the downstroke top as the anchor — all components
+// are traced in the same image so they'll align correctly.
+const H_REF_CENTER = { x: 61.13, y: 105.06 };
+
+// Bar-bowl (tall stem) — using 'f' bar-bowl proportions for the inner
+// semi-minor (b reduced from 8.7→5.5 to widen the ink gap).
+// Ellipse centers shifted down 20px to close the gap between the
+// fitted bar-bowl bottom and the downstroke top.
+// Bar-bowl ellipse centers nudged so the bottom tip lands on the
+// downstroke top (61.1, 105.1). Tip 2 was at (72.4, 110.6) —
+// shift both centers by (-11, -5.5) to close the gap.
+const H_BAR_BOWL = {
+  inner: {
+    cx: 90.2, cy: 69.1,
+    a: 46.1, b: 5.5, tilt: -51.4
+  },
+  outer: {
+    cx: 102.4, cy: 53.9,
+    a: 59.5, b: 12.9, tilt: -49.5
+  },
+};
+
+// Bar-bowl width/density — same pattern as 'b'/'f' bar-bowls
+// Reuse 'f' bar-bowl width/density — same stem shape, proven parameters.
+const hBarBowlWidth = fBarBowlWidth;
+const hBarBowlDensity = fBarBowlDensity;
+
+// Entrance flick (leading stroke from bottom-left)
+const H_ENTRANCE_SEGS = [
+  [[11.17,136.91],[12.18,137.70],[58.52,109.99],[56.28,108.23]],
+];
+const H_ENTRANCE = {
+  startWidth: 1.0,
+  taperPower: 1.7,
+  liftPoint: 1.0,
+};
+
+// Downstroke + hump as one continuous path.
+// The pen goes: down the fat bar → bottom → sweeps up into the hump → exit.
+// Combining them because they're one continuous pen motion.
+const H_STROKE_SEGS = [
+  // Downstroke portion — starts 15px up the bar-bowl axis from the base
+  // so the fat ribbon covers the bar-bowl's vanishing bottom tip.
+  // Original base: (61.13, 105.06). Bar-bowl tilt ~-51°, so "up" is
+  // (+15*cos(51°), -15*sin(51°)) ≈ (+9.4, -11.7)
+  [[70.5,93.3],[70.5,93.3],[27.22,157.87],[27.22,157.87]],
+  // Hump portion (curves up and around)
+  [[28.35,159.16],[28.35,159.16],[53.74,126.56],[53.74,126.56]],
+  [[53.74,126.56],[50.34,124.13],[85.90,103.12],[91.49,107.12]],
+  [[91.49,107.12],[92.43,107.07],[98.96,126.12],[93.05,126.39]],
+  [[93.05,126.39],[92.91,125.29],[76.75,140.38],[77.17,143.91]],
+  [[77.17,143.91],[74.65,144.13],[72.38,155.43],[77.49,154.98]],
+  [[77.49,154.98],[77.11,154.79],[89.99,155.75],[90.28,155.90]],
+  [[90.28,155.90],[92.57,154.82],[121.51,132.24],[120.73,133.48]],
+];
+const H_STROKE_OFFSET = { dx: 4, dy: -4 };  // review round 1, candidate 3
+
+// Combined downstroke+hump width function. t = arc-length fraction.
+// The downstroke is roughly the first ~20% of the path (straight fat bar),
+// then the hump curves up and around for the remaining ~80%.
+function hStrokeWidth(t, scale) {
+  // Downstroke: fat bar
+  if (t < 0.10) return 5.0 * scale;
+
+  // Downstroke bottom → hump entry: thinning at the turnaround
+  if (t < 0.18) return smoothStep(5.0, 1.5, (t - 0.10) / 0.08) * scale;
+
+  // Hump rising: thickening back up (less than the downstroke)
+  if (t < 0.35) return smoothStep(1.5, 3.5, (t - 0.18) / 0.17) * scale;
+
+  // Hump arch: moderate-fat
+  if (t < 0.50) return 3.5 * scale;
+
+  // Hump descending: thinning
+  if (t < 0.65) return smoothStep(3.5, 2.5, (t - 0.50) / 0.15) * scale;
+
+  // Bottom curve: moderate
+  if (t < 0.80) return 3.0 * scale;
+
+  // Thinning to hairline exit
+  if (t < 0.92) return smoothStep(3.0, 0.7, (t - 0.80) / 0.12) * scale;
+
+  // Hairline exit
+  return 0.7 * scale;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'o'
 // Source: automated crescent fit on o/03 from high-res 1823 facsimile.
 // 'o' is the simplest letter: just a bowl, no extra components.
@@ -1051,6 +1144,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderF(renderer, cx, cy, scale, dpr, overrides)
     case 'g':
       return renderG(renderer, cx, cy, scale, dpr, overrides)
+    case 'h':
+      return renderH(renderer, cx, cy, scale, dpr, overrides)
     case 'o':
       return renderO(renderer, cx, cy, scale, dpr, overrides)
     case 'q':
@@ -1386,6 +1481,48 @@ function renderT(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'g'.
  * Components: bowl + variable-width descender ribbon.
  */
+/**
+ * Render a Matlack-style lowercase 'h'.
+ * Components: entrance flick + bar-bowl + combined downstroke/hump ribbon.
+ */
+function renderH(renderer, cx, cy, scale, dpr, overrides) {
+  // ── Bar-bowl (tall stem) ──────────────────────────────────────
+  const inner = scaleEllipse(H_BAR_BOWL.inner, cx, cy, scale, H_REF_CENTER);
+  const outer = scaleEllipse(H_BAR_BOWL.outer, cx, cy, scale, H_REF_CENTER);
+
+  // ── Combined downstroke + hump (one continuous variable-width ribbon) ──
+  const strokeOff = resolveOffset('stroke', H_STROKE_OFFSET, overrides, dpr);
+  const strokeCenter = sampleSegments(
+    H_STROKE_SEGS, [0, 1, 2, 3, 4, 5, 6, 7], 12,
+    cx + strokeOff.dx, cy + strokeOff.dy, scale, H_REF_CENTER
+  );
+  const strokeQuads = buildRibbon(strokeCenter, (t) => hStrokeWidth(t, scale));
+  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  // ── Entrance flick (reversed tapered ribbon) ──────────────────
+  const entrCenter = sampleSegments(
+    H_ENTRANCE_SEGS, [0], 12, cx, cy, scale, H_REF_CENTER
+  );
+  const entrReversed = [...entrCenter].reverse();
+  const entrQuads = buildTaperedRibbon(
+    entrReversed,
+    5.0 * scale,  // match downstroke width at junction
+    H_ENTRANCE.taperPower,
+    H_ENTRANCE.liftPoint,
+  );
+  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  // ── Render: bar-bowl + overlays for everything else ───────────
+  renderer.drawBowl(outer, inner, {
+    densityFn: hBarBowlDensity,
+    widthFn: hBarBowlWidth,
+    overlayFills: [
+      ...strokeFills,
+      ...entrFills,
+    ],
+  });
+}
+
 function renderG(renderer, cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(G_BOWL.inner, cx, cy, scale, G_REF_CENTER);
   const outer = scaleEllipse(G_BOWL.outer, cx, cy, scale, G_REF_CENTER);
@@ -1591,6 +1728,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'e': return { loop: 'single-stroke — no decomposition' };
     case 'f': return exportOutlinesF(overrides);
     case 'g': return { bowl: { inner: sampleEllipse(G_BOWL.inner), outer: sampleEllipse(G_BOWL.outer) } };
+    case 'h': return { barBowl: { inner: sampleEllipse(H_BAR_BOWL.inner), outer: sampleEllipse(H_BAR_BOWL.outer) } };
     case 'o': return exportOutlinesO();
     case 't': return exportOutlinesT(overrides);
     case 'q': return exportOutlinesQ(overrides);
