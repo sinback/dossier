@@ -72,6 +72,46 @@ function scalePolygon(points, sx, sy) {
   }));
 }
 
+// ── Variable-width ribbon builder ─────────────────────────────────────────────
+// Builds quads along a centerline with width controlled by an arbitrary function.
+// widthFn(t) returns half-width in canvas pixels, where t is arc-length fraction [0,1].
+// Used for 'e' and other letters where width varies non-trivially along the stroke.
+function buildRibbon(centerline, widthFn) {
+  const n = centerline.length;
+  if (n < 2) return [];
+
+  const arcLen = [0];
+  for (let i = 1; i < n; i++) {
+    const dx = centerline[i].x - centerline[i - 1].x;
+    const dy = centerline[i].y - centerline[i - 1].y;
+    arcLen.push(arcLen[i - 1] + Math.hypot(dx, dy));
+  }
+  const totalLen = arcLen[n - 1] || 1;
+
+  const tops = [];
+  const bots = [];
+  for (let i = 0; i < n; i++) {
+    const t = arcLen[i] / totalLen;
+    const hw = widthFn(t);
+    if (hw < 0.3 && i > 0 && tops.length > 0) break;
+
+    const prev = centerline[Math.max(0, i - 1)];
+    const next = centerline[Math.min(n - 1, i + 1)];
+    const tdx = next.x - prev.x, tdy = next.y - prev.y;
+    const tlen = Math.hypot(tdx, tdy) || 1;
+    const pnx = -tdy / tlen * hw, pny = tdx / tlen * hw;
+
+    tops.push({ x: centerline[i].x + pnx, y: centerline[i].y + pny });
+    bots.push({ x: centerline[i].x - pnx, y: centerline[i].y - pny });
+  }
+
+  const quads = [];
+  for (let i = 0; i < tops.length - 1; i++) {
+    quads.push([tops[i], tops[i + 1], bots[i + 1], bots[i]]);
+  }
+  return quads;
+}
+
 // ── Tapered ribbon builder ────────────────────────────────────────────────────
 // Builds a closed polygon from a centerline polyline with power-law width taper.
 // Used for flicks (pen exit strokes) where width decays from startWidth to zero.
@@ -775,6 +815,51 @@ const T_ENTRANCE = {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'e'
+// Source: hand-traced on e/01 from high-res 1823 facsimile (69×64, 1x).
+// Structure: single continuous loop stroke — no separate bowl or crossbar.
+// The pen traces: entry top-right → crossbar left → sweep down around bowl →
+//                 come back up → exit right.
+// Rendered as a variable-width ribbon following the loop centerline.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const E_REF_CENTER = { x: 34.5, y: 32.0 };  // approximate center of the letter
+
+// The full loop as bezier segments, traced from the 'e Loop' path in e/01_paths.
+const E_LOOP_SEGS = [
+  [[21.33,35.41],[21.27,36.14],[35.04,31.65],[35.61,29.65]],
+  [[35.61,29.65],[41.81,27.15],[50.41,10.44],[50.00,10.59]],
+  [[50.00,10.59],[51.44,9.37],[45.87,6.53],[42.76,9.31]],
+  [[42.76,9.31],[41.17,8.09],[29.05,19.29],[29.84,19.84]],
+  [[29.84,19.84],[28.14,20.43],[13.58,45.74],[18.59,46.23]],
+  [[18.59,46.23],[16.34,53.24],[29.79,52.13],[30.51,49.90]],
+  [[30.51,49.90],[29.86,51.47],[53.56,40.27],[53.59,40.21]],
+];
+
+// Width function for the loop. t = arc-length fraction [0, 1].
+// The loop goes: crossbar entry (thin) → top curve → left descent (thickening)
+//                → bottom (peak) → right ascent → exit (thinning)
+function eLoopWidth(t, scale) {
+  // Entry: crossbar, thin
+  if (t < 0.15) return 1.5 * scale;
+
+  // Curving over the top: still thin
+  if (t < 0.30) return smoothStep(1.5, 2.0, (t - 0.15) / 0.15) * scale;
+
+  // Left descent: thickening
+  if (t < 0.55) return smoothStep(2.0, 5.5, (t - 0.30) / 0.25) * scale;
+
+  // Bottom: peak width
+  if (t < 0.70) return 5.5 * scale;
+
+  // Right ascent + exit: thinning
+  if (t < 0.90) return smoothStep(5.5, 1.5, (t - 0.70) / 0.20) * scale;
+
+  // Exit flick
+  return smoothStep(1.5, 0.5, (t - 0.90) / 0.10) * scale;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'o'
 // Source: automated crescent fit on o/03 from high-res 1823 facsimile.
 // 'o' is the simplest letter: just a bowl, no extra components.
@@ -887,6 +972,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderC(renderer, cx, cy, scale, dpr, overrides)
     case 'd':
       return renderD(renderer, cx, cy, scale, dpr, overrides)
+    case 'e':
+      return renderE(renderer, cx, cy, scale, dpr, overrides)
     case 'f':
       return renderF(renderer, cx, cy, scale, dpr, overrides)
     case 'o':
@@ -1053,6 +1140,21 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'd'.
  * Components: bowl, downstroke (ascender).
  */
+/**
+ * Render a Matlack-style lowercase 'e'.
+ * Single continuous loop stroke rendered as a variable-width ribbon.
+ */
+function renderE(renderer, cx, cy, scale, dpr, overrides) {
+  const loopCenter = sampleSegments(
+    E_LOOP_SEGS,
+    [0, 1, 2, 3, 4, 5, 6],
+    12, cx, cy, scale, E_REF_CENTER
+  );
+  const loopQuads = buildRibbon(loopCenter, (t) => eLoopWidth(t, scale));
+  const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  renderer.drawFills(loopFills);
+}
+
 function renderD(renderer, cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(D_BOWL.inner, cx, cy, scale, D_REF_CENTER);
   const outer = scaleEllipse(D_BOWL.outer, cx, cy, scale, D_REF_CENTER);
@@ -1385,6 +1487,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'b': return exportOutlinesB(overrides);
     case 'c': return exportOutlinesC();
     case 'd': return exportOutlinesD(overrides);
+    case 'e': return { loop: 'single-stroke — no decomposition' };
     case 'f': return exportOutlinesF(overrides);
     case 'o': return exportOutlinesO();
     case 't': return exportOutlinesT(overrides);
