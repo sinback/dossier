@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     version="1.1"
+     width="3.02778in" height="3.45833in"
+     viewBox="0 0 218 249">
+  <path id="path1"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 193.80,10.52
+           C 192.68,10.27 185.10,18.39 185.90,18.57
+             184.69,19.90 185.42,26.24 186.18,25.39
+             184.70,26.12 189.20,28.42 193.06,26.63
+             195.03,24.88 201.91,16.75 201.23,17.42
+             201.23,17.42 202.44,9.56 202.23,9.56
+             202.01,9.56 194.58,10.57 194.58,10.57">
+        <title>j Dot</title>
+  </path>
+  <path id="path2"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 114.58,145.95
+           C 115.26,146.07 161.50,119.55 161.50,119.55">
+        <title>j Exit Flick</title>
+  </path>
+  <path id="path3"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 106.22,152.41
+           C 106.22,152.41 113.67,155.85 113.67,155.85
+             116.43,156.71 88.41,207.90 79.40,205.10
+             82.30,205.83 46.36,240.57 23.29,234.78
+             20.69,234.03 27.63,213.23 31.65,214.39
+             31.64,214.39 98.95,151.61 106.22,152.41 Z">
+        <title>j Bar-Bowl Outer</title>
+  </path>
+  <path id="path4"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 99.09,162.83
+           C 95.89,159.29 42.36,212.93 43.17,213.82
+             39.84,216.99 41.59,218.27 43.50,216.45
+             47.10,219.37 59.27,215.56 58.22,214.89
+             60.95,214.25 86.25,185.55 88.89,183.96
+             90.46,183.80 101.67,164.13 99.09,162.83 Z">
+        <title>j Bar-Bowl Inner</title>
+  </path>
+  <path id="path5"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 155.11,78.54
+           C 155.11,78.54 139.01,97.49 139.01,97.49
+             132.43,104.48 107.70,159.56 109.39,157.77">
+        <title>j Downstroke Part 1</title>
+  </path>
+  <path id="path6"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 94.50,130.54
+           C 94.50,130.54 141.85,97.40 141.85,97.40">
+        <title>j Entrance Flick</title>
+  </path>
+</svg>

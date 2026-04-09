@@ -7,7 +7,7 @@ import { useTheme } from './theme.jsx';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MatlackRenderer = _MatlackRenderer as any;
 
-const SUPPORTED_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'o', 'q', 't'] as const;
+const SUPPORTED_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'o', 'q', 't'] as const;
 
 const LABEL_OPTIONS = [
   { value: 'red',    label: '🔴 Red'    },
@@ -32,6 +32,11 @@ const LETTER_PARAMS = {
   },
   e: {},  // single loop — no separate components to vary yet
   g: { downstroke: { position: { dx: 0, dy: 0 } } },
+  j: {
+    downstroke: { position: { dx: 4, dy: -4 } },
+    exitFlick:  { position: { dx: 4, dy: 4 }, fine: { dx: 4, dy: 4 } },
+    dot:        { position: { dx: 0, dy: 0 } },
+  },
   i: {
     downstroke: { position: { dx: 0, dy: 0 } },
     dot:        { position: { dx: 0, dy: 0 } },
@@ -102,8 +107,9 @@ function makeCandidates(letter: string, component: string, group: string) {
   const key0 = keys[0];  // column axis
   const key1 = keys[1];  // row axis
 
-  const step0 = (key0 === 'dx' || key0 === 'dy') ? 4 : (Math.abs(base[key0]) * 0.3) || 0.5;
-  const step1 = (key1 === 'dx' || key1 === 'dy') ? 4 : (Math.abs(base[key1]) * 0.3) || 0.5;
+  const isFine = group === 'fine';
+  const step0 = (key0 === 'dx' || key0 === 'dy') ? (isFine ? 1 : 4) : (Math.abs(base[key0]) * 0.3) || 0.5;
+  const step1 = (key1 === 'dx' || key1 === 'dy') ? (isFine ? 1 : 4) : (Math.abs(base[key1]) * 0.3) || 0.5;
 
   const candidates: Array<any> = [];
   for (let row = -1; row <= 1; row++) {
