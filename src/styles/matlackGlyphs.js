@@ -737,6 +737,44 @@ function qBowlDensity(arcFracRaw) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 't'
+// Source: hand-traced on t/01 from high-res 1823 facsimile (117×132, 1x).
+// Structure: entrance hairline (tapered ribbon) + fat bar (downstroke) +
+//            crossbar hairline. No bowl — pure vertical family.
+// Type 1 (most complete): all three components present.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Reference anchor: midpoint of the fat bar.
+const T_REF_CENTER = { x: 59.0, y: 64.5 };
+
+// Fat bar (main downstroke)
+const T_FAT_BAR = {
+  x1: 94.30, y1: 6.08,     // top
+  x2: 23.96, y2: 122.92,   // bottom
+};
+const T_FAT_BAR_HALF_WIDTH = 5.5;  // slightly less than measured 12.8 at 1x — image includes blur
+const T_FAT_BAR_OFFSET = { dx: 0, dy: 0 };
+
+// Crossbar hairline (thin, nearly horizontal)
+const T_CROSSBAR = {
+  x1: 85.04, y1: 67.95,    // right end
+  x2: 49.90, y2: 80.62,    // left end
+  halfHeight: 1.5,
+};
+const T_CROSSBAR_OFFSET = { dx: 0, dy: 0 };
+
+// Entrance hairline (leading stroke — tapered ribbon approaching fat bar)
+// Starts thin at bottom-left, thickens toward the intersection with fat bar.
+const T_ENTRANCE_SEGS = [
+  [[6.77,98.97],[6.77,98.97],[72.61,41.99],[72.61,41.99]],
+];
+const T_ENTRANCE = {
+  startWidth: 1.0,    // thin at the entry point
+  taperPower: 1.7,    // same hand
+  liftPoint: 1.0,     // tapers over full length (reversed — see render)
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'o'
 // Source: automated crescent fit on o/03 from high-res 1823 facsimile.
 // 'o' is the simplest letter: just a bowl, no extra components.
@@ -855,6 +893,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderO(renderer, cx, cy, scale, dpr, overrides)
     case 'q':
       return renderQ(renderer, cx, cy, scale, dpr, overrides)
+    case 't':
+      return renderT(renderer, cx, cy, scale, dpr, overrides)
     default:
       throw new Error(`Glyph ${glyph} not yet supported`)
   }
@@ -1102,6 +1142,69 @@ function renderQ(renderer, cx, cy, scale, dpr, overrides) {
   });
 }
 
+/**
+ * Render a Matlack-style lowercase 't' (type 1).
+ * Components: entrance hairline (tapered ribbon), fat bar, crossbar hairline.
+ * No bowl — pure vertical family.
+ */
+function renderT(renderer, cx, cy, scale, dpr, overrides) {
+  // ── Fat bar (main downstroke) ───────────────────────────────────
+  const fbOff = resolveOffset('fatBar', T_FAT_BAR_OFFSET, overrides, dpr);
+  const hw = T_FAT_BAR_HALF_WIDTH * scale;
+  const p0 = refToCanvas(T_FAT_BAR.x1, T_FAT_BAR.y1, cx, cy, scale, T_REF_CENTER);
+  const p1 = refToCanvas(T_FAT_BAR.x2, T_FAT_BAR.y2, cx, cy, scale, T_REF_CENTER);
+  p0.x += fbOff.dx; p0.y += fbOff.dy;
+  p1.x += fbOff.dx; p1.y += fbOff.dy;
+  const dx = p1.x - p0.x, dy = p1.y - p0.y;
+  const len = Math.hypot(dx, dy);
+  const nx = -dy / len * hw, ny = dx / len * hw;
+  const fatBar = [
+    { x: p0.x + nx, y: p0.y + ny },
+    { x: p1.x + nx, y: p1.y + ny },
+    { x: p1.x - nx, y: p1.y - ny },
+    { x: p0.x - nx, y: p0.y - ny },
+  ];
+
+  // ── Crossbar hairline ──────────────────────────────────────────
+  const cbOff = resolveOffset('crossbar', T_CROSSBAR_OFFSET, overrides, dpr);
+  const cb = T_CROSSBAR;
+  const cbl = refToCanvas(cb.x1, cb.y1, cx, cy, scale, T_REF_CENTER);
+  const cbr = refToCanvas(cb.x2, cb.y2, cx, cy, scale, T_REF_CENTER);
+  cbl.x += cbOff.dx; cbl.y += cbOff.dy;
+  cbr.x += cbOff.dx; cbr.y += cbOff.dy;
+  const cbh = cb.halfHeight * scale;
+  const cbdx = cbr.x - cbl.x, cbdy = cbr.y - cbl.y;
+  const cblen = Math.hypot(cbdx, cbdy);
+  const cbnx = -cbdy / cblen * cbh, cbny = cbdx / cblen * cbh;
+  const crossbar = [
+    { x: cbl.x + cbnx, y: cbl.y + cbny },
+    { x: cbr.x + cbnx, y: cbr.y + cbny },
+    { x: cbr.x - cbnx, y: cbr.y - cbny },
+    { x: cbl.x - cbnx, y: cbl.y - cbny },
+  ];
+
+  // ── Entrance hairline (tapered ribbon, reversed — thick at fat bar end) ──
+  const entrCenter = sampleSegments(
+    T_ENTRANCE_SEGS, [0], 12, cx, cy, scale, T_REF_CENTER
+  );
+  // Reverse so taper goes from thick (at fat bar) to thin (at entry point)
+  const entrReversed = [...entrCenter].reverse();
+  const entrQuads = buildTaperedRibbon(
+    entrReversed,
+    T_FAT_BAR_HALF_WIDTH * scale,  // start thick, matching the fat bar
+    T_ENTRANCE.taperPower,
+    T_ENTRANCE.liftPoint,
+  );
+  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  // ── Render all components (no bowl — use drawFills directly) ────
+  renderer.drawFills([
+    { points: fatBar, pressure: 0.85 },
+    { points: crossbar, pressure: 0.70 },
+    ...entrFills,
+  ]);
+}
+
 function renderO(renderer, cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
   const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
@@ -1243,6 +1346,22 @@ function exportOutlinesC() {
   };
 }
 
+function exportOutlinesT(overrides) {
+  const fbOff = resolveRefOffset('fatBar', T_FAT_BAR_OFFSET, overrides);
+  const fatBar = buildBar(
+    T_FAT_BAR.x1 + fbOff.dx, T_FAT_BAR.y1 + fbOff.dy,
+    T_FAT_BAR.x2 + fbOff.dx, T_FAT_BAR.y2 + fbOff.dy,
+    T_FAT_BAR_HALF_WIDTH,
+  );
+  const cbOff = resolveRefOffset('crossbar', T_CROSSBAR_OFFSET, overrides);
+  const crossbar = buildBar(
+    T_CROSSBAR.x1 + cbOff.dx, T_CROSSBAR.y1 + cbOff.dy,
+    T_CROSSBAR.x2 + cbOff.dx, T_CROSSBAR.y2 + cbOff.dy,
+    T_CROSSBAR.halfHeight,
+  );
+  return { fatBar, crossbar };
+}
+
 function exportOutlinesO() {
   return {
     bowl: { inner: sampleEllipse(O_BOWL.inner), outer: sampleEllipse(O_BOWL.outer) },
@@ -1268,6 +1387,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'd': return exportOutlinesD(overrides);
     case 'f': return exportOutlinesF(overrides);
     case 'o': return exportOutlinesO();
+    case 't': return exportOutlinesT(overrides);
     case 'q': return exportOutlinesQ(overrides);
     default: throw new Error(`Glyph ${glyph} not yet supported`);
   }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     version="1.1"
+     width="1.625in" height="1.83333in"
+     viewBox="0 0 117 132">
+  <path id="path1"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 85.04,67.95
+           C 85.04,67.95 49.90,80.62 49.90,80.62">
+        <title>t Crossbar Hairline</title>
+  </path>
+  <path id="path2"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 94.30,6.08
+           C 94.30,6.08 23.75,123.13 23.96,122.92">
+        <title>t Fat Bar</title>
+  </path>
+  <path id="path3"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 6.77,98.97
+           C 6.77,98.97 72.61,41.99 72.61,41.99">
+        <title>t Entrance Hairline</title>
+  </path>
+</svg>

@@ -717,6 +717,62 @@ export function createStrokeRenderer(gl) {
       gl.disable(gl.BLEND);
     },
 
+    // Render filled polygons without any bowl/ellipse machinery.
+    // Used for letters with no bowl (e.g. 't') that still need overlayFills.
+    drawFills(fills) {
+      if (!fills || fills.length === 0) return;
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.viewport(0, 0, fboW, fboH);
+      gl.clearColor(0.0, 0.0, 0.0, 0.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      gl.useProgram(covProg);
+      gl.uniform2f(cov_u_resolution, fboW, fboH);
+
+      gl.enable(gl.BLEND);
+      gl.blendEquation(gl.MAX);
+      gl.blendFunc(gl.ONE, gl.ONE);
+
+      for (const { points, pressure: fillPressure } of fills) {
+        if (points.length < 3) continue;
+        const fp = fillPressure || 0.85;
+        const verts = points.map(p => [p.x, p.y]);
+        const tris = earClip(verts);
+        if (tris.length === 0) continue;
+        const count = tris.length * 3;
+        const positions = new Float32Array(count * 2);
+        const pressures = new Float32Array(count);
+        const edgeDists = new Float32Array(count);
+        for (let i = 0; i < tris.length; i++) {
+          for (let j = 0; j < 3; j++) {
+            const vi = i * 3 + j;
+            const pt = verts[tris[i][j]];
+            positions[vi * 2] = pt[0];
+            positions[vi * 2 + 1] = pt[1];
+            pressures[vi] = fp;
+            edgeDists[vi] = 0;
+          }
+        }
+        uploadCoverage({ positions, pressures, edgeDists, count }, gl.TRIANGLES);
+      }
+
+      // Composite onto main canvas
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      gl.useProgram(compProg);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, covTex);
+      gl.uniform1i(comp_u_coverage, 0);
+      gl.uniform3f(comp_u_inkColor, inkR, inkG, inkB);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.bindVertexArray(compVao);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindVertexArray(null);
+      gl.disable(gl.BLEND);
+    },
+
     clear() {
       gl.clearColor(1.0, 1.0, 1.0, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
