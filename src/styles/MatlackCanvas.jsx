@@ -15,8 +15,7 @@ export default function MatlackCanvas() {
     renderer.setInkColor(30, 38, 58);
     const dpr = window.devicePixelRatio || 1;
     const sz  = 90;
-    //const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'o', 'q', 't'];
-    const letters = ['a', 'h']
+    const letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'o', 'q', 't'];
     const spacing = 0.85 / letters.length;
     const scale = (sz * dpr) / 100;
     const BOWL_PHASE = 0.03;

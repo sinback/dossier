@@ -721,6 +721,7 @@ export function createStrokeRenderer(gl) {
     // Used for letters with no bowl (e.g. 't') that still need overlayFills.
     drawFills(fills) {
       if (!fills || fills.length === 0) return;
+      ensureFBO();
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       gl.viewport(0, 0, fboW, fboH);

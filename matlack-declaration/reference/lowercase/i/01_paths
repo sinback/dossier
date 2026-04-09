@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     version="1.1"
+     width="1.68056in" height="1.90278in"
+     viewBox="0 0 121 137">
+  <path id="path1"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 92.43,7.14
+           C 90.46,6.82 87.37,16.67 90.21,17.13
+             88.92,17.68 89.20,24.98 96.37,21.87
+             97.95,23.04 108.73,12.87 106.41,10.73
+             107.15,8.31 104.17,4.24 104.17,4.24
+             99.86,2.17 91.80,6.84 92.43,7.14 Z">
+        <title>i Dot</title>
+  </path>
+  <path id="path2"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 62.42,67.03
+           C 57.42,66.50 24.17,118.97 24.26,118.98
+             21.64,122.08 30.46,131.54 34.15,127.19
+             42.04,124.70 63.24,109.35 60.67,110.16
+             59.86,114.08 36.62,122.67 37.83,116.78
+             35.25,113.11 68.57,70.66 69.01,71.29
+             71.31,66.09 63.41,65.54 62.42,67.03 Z">
+        <title>i Downstroke Outline</title>
+  </path>
+  <path id="path3"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 64.73,69.56
+           C 64.64,69.52 26.29,117.96 32.49,120.94
+             31.53,122.16 43.40,124.72 46.15,121.23
+             46.15,121.23 85.89,86.53 85.89,86.53">
+        <title>i Downstroke</title>
+  </path>
+  <path id="path4"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 13.87,114.35
+           C 13.87,114.35 52.00,85.52 52.00,85.52">
+        <title>i Entrance</title>
+  </path>
+</svg>
