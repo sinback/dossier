@@ -1273,6 +1273,81 @@ function lLoopWidth(t, scale) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'm'
+// Source: hand-traced on m/01 from high-res 1823 facsimile (175×118, 1x).
+// Structure: entrance flick + double-hump stroke (one continuous ribbon).
+// ═════════════════════════════════════════════════════════════════════════════
+
+const M_REF_CENTER = { x: 79.20, y: 37.62 };  // humps centerline start
+
+const M_HUMPS_SEGS = [
+  [[79.20,37.62],[79.97,37.56],[82.09,39.36],[81.72,42.28]],
+  [[81.72,42.28],[83.45,43.32],[49.19,87.98],[47.11,86.73]],
+  [[47.11,86.73],[47.09,86.72],[69.15,68.97],[71.01,68.53]],
+  [[71.01,68.53],[71.01,68.53],[105.86,44.17],[105.86,44.17]],
+  [[105.86,44.17],[105.97,43.34],[114.98,41.12],[116.11,43.29]],
+  [[116.11,43.29],[117.39,44.45],[117.72,51.34],[117.18,53.49]],
+  [[117.18,53.49],[115.07,58.96],[95.83,84.14],[94.43,83.73]],
+  [[94.43,83.73],[94.23,83.72],[115.64,64.34],[118.34,62.81]],
+  [[118.34,62.81],[118.26,61.19],[151.15,43.01],[152.18,42.91]],
+  [[152.18,42.91],[154.76,40.48],[160.19,46.03],[159.74,47.86]],
+  [[159.74,47.86],[157.37,53.72],[138.24,77.90],[138.10,77.69]],
+  [[138.10,77.69],[136.56,81.83],[138.45,85.50],[142.90,86.60]],
+  [[142.90,86.60],[143.22,87.67],[154.93,86.08],[155.30,85.54]],
+  [[155.30,85.54],[157.38,84.82],[183.40,67.70],[183.23,67.59]],
+];
+
+const M_ENTRANCE_SEGS = [
+  [[30.51,72.89],[31.01,72.18],[75.35,32.18],[79.40,37.67]],
+];
+const M_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
+
+// Width function for the double-hump centerline.
+// Two hump cycles: each goes thin (turnaround) → fat (arch) → thin (descent).
+// The centerline has roughly:
+//   0-5%:   initial small loop/blob
+//   5-20%:  first descent (fat)
+//  20-30%:  first turnaround (thin)
+//  30-42%:  first hump arch (fat)
+//  42-50%:  second descent (fat)
+//  50-58%:  second turnaround (thin)
+//  58-70%:  second hump arch (fat)
+//  70-80%:  second descent (fat)
+//  80-90%:  bottom loop
+//  90-100%: exit flick (hairline)
+function mHumpsWidth(t, scale) {
+  // Initial blob/loop
+  if (t < 0.05) return 3.0 * scale;
+
+  // First descent
+  if (t < 0.18) return smoothStep(3.0, 5.0, (t - 0.05) / 0.13) * scale;
+
+  // First turnaround (thin)
+  if (t < 0.28) return smoothStep(5.0, 1.5, (t - 0.18) / 0.10) * scale;
+
+  // First hump rising
+  if (t < 0.38) return smoothStep(1.5, 4.0, (t - 0.28) / 0.10) * scale;
+
+  // First hump arch + second descent
+  if (t < 0.50) return smoothStep(4.0, 5.0, (t - 0.38) / 0.12) * scale;
+
+  // Second turnaround (thin)
+  if (t < 0.58) return smoothStep(5.0, 1.5, (t - 0.50) / 0.08) * scale;
+
+  // Second hump rising
+  if (t < 0.68) return smoothStep(1.5, 4.0, (t - 0.58) / 0.10) * scale;
+
+  // Second hump arch + descent
+  if (t < 0.78) return smoothStep(4.0, 3.5, (t - 0.68) / 0.10) * scale;
+
+  // Bottom loop
+  if (t < 0.88) return smoothStep(3.5, 2.5, (t - 0.78) / 0.10) * scale;
+
+  // Exit flick (hairline)
+  return smoothStep(2.5, 0.7, (t - 0.88) / 0.12) * scale;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'o'
 // Source: automated crescent fit on o/03 from high-res 1823 facsimile.
 // 'o' is the simplest letter: just a bowl, no extra components.
@@ -1401,6 +1476,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderK(renderer, cx, cy, scale, dpr, overrides)
     case 'l':
       return renderL(renderer, cx, cy, scale, dpr, overrides)
+    case 'm':
+      return renderM(renderer, cx, cy, scale, dpr, overrides)
     case 'o':
       return renderO(renderer, cx, cy, scale, dpr, overrides)
     case 'q':
@@ -2001,6 +2078,39 @@ function renderL(renderer, cx, cy, scale, dpr, overrides) {
   renderer.drawFills(loopFills);
 }
 
+/**
+ * Render a Matlack-style lowercase 'm'.
+ * Components: entrance flick + double-hump ribbon.
+ */
+function renderM(renderer, cx, cy, scale, dpr, overrides) {
+  // Double-hump centerline as variable-width ribbon
+  const humpsCenter = sampleSegments(
+    M_HUMPS_SEGS,
+    Array.from({ length: M_HUMPS_SEGS.length }, (_, i) => i),
+    12, cx, cy, scale, M_REF_CENTER
+  );
+  const humpsQuads = buildRibbon(humpsCenter, (t) => mHumpsWidth(t, scale));
+  const humpsFills = humpsQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  // Entrance flick (reversed taper)
+  const entrCenter = sampleSegments(
+    M_ENTRANCE_SEGS, [0], 12, cx, cy, scale, M_REF_CENTER
+  );
+  const entrReversed = [...entrCenter].reverse();
+  const entrQuads = buildTaperedRibbon(
+    entrReversed,
+    4.0 * scale,
+    M_ENTRANCE.taperPower,
+    M_ENTRANCE.liftPoint,
+  );
+  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  renderer.drawFills([
+    ...humpsFills,
+    ...entrFills,
+  ]);
+}
+
 function renderO(renderer, cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
   const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
@@ -2188,6 +2298,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'i': return { downstroke: 'tapered-ribbon', dot: 'filled-blob' };
     case 'j': return { barBowl: { inner: sampleEllipse(J_BAR_BOWL.inner), outer: sampleEllipse(J_BAR_BOWL.outer) } };
     case 'l': return { loop: 'single-stroke' };
+    case 'm': return { humps: 'single-stroke' };
     case 'k': return {
       barBowl: { inner: sampleEllipse(K_BAR_BOWL.inner), outer: sampleEllipse(K_BAR_BOWL.outer) },
       crescent: { inner: sampleEllipse(K_CRESCENT.inner), outer: sampleEllipse(K_CRESCENT.outer) },
