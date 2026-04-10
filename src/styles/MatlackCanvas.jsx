@@ -15,10 +15,10 @@ export default function MatlackCanvas() {
     renderer.setInkColor(30, 38, 58);
     const dpr = window.devicePixelRatio || 1;
     const sz  = 90;
-    const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    const row2 = ['i', 'j', 'k', 'l', 'm', 'o', 'q', 't'];
+    const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+    const row2 = ['j', 'k', 'l', 'm', 'n', 'o', 'q', 't'];
     const letters = [...row1, ...row2];
-    const cols = 8;
+    const cols = 9;
     const colSpacing = 0.85 / cols;
     const scale = (sz * dpr) / 100;
     const BOWL_PHASE = 0.03;
