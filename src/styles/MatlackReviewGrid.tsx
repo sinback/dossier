@@ -7,7 +7,7 @@ import { useTheme } from './theme.jsx';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MatlackRenderer = _MatlackRenderer as any;
 
-const SUPPORTED_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'q', 't'] as const;
+const SUPPORTED_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 't'] as const;
 
 const LABEL_OPTIONS = [
   { value: 'red',    label: '🔴 Red'    },
@@ -35,6 +35,10 @@ const LETTER_PARAMS = {
   l: {},  // single loop — no separate components
   m: {},  // single double-hump stroke — no separate components
   n: {},  // single hump stroke — no separate components
+  p: {
+    mainDownstroke:   { position: { dx: 0, dy: 0 } },
+    secondDownstroke: { position: { dx: 0, dy: 0 } },
+  },
   k: {
     downstroke: { position: { dx: 0, dy: 0 } },
     exitStroke: { position: { dx: 0, dy: -4 } },
