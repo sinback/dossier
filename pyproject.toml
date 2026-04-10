@@ -14,8 +14,8 @@ dev = [
     "hypothesis",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest",
     "hypothesis",
 ]
