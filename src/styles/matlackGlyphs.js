@@ -1595,6 +1595,42 @@ const W_EXIT = { startWidth: 2.0, taperPower: 1.7, liftPoint: 0.90 };
 const W_EXIT_OFFSET = { dx: 0, dy: 0 };
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 's'
+// Source: hand-traced on s/01 from high-res 1823 facsimile (91×91, 1x).
+// Structure: entrance flick + swoopy S-curve.
+// Surprisingly consistent width — nearly uniform through the whole stroke.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const S_REF_CENTER = { x: 68, y: 24 };  // entrance flick end / swoop start
+
+// Entrance flick
+const S_ENTRANCE_SEGS = [
+  [[4.27,70.30],[4.27,70.30],[68.06,23.81],[68.31,24.20]],
+];
+const S_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
+
+// Swoopy S-curve
+const S_SWOOP_SEGS = [
+  [[68.85,23.67],[67.85,22.85],[55.18,32.12],[57.52,33.90]],
+  [[57.52,33.90],[60.61,34.28],[60.91,59.47],[55.03,58.49]],
+  [[55.03,58.49],[56.07,60.15],[31.69,71.04],[30.74,69.50]],
+  [[30.74,69.50],[30.18,70.83],[19.13,66.44],[20.95,62.60]],
+  [[20.95,62.60],[16.98,61.44],[27.19,47.76],[28.33,48.08]],
+];
+
+// Width: nearly uniform, slight thinning at entry and exit
+function sSwoopWidth(t, scale) {
+  // Entry: thicken from junction
+  if (t < 0.10) return smoothStep(3.5, 5.0, t / 0.10) * scale;
+
+  // Main body: uniform fat
+  if (t < 0.80) return 5.0 * scale;
+
+  // Exit: slight thinning
+  return smoothStep(5.0, 2.5, (t - 0.80) / 0.20) * scale;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'x'
 // Source: hand-traced on x/01 from high-res 1823 facsimile (116×82, 1x).
 // Structure: two crossing crescent strokes (like a backwards 'c' + a 'c').
@@ -1855,6 +1891,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderQ(renderer, cx, cy, scale, dpr, overrides)
     case 'r':
       return renderR(renderer, cx, cy, scale, dpr, overrides)
+    case 's':
+      return renderS(renderer, cx, cy, scale, dpr, overrides)
     case 't':
       return renderT(renderer, cx, cy, scale, dpr, overrides)
     case 'w':
@@ -2589,6 +2627,36 @@ function renderP(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'x'.
  * Two crossing crescent strokes, each a variable-width ribbon.
  */
+/**
+ * Render a Matlack-style lowercase 's'.
+ * Components: entrance flick + swoopy S-curve (nearly uniform width).
+ */
+function renderS(renderer, cx, cy, scale, dpr, overrides) {
+  // Swoopy S-curve
+  const swoopCenter = sampleSegments(
+    S_SWOOP_SEGS,
+    Array.from({ length: S_SWOOP_SEGS.length }, (_, i) => i),
+    12, cx, cy, scale, S_REF_CENTER
+  );
+  const swoopQuads = buildRibbon(swoopCenter, (t) => sSwoopWidth(t, scale));
+  const swoopFills = swoopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  // Entrance flick (reversed taper)
+  const entrCenter = sampleSegments(
+    S_ENTRANCE_SEGS, [0], 12, cx, cy, scale, S_REF_CENTER
+  );
+  const entrReversed = [...entrCenter].reverse();
+  const entrQuads = buildTaperedRibbon(
+    entrReversed, 4.0 * scale, S_ENTRANCE.taperPower, S_ENTRANCE.liftPoint,
+  );
+  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  renderer.drawFills([
+    ...swoopFills,
+    ...entrFills,
+  ]);
+}
+
 function renderX(renderer, cx, cy, scale, dpr, overrides) {
   // Right crescent
   const rightCenter = sampleSegments(
@@ -2965,6 +3033,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'o': return exportOutlinesO();
     case 'r': return { stroke: 'ribbon' };
     case 'w': return { stroke: 'ribbon', blob: 'filled-blob' };
+    case 's': return { swoop: 'ribbon' };
     case 'x': return { rightCrescent: 'ribbon', leftCrescent: 'ribbon' };
     case 't': return exportOutlinesT(overrides);
     case 'y': return { barBowl: { inner: sampleEllipse(Y_BAR_BOWL.inner), outer: sampleEllipse(Y_BAR_BOWL.outer) } };

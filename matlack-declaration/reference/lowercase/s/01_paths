@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     version="1.1"
+     width="1.26389in" height="1.26389in"
+     viewBox="0 0 91 91">
+  <path id="path1"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 68.85,23.67
+           C 67.85,22.85 55.18,32.12 57.52,33.90
+             60.61,34.28 60.91,59.47 55.03,58.49
+             56.07,60.15 31.69,71.04 30.74,69.50
+             30.18,70.83 19.13,66.44 20.95,62.60
+             16.98,61.44 27.19,47.76 28.33,48.08">
+        <title>s Swoopy Part</title>
+  </path>
+  <path id="path2"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 4.27,70.30
+           C 4.27,70.30 68.06,23.81 68.31,24.20">
+        <title>s Entrance Flick</title>
+  </path>
+</svg>
