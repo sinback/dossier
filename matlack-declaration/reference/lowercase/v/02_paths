@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     version="1.1"
+     width="1.26389in" height="1.20833in"
+     viewBox="0 0 91 87">
+  <path id="path1"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 65.51,27.99
+           C 65.44,27.91 58.23,42.67 59.64,44.33
+             58.79,44.81 61.50,50.10 63.64,48.87
+             63.13,49.72 82.66,49.92 83.30,48.85">
+        <title>v Exit (Taper, Not A Flick!)</title>
+  </path>
+  <path id="path2"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 30.63,70.47
+           C 31.82,71.82 69.19,31.78 65.48,27.92">
+        <title>v Upstroke Flick</title>
+  </path>
+  <path id="path3"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 28.08,28.93
+           C 28.08,28.93 30.89,34.29 30.89,34.29
+             33.80,38.05 14.67,60.15 17.29,63.11
+             15.73,63.91 19.42,73.42 22.58,71.81
+             23.26,72.98 31.69,71.22 30.78,69.66">
+        <title>v Downstroke</title>
+  </path>
+  <path id="path4"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 2.57,50.49
+           C 2.13,50.13 21.50,24.18 28.14,29.58">
+        <title>v Entrance Flick</title>
+  </path>
+</svg>

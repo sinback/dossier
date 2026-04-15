@@ -15,9 +15,10 @@ export default function MatlackCanvas() {
     renderer.setInkColor(30, 38, 58);
     const dpr = window.devicePixelRatio || 1;
     const sz  = 90;
-    const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'];
-    const row2 = ['l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y'];
-    const letters = [...row1, ...row2];
+    const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
+    const row2 = ['m', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x'];
+    const row3 = ['y'];
+    const letters = [...row1, ...row2, ...row3];
     const cols = 10;
     const colSpacing = 0.85 / cols;
     const scale = (sz * dpr) / 100;
@@ -32,10 +33,12 @@ export default function MatlackCanvas() {
     ];
 
     letters.forEach((l, i) => {
-      const row = i < row1.length ? 0 : 1;
-      const col = i < row1.length ? i : i - row1.length;
+      let row, col;
+      if (i < row1.length) { row = 0; col = i; }
+      else if (i < row1.length + row2.length) { row = 1; col = i - row1.length; }
+      else { row = 2; col = i - row1.length - row2.length; }
       const cx = canvas.width * (0.05 + col * colSpacing);
-      const cy = canvas.height * (0.30 + row * 0.40);
+      const cy = canvas.height * (0.20 + row * 0.30);
       renderGlyph(l, renderer, cx, cy, sz, dpr);
 
       // Draw tick marks on the outer ellipse
