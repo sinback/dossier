@@ -16,7 +16,7 @@ export default function MatlackCanvas() {
     const dpr = window.devicePixelRatio || 1;
     const sz  = 90;
     const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'];
-    const row2 = ['l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'w', 'x', 'y'];
+    const row2 = ['l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'w', 'x', 'y'];
     const letters = [...row1, ...row2];
     const cols = 10;
     const colSpacing = 0.85 / cols;

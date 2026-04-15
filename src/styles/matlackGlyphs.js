@@ -1631,6 +1631,63 @@ function sSwoopWidth(t, scale) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'u'
+// Source: hand-traced on u/01 from high-res 1823 facsimile (123×85, 1x).
+// Structure: entrance flick + single descent/rise stroke + exit flick.
+// Like 'w' with one fewer hump, or 'n' mirrored.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const U_REF_CENTER = { x: 64, y: 24 };  // entrance flick end / first descent top
+
+// Entrance flick
+const U_ENTRANCE_SEGS = [
+  [[10.16,65.05],[15.42,69.71],[65.46,25.33],[64.15,24.16]],
+];
+const U_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
+
+// Combined stroke: initial downstroke → intermediate flick → second downstroke
+const U_STROKE_SEGS = [
+  // Initial downstroke
+  [[63.35,23.23],[63.35,23.23],[24.78,66.96],[30.41,70.91]],
+  [[30.41,70.91],[28.71,72.10],[34.43,77.46],[35.55,76.63]],
+  [[35.55,76.63],[35.55,77.15],[44.31,74.89],[44.58,73.59]],
+  // Intermediate flick (rise back up)
+  [[44.21,74.38],[44.21,74.38],[104.33,25.26],[104.33,25.26]],
+  // Second downstroke
+  [[105.79,25.21],[105.59,24.91],[76.34,57.82],[78.11,60.49]],
+  [[78.11,60.49],[74.01,62.59],[78.48,74.18],[80.68,72.92]],
+  [[80.68,72.92],[80.59,73.87],[86.92,71.87],[87.06,70.01]],
+];
+
+// Width: single descent/rise cycle like 'n'
+function uStrokeWidth(t, scale) {
+  // First descent: fat
+  if (t < 0.08) return smoothStep(3.0, 5.0, t / 0.08) * scale;
+  if (t < 0.20) return 5.0 * scale;
+
+  // Turnaround: thin
+  if (t < 0.30) return smoothStep(5.0, 1.5, (t - 0.20) / 0.10) * scale;
+
+  // Rise / intermediate flick: thickening
+  if (t < 0.50) return smoothStep(1.5, 4.0, (t - 0.30) / 0.20) * scale;
+
+  // Second descent: fat
+  if (t < 0.70) return smoothStep(4.0, 5.0, (t - 0.50) / 0.20) * scale;
+
+  // Bottom loop: thinning
+  if (t < 0.85) return smoothStep(5.0, 2.5, (t - 0.70) / 0.15) * scale;
+
+  // Exit: thin
+  return smoothStep(2.5, 1.0, (t - 0.85) / 0.15) * scale;
+}
+
+// Exit flick
+const U_EXIT_SEGS = [
+  [[87.30,70.33],[87.30,70.33],[120.07,39.38],[120.07,39.38]],
+];
+const U_EXIT = { startWidth: 2.0, taperPower: 1.7, liftPoint: 0.85 };
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'x'
 // Source: hand-traced on x/01 from high-res 1823 facsimile (116×82, 1x).
 // Structure: two crossing crescent strokes (like a backwards 'c' + a 'c').
@@ -1895,6 +1952,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderS(renderer, cx, cy, scale, dpr, overrides)
     case 't':
       return renderT(renderer, cx, cy, scale, dpr, overrides)
+    case 'u':
+      return renderU(renderer, cx, cy, scale, dpr, overrides)
     case 'w':
       return renderW(renderer, cx, cy, scale, dpr, overrides)
     case 'x':
@@ -2631,6 +2690,43 @@ function renderP(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 's'.
  * Components: entrance flick + swoopy S-curve (nearly uniform width).
  */
+/**
+ * Render a Matlack-style lowercase 'u'.
+ * Components: entrance flick + single descent/rise ribbon + exit flick.
+ */
+function renderU(renderer, cx, cy, scale, dpr, overrides) {
+  const strokeCenter = sampleSegments(
+    U_STROKE_SEGS,
+    Array.from({ length: U_STROKE_SEGS.length }, (_, i) => i),
+    12, cx, cy, scale, U_REF_CENTER
+  );
+  const strokeQuads = buildRibbon(strokeCenter, (t) => uStrokeWidth(t, scale));
+  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  const entrCenter = sampleSegments(
+    U_ENTRANCE_SEGS, [0], 12, cx, cy, scale, U_REF_CENTER
+  );
+  const entrReversed = [...entrCenter].reverse();
+  const entrQuads = buildTaperedRibbon(
+    entrReversed, 4.0 * scale, U_ENTRANCE.taperPower, U_ENTRANCE.liftPoint,
+  );
+  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  const exitCenter = sampleSegments(
+    U_EXIT_SEGS, [0], 12, cx, cy, scale, U_REF_CENTER
+  );
+  const exitQuads = buildTaperedRibbon(
+    exitCenter, U_EXIT.startWidth * scale, U_EXIT.taperPower, U_EXIT.liftPoint,
+  );
+  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  renderer.drawFills([
+    ...strokeFills,
+    ...entrFills,
+    ...exitFills,
+  ]);
+}
+
 function renderS(renderer, cx, cy, scale, dpr, overrides) {
   // Swoopy S-curve
   const swoopCenter = sampleSegments(
@@ -3034,6 +3130,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'r': return { stroke: 'ribbon' };
     case 'w': return { stroke: 'ribbon', blob: 'filled-blob' };
     case 's': return { swoop: 'ribbon' };
+    case 'u': return { stroke: 'ribbon' };
     case 'x': return { rightCrescent: 'ribbon', leftCrescent: 'ribbon' };
     case 't': return exportOutlinesT(overrides);
     case 'y': return { barBowl: { inner: sampleEllipse(Y_BAR_BOWL.inner), outer: sampleEllipse(Y_BAR_BOWL.outer) } };
