@@ -15,10 +15,10 @@ export default function MatlackCanvas() {
     renderer.setInkColor(30, 38, 58);
     const dpr = window.devicePixelRatio || 1;
     const sz  = 90;
-    const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
-    const row2 = ['j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 't'];
+    const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+    const row2 = ['k', 'l', 'm', 'n', 'o', 'p', 'q', 't', 'y'];
     const letters = [...row1, ...row2];
-    const cols = 9;
+    const cols = 10;
     const colSpacing = 0.85 / cols;
     const scale = (sz * dpr) / 100;
     const BOWL_PHASE = 0.03;
@@ -72,7 +72,7 @@ export default function MatlackCanvas() {
   // ── Reference strip ────────────────────────────────────────────────────────
   const REF_H = 80;
 
-  function RefImage({ src, w, h, inner, outer, label }) {
+  function RefImage({ src, w, h, inner, outer, dot, label }) {
     const scale = REF_H / h;
     const dispW = w * scale;
     return (
@@ -97,6 +97,9 @@ export default function MatlackCanvas() {
                 fill="none" stroke="magenta" strokeWidth="1.0" opacity="0.6"
                 strokeDasharray="3 2" />
             )}
+            {dot && (
+              <circle cx={dot.x * scale} cy={dot.y * scale} r={3} fill="red" opacity="0.9" />
+            )}
           </svg>
         </div>
         <div style={{ fontSize: 7, color: '#888', textAlign: 'center', lineHeight: '1.1' }}>{label}</div>
@@ -117,11 +120,14 @@ export default function MatlackCanvas() {
             outer: { cx: 38.2, cy: 33.1, a: 38.8, b: 15.3, tilt: -45.5 }},
   };
 
+  // 'y' reference with proposed REF_CENTER shown as red dot
+  const Y_REF = { w: 227, h: 196, dot: { x: 95, y: 113 } };
+
   const refs = [
+    { src: '/ref/y/01.png', key: 'y01', w: Y_REF.w, h: Y_REF.h, inner: null, outer: null,
+      dot: Y_REF.dot, label: 'y 01 (ref center?)' },
     { src: '/ref/c/01.png', key: 'c01', ...C_FIT['01'], label: 'c 01 (auto)' },
-    { src: '/ref/c/02.png', key: 'c02', ...C_FIT['02'], label: 'c 02' },
     { src: '/ref/o/03.png', key: 'o03', ...O_FIT['03'], label: 'o 03 (auto)' },
-    { src: '/ref/o/02.png', key: 'o02', w: 79, h: 74, inner: null, outer: null, label: 'o 02' },
     { src: '/ref/b/01.png', key: 'b01', ...B_ELLIPSE_DATA['01'], label: 'b 01 ★' },
   ];
 
@@ -139,7 +145,7 @@ export default function MatlackCanvas() {
         <span style={{ marginRight: 4 }}>ref:</span>
         {refs.map(r => (
           <RefImage key={r.key} src={r.src} w={r.w} h={r.h}
-            inner={r.inner} outer={r.outer} label={r.label} />
+            inner={r.inner} outer={r.outer} dot={r.dot} label={r.label} />
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => matlackRef.current?.clear()}

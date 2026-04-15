@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     version="1.1"
+     width="3.15278in" height="2.72222in"
+     viewBox="0 0 227 196">
+  <path id="path1"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 94.52,113.00
+           C 94.40,113.09 199.90,55.86 199.90,55.86">
+        <title>y Exit Flick</title>
+  </path>
+  <path id="path2"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 93.03,112.10
+           C 93.11,111.97 13.39,162.09 14.52,167.74
+             12.53,166.91 8.72,176.23 11.92,177.93
+             11.81,178.02 18.22,180.12 18.91,179.64
+             18.54,180.03 30.73,181.98 35.93,177.79
+             36.19,179.38 91.61,141.37 89.70,129.57
+             93.72,127.45 99.45,110.77 93.48,113.91">
+        <title>y Bar-Bowl/Loop Outer</title>
+  </path>
+  <path id="path3"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 83.07,123.15
+           C 82.49,122.59 19.20,164.45 24.72,170.62
+             25.16,172.22 36.00,171.39 35.83,170.51
+             35.70,171.10 66.99,147.75 67.99,143.25
+             68.52,143.38 82.02,126.07 81.55,125.95">
+        <title>y Bar-Bowl/Loop Inner</title>
+  </path>
+  <path id="path4"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 156.74,29.03
+           C 156.74,29.03 142.87,39.20 142.87,39.20
+             140.10,39.20 95.41,115.40 95.96,115.40">
+        <title>y Second Downstroke</title>
+  </path>
+  <path id="path5"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 98.47,38.52
+           C 98.55,37.15 110.89,32.70 110.75,34.95
+             115.47,37.84 93.20,68.82 90.58,67.22
+             88.50,68.04 88.62,77.42 91.91,76.12
+             93.80,80.51 126.28,64.32 125.23,61.88">
+        <title>y Initial Downstroke</title>
+  </path>
+  <path id="path6"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 84.28,48.59
+           C 84.44,48.59 98.86,38.05 98.86,38.05">
+        <title>y Entry Flick</title>
+  </path>
+</svg>
