@@ -55,3 +55,67 @@ The bowl is NOT uniformly thin. Width varies dramatically around the arc due to 
 - Top of bowl pressure is about right (thin)
 - Downstroke weight is good
 - Bowl shape needs more bottom-left bulge
+
+---
+
+## Ribbon primitive
+
+As letters beyond 'a' were implemented, a second construction primitive emerged
+alongside the two-ellipse bowl: the **variable-width ribbon**.
+
+### buildRibbon(centerline, widthFn)
+
+Takes a polyline centerline and a width function `widthFn(t)` where t runs 0→1
+along the stroke. Returns a closed polygon (quad strip) representing the stroke
+outline. The width function gives half-width at each sample point.
+
+This is the workhorse for any stroke that doesn't enclose a counter — humps,
+loops, descenders, diagonals, S-curves.
+
+**Used by:** e (loop), g (descender), h (hump), j (downstroke), k (exit stroke),
+l (loop), m (humps), n (hump), r (swoop), s (S-curve), w (zigzag segments),
+x (crescent ribbons), y (strokes).
+
+### buildTaperedRibbon(centerline, startWidth, taperPower, liftPoint)
+
+Specialized ribbon where width follows a `(1-t)^taperPower` power law from
+`startWidth` down to zero. Models the natural width decay when a pen lifts off
+paper — biomechanically, the pressure release follows a power law, not linear
+or exponential decay.
+
+The `taperPower` for Matlack's hand is **~1.7**, derived from measuring flick
+widths across multiple letters. The `liftPoint` parameter (default 1.0) allows
+the taper to begin partway through the stroke.
+
+**Used by:** Entry and exit flicks on c, e, h, i, j, k, p, q, r, t, w, y.
+
+### overlayFills
+
+A rendering option that draws fill polygons **after** the inner ellipse cutout
+in the bowl pipeline. This lets ribbon components (downstrokes, humps, flicks)
+coexist with bowls without being clipped by the inner ellipse.
+
+**Used by:** c, e, g, h, j, k, q, t, y — any letter that combines a bowl with
+ribbon strokes.
+
+### drawFills
+
+Bowl-less rendering path. Draws fill polygons directly to the canvas without
+any bowl outer/inner ellipse logic. Used by letters that have no bowl component.
+
+**Used by:** e (despite having a loop — no ellipse decomposition), i, l, m, n,
+p, r, s, w, x.
+
+### REF_CENTER philosophy
+
+REF_CENTER originally meant "center of the inner ellipse" — the geometric center
+of the bowl's counter. As ribbon-based letters were added, the concept shifted:
+
+- For bowl letters: still the inner ellipse center (a, b, c, d, g, o, q).
+- For vertical letters: the junction point where components meet, typically at
+  x-height level (f, h, k, t).
+- For ribbon-only letters: the x-height midline or the point where the dominant
+  stroke begins (i, j, l, m, n, p, r, s, w, x, y).
+
+The key requirement is that REF_CENTER maps to the caller's (cx, cy), so letters
+align correctly when placed side by side.

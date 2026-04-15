@@ -74,11 +74,34 @@ This is a simple, powerful parameter for controlling per-letter personality.
 
 ## Remaining predictions
 
-- **'d':** Similar to 'a' (bowl + tall stroke), probably similar tilt diff.
-- **'c':** Partial bowl (~260° arc). Automated fitting attempted but
-  contamination from neighboring letters makes isolation harder.
-  Tilted-crop capture strategy may improve results.
-- **'g', 'q':** Bowl + descender. Bowl should match 'a'/'b' in shape.
+- All bowl-family letters (a, b, c, d, g, o, q) are now implemented.
+  The two-ellipse model held up across all of them.
+
+## Letters that moved away from the bowl model
+
+Several letters that might visually suggest a bowl decomposition turned out to
+be better expressed as variable-width ribbons:
+
+- **'e':** The loop reads as round, but decomposing it into two ellipses was
+  awkward — the cross-stroke and the way the loop closes don't fit the
+  outer-minus-inner crescent model cleanly. A single buildRibbon call with a
+  custom width function captures the shape more naturally. The flick tail uses
+  buildTaperedRibbon with (1-t)^1.7 power taper.
+
+- **'l':** Similar story — the looped descender is a single continuous stroke
+  whose width varies smoothly. No inner/outer ellipse pair; just a ribbon with
+  a width function, rendered via drawFills (bypassing the bowl pipeline entirely).
+
+- **'n', 'm':** Hump shapes share motor pattern with 'h' but lack the bar-bowl
+  stem. The humps are ribbons, not crescents. Rendered via drawFills.
+
+- **'s':** The S-curve has no bowl-like component at all. Nearly uniform width
+  throughout, rendered as ribbons via drawFills.
+
+The general pattern: the two-ellipse model works well for letters with a clear
+enclosed counter (a, b, c, d, g, o, q) where the inner ellipse represents
+negative space. For letters where the stroke just curves without enclosing space,
+ribbons are the right primitive.
 
 ## Automated fitting notes
 

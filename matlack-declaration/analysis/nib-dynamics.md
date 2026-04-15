@@ -31,3 +31,66 @@ This is NOT a gradual transition — it's a fairly abrupt shift at the direction
 ### Nib angle observations
 - **Observed:** Consistent ~40-50° nib angle throughout (typical for English round hand). The thin horizontals and thick verticals are a natural consequence of this held angle, not active rotation.
 - **Observed:** No visible nib rotation within the letter — Matlack holds the angle steady.
+
+---
+
+## Named arc zone constants
+
+The bowl width profile around a counter-clockwise arc is parameterized by four
+named constants representing key transitions in pressure/velocity. These were
+empirically derived from 'a' and validated across c, d, g, and q:
+
+| Constant   | Value | Position        | What happens                         |
+|------------|-------|-----------------|--------------------------------------|
+| ARC_ENTRY  | 0.00  | Upper-right     | Pen enters — hairline, fast, light   |
+| ARC_LIFT   | 0.22  | Top-left        | Pen lightens — thin floor ends       |
+| ARC_PRESS  | 0.55  | Bottom-left     | Peak pressure begins — fat zone      |
+| ARC_RISE   | 0.78  | Bottom-right    | Pen starts rising — taper-out begins |
+
+The width function between these zones uses smoothStep interpolation. The thin
+floor (ARC_ENTRY → ARC_LIFT) varies per letter: 0.20 for 'a', 0.25 for 'd',
+0.30 for 'c'. The fat zone (ARC_PRESS → ARC_RISE) is consistently 1.0 (full
+width) across all bowl letters.
+
+These constants are shared across the entire bowl family, reinforcing the
+observation that the pressure profile is a property of Matlack's hand, not
+individual letters.
+
+---
+
+## Power taper coefficient
+
+Flick strokes (entry hairlines, exit tails) follow a **(1-t)^1.7** power-law
+width decay. This was discovered by measuring flick widths at multiple points
+along the taper in reference images and fitting the exponent.
+
+The 1.7 exponent is consistent across all letters that have flicks — it's a
+biomechanical constant of the pen-lift gesture. It produces a taper that is:
+- Slightly faster than linear (1.0) at the start
+- Slightly slower than quadratic (2.0) overall
+- A good match for the way pressure decays as the hand lifts: rapid initial
+  unloading, then a slower trailing-off as the last fibers of the nib leave
+  the paper surface
+
+This coefficient is used in buildTaperedRibbon and is shared across all letters
+via the flick parameter objects (e.g., `taperPower: 1.7`).
+
+---
+
+## Width profile for non-bowl letters
+
+Several letters revealed that Matlack's width variation extends beyond the
+bowl arc zones:
+
+- **'s':** Nearly uniform width through the S-curve. Unlike bowl letters where
+  width varies dramatically with arc position, the S-curve maintains steady
+  pressure — likely because both halves of the S involve near-vertical tangents
+  (perpendicular to nib angle), so the nib projects consistently wide.
+
+- **'x':** Two crossing crescent ribbons with symmetric lens-shaped width —
+  widest at the crossing point, tapering to both ends. The symmetry suggests
+  Matlack treats each stroke of 'x' as a single ballistic movement.
+
+- **'n', 'm':** Hump ribbons with width that peaks at the top of the arch and
+  tapers at entry/exit. Similar motor pattern to the bowl's left side (near-
+  vertical tangent = wide), but without the enclosed-counter geometry.
