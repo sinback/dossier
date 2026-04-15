@@ -7,7 +7,7 @@ import { useTheme } from './theme.jsx';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MatlackRenderer = _MatlackRenderer as any;
 
-const SUPPORTED_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 't', 'y'] as const;
+const SUPPORTED_LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 't', 'w', 'y'] as const;
 
 const LABEL_OPTIONS = [
   { value: 'red',    label: '🔴 Red'    },
@@ -65,6 +65,10 @@ const LETTER_PARAMS = {
     hairline: { position: { dx: 8, dy: -2 }, scale: { sx: 1.0, sy: 1.0 } },
   },
   o: {},
+  w: {
+    blob: { position: { dx: 0, dy: 0 }, scale: { sx: 1.0, sy: 1.0 } },
+    exitFlick: { position: { dx: 0, dy: 0 } },
+  },
   r: {
     exitFlick: { position: { dx: 0, dy: 0 } },
   },

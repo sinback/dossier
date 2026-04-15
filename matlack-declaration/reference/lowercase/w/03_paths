@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:svg="http://www.w3.org/2000/svg"
+     version="1.1"
+     width="1.86111in" height="1.20833in"
+     viewBox="0 0 134 87">
+  <path id="path1"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 109.38,37.28
+           C 109.59,37.54 129.67,37.73 129.67,37.73">
+        <title>w Exit Flick</title>
+  </path>
+  <path id="path2"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 109.23,24.35
+           C 108.06,24.31 97.96,32.65 99.07,32.68
+             97.85,33.74 101.20,44.33 102.88,43.06
+             102.94,44.62 109.14,44.79 109.12,44.08
+             109.43,44.79 119.63,41.39 118.97,39.92
+             120.24,40.15 120.91,27.76 120.52,27.70
+             121.28,26.01 112.14,19.51 110.11,24.05">
+        <title>w Ink Blob Outline</title>
+  </path>
+  <path id="path3"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 62.28,70.17
+           C 63.40,73.47 77.91,72.53 77.69,71.87
+             85.14,74.26 112.96,34.03 111.61,33.60">
+        <title>w Third Flick</title>
+  </path>
+  <path id="path4"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 81.99,34.88
+           C 81.99,34.88 53.62,61.64 57.58,65.04
+             56.39,65.49 58.29,71.36 61.55,70.13">
+        <title>w Second Downstroke</title>
+  </path>
+  <path id="path5"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 17.75,70.95
+           C 17.61,70.84 21.73,78.17 22.64,78.85
+             31.57,84.37 82.61,35.35 81.78,34.80">
+        <title>w Second Flick</title>
+  </path>
+  <path id="path6"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 44.45,32.90
+           C 44.02,32.90 10.60,68.37 17.49,70.34">
+        <title>w Initial Downstroke</title>
+  </path>
+  <path id="path7"
+        fill="none" stroke="black" stroke-width="1"
+        d="M 7.42,67.93
+           C 7.42,67.93 42.95,31.91 42.95,31.91">
+        <title>w Entrance Flick</title>
+  </path>
+</svg>
