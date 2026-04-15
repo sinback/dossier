@@ -486,7 +486,9 @@ function bBarBowlDensity() { return 0.85; }
 
 // Reference anchor: center of 'f's inner bar-bowl ellipse in ref fir/01.
 // Image: matlack-declaration/reference/context/fir_4x/01.png (304×312 at 4x)
-const F_REF_CENTER = { x: 171.4, y: 74.6 };
+// REF_CENTER at the crossbar y-level so 'f' aligns vertically with other letters.
+// Original inner ellipse center was (171.4, 74.6); crossbar is at y≈160.
+const F_REF_CENTER = { x: 171.4, y: 160.0 };
 
 // ── 'f' bar-bowl ellipses ────────────────────────────────────────────────────
 // Both inner and outer are GOOD ellipse fits (residuals ~0.098).
@@ -1077,7 +1079,9 @@ const I_ENTRANCE = {
 //            + exit flick. Similar to 'f' structurally.
 // ═════════════════════════════════════════════════════════════════════════════
 
-const J_REF_CENTER = { x: 112.22, y: 156.02 };  // downstroke bottom / bar-bowl junction
+// REF_CENTER at x-height midline so 'j' aligns vertically with other letters.
+// Original junction was (112.22, 156.02); entrance flick meets downstroke at y≈97.
+const J_REF_CENTER = { x: 139, y: 97 };
 
 const J_BAR_BOWL = {
   inner: {
@@ -1597,7 +1601,9 @@ const W_EXIT_OFFSET = { dx: 0, dy: 0 };
 // REF_CENTER at the junction point where all strokes converge.
 // ═════════════════════════════════════════════════════════════════════════════
 
-const Y_REF_CENTER = { x: 95, y: 113 };  // junction of all strokes
+// REF_CENTER shifted up to x-height midline so 'y' aligns with other letters.
+// Original junction was (95, 113); entry zone is around y≈45.
+const Y_REF_CENTER = { x: 95, y: 50 };
 
 // Entry flick
 const Y_ENTRY_SEGS = [
