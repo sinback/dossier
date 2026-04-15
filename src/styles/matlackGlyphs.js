@@ -1458,6 +1458,59 @@ function pSecondWidth(t, scale) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+// LOWERCASE 'r'
+// Source: hand-traced on r/01 from high-res 1823 facsimile (90×116, 1x).
+// Beginning-of-word form. Structure: entrance flick + swoop/downstroke
+// (combined ribbon) + exit flick.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const R_REF_CENTER = { x: 55, y: 44 };  // junction of entrance/swoop/downstroke
+
+// Entrance flick
+const R_ENTRANCE_SEGS = [
+  [[18.10,64.90],[18.10,64.90],[51.44,37.99],[51.44,37.99]],
+];
+const R_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
+
+// Swoop + downstroke as one continuous stroke
+const R_STROKE_SEGS = [
+  // Swoop (the little hook that makes 'r' recognizable)
+  [[51.75,38.69],[50.92,38.22],[53.16,49.03],[58.52,49.45]],
+  // Downstroke
+  [[58.96,49.27],[58.96,49.27],[30.91,80.27],[32.80,83.77]],
+  [[32.80,83.77],[31.26,84.62],[34.47,95.36],[36.97,93.99]],
+];
+
+// Width function: swoop is thin, descent fattens, bottom loop thins
+function rStrokeWidth(t, scale) {
+  // Swoop entry: thin
+  if (t < 0.10) return 2.0 * scale;
+
+  // Swoop body: moderate
+  if (t < 0.25) return smoothStep(2.0, 3.5, (t - 0.10) / 0.15) * scale;
+
+  // Transition to descent: fattening
+  if (t < 0.40) return smoothStep(3.5, 5.0, (t - 0.25) / 0.15) * scale;
+
+  // Main descent: fat
+  if (t < 0.65) return 5.0 * scale;
+
+  // Bottom turnaround: thinning
+  if (t < 0.80) return smoothStep(5.0, 3.0, (t - 0.65) / 0.15) * scale;
+
+  // Bottom loop: moderate, thinning to exit
+  return smoothStep(3.0, 1.5, (t - 0.80) / 0.20) * scale;
+}
+
+// Exit flick
+const R_EXIT_SEGS = [
+  [[37.56,94.79],[36.90,95.64],[50.31,96.17],[51.21,95.00]],
+  [[51.21,95.00],[51.21,95.00],[74.98,86.19],[74.98,86.19]],
+];
+const R_EXIT = { startWidth: 2.5, taperPower: 1.7, liftPoint: 0.85 };
+const R_EXIT_OFFSET = { dx: 0, dy: 0 };
+
+// ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'y'
 // Source: hand-traced on y/01 from high-res 1823 facsimile (227×196, 1x).
 // Structure: entry flick + initial downstroke (variable-width ribbon) +
@@ -1674,6 +1727,8 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) 
       return renderP(renderer, cx, cy, scale, dpr, overrides)
     case 'q':
       return renderQ(renderer, cx, cy, scale, dpr, overrides)
+    case 'r':
+      return renderR(renderer, cx, cy, scale, dpr, overrides)
     case 't':
       return renderT(renderer, cx, cy, scale, dpr, overrides)
     case 'y':
@@ -2392,6 +2447,52 @@ function renderP(renderer, cx, cy, scale, dpr, overrides) {
  * Components: entry flick + initial downstroke (ribbon) + second downstroke
  *             (ribbon) + bar-bowl loop + exit flick.
  */
+/**
+ * Render a Matlack-style lowercase 'r' (beginning-of-word form).
+ * Components: entrance flick + swoop/downstroke ribbon + exit flick.
+ */
+function renderR(renderer, cx, cy, scale, dpr, overrides) {
+  // Swoop + downstroke as one ribbon
+  const strokeCenter = sampleSegments(
+    R_STROKE_SEGS, [0, 1, 2], 12, cx, cy, scale, R_REF_CENTER
+  );
+  const strokeQuads = buildRibbon(strokeCenter, (t) => rStrokeWidth(t, scale));
+  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  // Entrance flick (reversed taper)
+  const entrCenter = sampleSegments(
+    R_ENTRANCE_SEGS, [0], 12, cx, cy, scale, R_REF_CENTER
+  );
+  const entrReversed = [...entrCenter].reverse();
+  const entrQuads = buildTaperedRibbon(
+    entrReversed,
+    3.5 * scale,
+    R_ENTRANCE.taperPower,
+    R_ENTRANCE.liftPoint,
+  );
+  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  // Exit flick
+  const exitOff = resolveOffset('exitFlick', R_EXIT_OFFSET, overrides, dpr);
+  const exitCenter = sampleSegments(
+    R_EXIT_SEGS, [0, 1], 12,
+    cx + exitOff.dx, cy + exitOff.dy, scale, R_REF_CENTER
+  );
+  const exitQuads = buildTaperedRibbon(
+    exitCenter,
+    R_EXIT.startWidth * scale,
+    R_EXIT.taperPower,
+    R_EXIT.liftPoint,
+  );
+  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+
+  renderer.drawFills([
+    ...strokeFills,
+    ...entrFills,
+    ...exitFills,
+  ]);
+}
+
 function renderY(renderer, cx, cy, scale, dpr, overrides) {
   // ── Initial downstroke (variable-width ribbon, no outline needed) ──
   const initCenter = sampleSegments(
@@ -2649,6 +2750,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
       crescent: { inner: sampleEllipse(K_CRESCENT.inner), outer: sampleEllipse(K_CRESCENT.outer) },
     };
     case 'o': return exportOutlinesO();
+    case 'r': return { stroke: 'ribbon' };
     case 't': return exportOutlinesT(overrides);
     case 'y': return { barBowl: { inner: sampleEllipse(Y_BAR_BOWL.inner), outer: sampleEllipse(Y_BAR_BOWL.outer) } };
     case 'q': return exportOutlinesQ(overrides);
