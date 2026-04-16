@@ -17,7 +17,7 @@ export default function MatlackCanvas() {
     const sz  = 90;
     const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
     const row2 = ['m', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x'];
-    const row3 = ['y'];
+    const row3 = ['y', 'z'];
     const letters = [...row1, ...row2, ...row3];
     const cols = 10;
     const colSpacing = 0.85 / cols;
