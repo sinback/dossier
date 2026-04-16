@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { renderGlyph, glyphOuterEllipse, B_ELLIPSE_DATA } from './matlackGlyphs.js';
+import { renderGlyph, B_ELLIPSE_DATA } from './matlackGlyphs.js';
 import MatlackRenderer from './MatlackRenderer.jsx';
 
 /**
@@ -21,17 +21,6 @@ export default function MatlackCanvas() {
     const letters = [...row1, ...row2, ...row3];
     const cols = 10;
     const colSpacing = 0.85 / cols;
-    const scale = (sz * dpr) / 100;
-    const BOWL_PHASE = 0.03;
-
-    // arcFrac tick marks at bowl zone boundaries (see ARC_* constants in matlackGlyphs)
-    const ticks = [
-      { f: 0.00, color: [255, 0, 0] },     // red    = ARC_ENTRY
-      { f: 0.22, color: [0, 200, 0] },      // green  = ARC_LIFT
-      { f: 0.55, color: [255, 140, 0] },    // orange = ARC_PRESS
-      { f: 0.78, color: [0, 80, 255] },     // blue   = ARC_RISE
-    ];
-
     letters.forEach((l, i) => {
       let row, col;
       if (i < row1.length) { row = 0; col = i; }
@@ -40,35 +29,6 @@ export default function MatlackCanvas() {
       const cx = canvas.width * (0.05 + col * colSpacing);
       const cy = canvas.height * (0.20 + row * 0.30);
       renderGlyph(l, renderer, cx, cy, sz, dpr);
-
-      // Draw tick marks on the outer ellipse
-      const info = glyphOuterEllipse(l);
-      if (!info) return;
-      const { outer: e, refCenter } = info;
-      const eCx = cx + (e.cx - refCenter.x) * scale;
-      const eCy = cy + (e.cy - refCenter.y) * scale;
-      const eA = e.a * scale;
-      const eB = e.b * scale;
-      const rad = e.tilt * Math.PI / 180;
-      const cosT = Math.cos(rad), sinT = Math.sin(rad);
-
-      for (const { f, color } of ticks) {
-        // f = (arcFracRaw + BOWL_PHASE) % 1, so arcFracRaw = (f - BOWL_PHASE + 1) % 1
-        const arcFrac = ((f - BOWL_PHASE) + 1) % 1;
-        const theta = arcFrac * 2 * Math.PI;
-        const lx = eA * Math.cos(theta);
-        const ly = eB * Math.sin(theta);
-        const px = eCx + lx * cosT - ly * sinT;
-        const py = eCy + lx * sinT + ly * cosT;
-        // Draw a small dot using a tiny circular bowl (no inner cutout)
-        renderer.setInkColor(...color);
-        const r = 3 * dpr;
-        const dot = { cx: px, cy: py, a: r, b: r, tilt: 0 };
-        const pinhole = { cx: px, cy: py, a: 0.1, b: 0.1, tilt: 0 };
-        renderer.drawBowl(dot, pinhole, {});
-      }
-      // Reset ink color
-      renderer.setInkColor(30, 38, 58);
     });
   }, []);
 
