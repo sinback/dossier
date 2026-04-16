@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { renderGlyph, B_ELLIPSE_DATA } from './matlackGlyphs.js';
+import { exportAlphabetSVG, exportGlyphsForFont } from './matlackSVGExport.js';
 import MatlackRenderer from './MatlackRenderer.jsx';
 
 /**
@@ -111,6 +112,24 @@ export default function MatlackCanvas() {
             inner={r.inner} outer={r.outer} dot={r.dot} label={r.label} />
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => {
+            const svg = exportAlphabetSVG();
+            const a = document.createElement('a');
+            a.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+            a.download = 'matlack-alphabet.svg';
+            a.click();
+          }} style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
+            export svg
+          </button>
+          <button onClick={() => {
+            const json = exportGlyphsForFont();
+            const a = document.createElement('a');
+            a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+            a.download = 'matlack-glyphs.json';
+            a.click();
+          }} style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
+            export json
+          </button>
           <button onClick={() => matlackRef.current?.clear()}
             style={{ fontFamily: 'monospace', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
             clear
