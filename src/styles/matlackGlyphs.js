@@ -2037,89 +2037,135 @@ export function glyphOuterEllipse(glyph) {
   return map[glyph] ?? null;
 }
 
-export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) {
+// ═════════════════════════════════════════════════════════════════════════════
+// GEOMETRY-BASED RENDERING
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Render a glyph from its geometry object.
+ * geo = { bowls: [...], fills: [...] }
+ *
+ * Each bowl entry: { outer, inner, widthFn, densityFn, extraFills?, overlayFills? }
+ * Each fill entry: { points, pressure }
+ */
+function renderFromGeo(renderer, geo) {
+  for (const bowl of geo.bowls) {
+    const opts = {};
+    if (bowl.widthFn) opts.widthFn = bowl.widthFn;
+    if (bowl.densityFn) opts.densityFn = bowl.densityFn;
+    if (bowl.extraFills) opts.extraFills = bowl.extraFills;
+    if (bowl.overlayFills) opts.overlayFills = bowl.overlayFills;
+    if (bowl.extraStrokes) opts.extraStrokes = bowl.extraStrokes;
+    if (bowl.zeroFills) opts.zeroFills = bowl.zeroFills;
+    if (bowl.progress !== undefined) opts.progress = bowl.progress;
+    renderer.drawBowl(bowl.outer, bowl.inner, opts);
+  }
+  if (geo.fills.length > 0) {
+    renderer.drawFills(geo.fills);
+  }
+}
+
+export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}) {
   const scale = (size * dpr) / 100;
   switch(glyph) {
     case 'a':
-      return renderA(renderer, cx, cy, scale, dpr, overrides)
+      return buildA(cx, cy, scale, dpr, overrides)
     case 'b':
-      return renderB(renderer, cx, cy, scale, dpr, overrides)
+      return buildB(cx, cy, scale, dpr, overrides)
     case 'c':
-      return renderC(renderer, cx, cy, scale, dpr, overrides)
+      return buildC(cx, cy, scale, dpr, overrides)
     case 'd':
-      return renderD(renderer, cx, cy, scale, dpr, overrides)
+      return buildD(cx, cy, scale, dpr, overrides)
     case 'e':
-      return renderE(renderer, cx, cy, scale, dpr, overrides)
+      return buildE(cx, cy, scale, dpr, overrides)
     case 'f':
-      return renderF(renderer, cx, cy, scale, dpr, overrides)
+      return buildF(cx, cy, scale, dpr, overrides)
     case 'g':
-      return renderG(renderer, cx, cy, scale, dpr, overrides)
+      return buildG(cx, cy, scale, dpr, overrides)
     case 'h':
-      return renderH(renderer, cx, cy, scale, dpr, overrides)
+      return buildH(cx, cy, scale, dpr, overrides)
     case 'i':
-      return renderI(renderer, cx, cy, scale, dpr, overrides)
+      return buildI(cx, cy, scale, dpr, overrides)
     case 'j':
-      return renderJ(renderer, cx, cy, scale, dpr, overrides)
+      return buildJ(cx, cy, scale, dpr, overrides)
     case 'k':
-      return renderK(renderer, cx, cy, scale, dpr, overrides)
+      return buildK(cx, cy, scale, dpr, overrides)
     case 'l':
-      return renderL(renderer, cx, cy, scale, dpr, overrides)
+      return buildL(cx, cy, scale, dpr, overrides)
     case 'm':
-      return renderM(renderer, cx, cy, scale, dpr, overrides)
+      return buildM(cx, cy, scale, dpr, overrides)
     case 'n':
-      return renderN(renderer, cx, cy, scale, dpr, overrides)
+      return buildN(cx, cy, scale, dpr, overrides)
     case 'o':
-      return renderO(renderer, cx, cy, scale, dpr, overrides)
+      return buildO(cx, cy, scale, dpr, overrides)
     case 'p':
-      return renderP(renderer, cx, cy, scale, dpr, overrides)
+      return buildP(cx, cy, scale, dpr, overrides)
     case 'q':
-      return renderQ(renderer, cx, cy, scale, dpr, overrides)
+      return buildQ(cx, cy, scale, dpr, overrides)
     case 'r':
-      return renderR(renderer, cx, cy, scale, dpr, overrides)
+      return buildR(cx, cy, scale, dpr, overrides)
     case 's':
-      return renderS(renderer, cx, cy, scale, dpr, overrides)
+      return buildS(cx, cy, scale, dpr, overrides)
     case 't':
-      return renderT(renderer, cx, cy, scale, dpr, overrides)
+      return buildT(cx, cy, scale, dpr, overrides)
     case 'u':
-      return renderU(renderer, cx, cy, scale, dpr, overrides)
+      return buildU(cx, cy, scale, dpr, overrides)
     case 'v':
-      return renderV(renderer, cx, cy, scale, dpr, overrides)
+      return buildV(cx, cy, scale, dpr, overrides)
     case 'w':
-      return renderW(renderer, cx, cy, scale, dpr, overrides)
+      return buildW(cx, cy, scale, dpr, overrides)
     case 'x':
-      return renderX(renderer, cx, cy, scale, dpr, overrides)
+      return buildX(cx, cy, scale, dpr, overrides)
     case 'y':
-      return renderY(renderer, cx, cy, scale, dpr, overrides)
+      return buildY(cx, cy, scale, dpr, overrides)
     case 'z':
-      return renderZ(renderer, cx, cy, scale, dpr, overrides)
+      return buildZ(cx, cy, scale, dpr, overrides)
     default:
       throw new Error(`Glyph ${glyph} not yet supported`)
   }
+}
+
+export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) {
+  const geo = buildGlyph(glyph, cx, cy, size, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'a'.
  * Components: bowl, downstroke.
  */
-function renderA(renderer, cx, cy, scale, dpr, overrides) {
+function buildA(cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale, A_REF_CENTER);
   const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale, A_REF_CENTER);
 
   const dsOff = resolveOffset('downstroke', A_DOWNSTROKE_OFFSET, overrides, dpr);
   const body = buildADownstrokeBody(cx + dsOff.dx, cy + dsOff.dy, scale);
 
-  renderer.drawBowl(outer, inner, {
-    densityFn: aBowlDensity,
-    widthFn: aBowlWidth,
-    extraFills: [{ points: body, pressure: 0.85 }],
-  });
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: aBowlWidth,
+        densityFn: aBowlDensity,
+        extraFills: [{ points: body, pressure: 0.85 }],
+      },
+    ],
+    fills: [
+    ],
+  };
+}
+
+function renderA(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildA(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'b'.
  * Components: bowl, barBowl.
  */
-function renderB(renderer, cx, cy, scale, dpr, overrides) {
+function buildB(cx, cy, scale, dpr, overrides) {
   // Main bowl (lower, round)
   const inner = scaleEllipse(B_BOWL.inner, cx, cy, scale, B_REF_CENTER);
   const outer = scaleEllipse(B_BOWL.outer, cx, cy, scale, B_REF_CENTER);
@@ -2129,22 +2175,36 @@ function renderB(renderer, cx, cy, scale, dpr, overrides) {
   const bbInner = scaleEllipse(B_BAR_BOWL.inner, cx + bbOff.dx, cy + bbOff.dy, scale, B_REF_CENTER);
   const bbOuter = scaleEllipse(B_BAR_BOWL.outer, cx + bbOff.dx, cy + bbOff.dy, scale, B_REF_CENTER);
 
-  renderer.drawBowl(outer, inner, {
-    densityFn: bBowlDensity,
-    widthFn: bBowlWidth,
-  });
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: bBowlWidth,
+        densityFn: bBowlDensity,
+      },
+      {
+        outer: bbOuter,
+        inner: bbInner,
+        widthFn: bBarBowlWidth,
+        densityFn: bBarBowlDensity,
+      },
+    ],
+    fills: [
+    ],
+  };
+}
 
-  renderer.drawBowl(bbOuter, bbInner, {
-    densityFn: bBarBowlDensity,
-    widthFn: bBarBowlWidth,
-  });
+function renderB(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildB(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'f'.
  * Components: barBowl (anchor), fatBar, hairline.
  */
-function renderF(renderer, cx, cy, scale, dpr, overrides) {
+function buildF(cx, cy, scale, dpr, overrides) {
   // ── Bar-bowl (anchor — no offset) ─────────────────────────────
   const inner = scaleEllipse(F_BAR_BOWL.inner, cx, cy, scale, F_REF_CENTER);
   const outer = scaleEllipse(F_BAR_BOWL.outer, cx, cy, scale, F_REF_CENTER);
@@ -2184,22 +2244,34 @@ function renderF(renderer, cx, cy, scale, dpr, overrides) {
     { x: p0.x - nx, y: p0.y - ny },
   ];
 
-  // ── Render: bar-bowl + fat bar + hairline in same pass ────────
-  renderer.drawBowl(outer, inner, {
-    densityFn: fBarBowlDensity,
-    widthFn: fBarBowlWidth,
-    extraFills: [
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: fBarBowlWidth,
+        densityFn: fBarBowlDensity,
+        extraFills: [
       { points: fatBarPoly, pressure: 0.85 },
       { points: hairline, pressure: 0.75 },
     ],
-  });
+      },
+    ],
+    fills: [
+    ],
+  };
+}
+
+function renderF(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildF(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'c'.
  * Components: bowl (partial arc), topBlob (filled), bottomHairline (thin stroke).
  */
-function renderC(renderer, cx, cy, scale, dpr, overrides) {
+function buildC(cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(C_BOWL.inner, cx, cy, scale, C_REF_CENTER);
   const outer = scaleEllipse(C_BOWL.outer, cx, cy, scale, C_REF_CENTER);
 
@@ -2231,15 +2303,27 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
     pressure: 0.85,
   }));
 
-  renderer.drawBowl(outer, inner, {
-    densityFn: cBowlDensity,
-    widthFn: cBowlWidth,
-    // Blob and flick render after inner cutout so they aren't erased by the counter.
-    overlayFills: [
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: cBowlWidth,
+        densityFn: cBowlDensity,
+        overlayFills: [
       { points: blob, pressure: 0.85 },
       ...flickFills,
     ],
-  });
+      },
+    ],
+    fills: [
+    ],
+  };
+}
+
+function renderC(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildC(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2254,7 +2338,7 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'e'.
  * Single continuous loop stroke rendered as a variable-width ribbon.
  */
-function renderE(renderer, cx, cy, scale, dpr, overrides) {
+function buildE(cx, cy, scale, dpr, overrides) {
   const loopCenter = sampleSegments(
     E_LOOP_SEGS,
     [0, 1, 2, 3, 4, 5, 6],
@@ -2262,10 +2346,22 @@ function renderE(renderer, cx, cy, scale, dpr, overrides) {
   );
   const loopQuads = buildRibbon(loopCenter, (t) => eLoopWidth(t, scale));
   const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-  renderer.drawFills(loopFills);
+
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...loopFills,
+    ],
+  };
 }
 
-function renderD(renderer, cx, cy, scale, dpr, overrides) {
+function renderE(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildE(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildD(cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(D_BOWL.inner, cx, cy, scale, D_REF_CENTER);
   const outer = scaleEllipse(D_BOWL.outer, cx, cy, scale, D_REF_CENTER);
 
@@ -2310,21 +2406,34 @@ function renderD(renderer, cx, cy, scale, dpr, overrides) {
   // flick is an array of quads — each quad is 4 {x,y} points
   const flickFills = flick.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawBowl(outer, inner, {
-    densityFn: dBowlDensity,
-    widthFn: dBowlWidth,
-    overlayFills: [
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: dBowlWidth,
+        densityFn: dBowlDensity,
+        overlayFills: [
       { points: downstroke, pressure: 0.85 },
       ...flickFills,
     ],
-  });
+      },
+    ],
+    fills: [
+    ],
+  };
+}
+
+function renderD(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildD(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'q'.
  * Components: bowl, downstroke (descender).
  */
-function renderQ(renderer, cx, cy, scale, dpr, overrides) {
+function buildQ(cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(Q_BOWL.inner, cx, cy, scale, Q_REF_CENTER);
   const outer = scaleEllipse(Q_BOWL.outer, cx, cy, scale, Q_REF_CENTER);
 
@@ -2345,13 +2454,26 @@ function renderQ(renderer, cx, cy, scale, dpr, overrides) {
     { x: p0.x - nx, y: p0.y - ny },
   ];
 
-  renderer.drawBowl(outer, inner, {
-    densityFn: qBowlDensity,
-    widthFn: qBowlWidth,
-    overlayFills: [
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: qBowlWidth,
+        densityFn: qBowlDensity,
+        overlayFills: [
       { points: downstroke, pressure: 0.85 },
     ],
-  });
+      },
+    ],
+    fills: [
+    ],
+  };
+}
+
+function renderQ(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildQ(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2359,7 +2481,7 @@ function renderQ(renderer, cx, cy, scale, dpr, overrides) {
  * Components: entrance hairline (tapered ribbon), fat bar, crossbar hairline.
  * No bowl — pure vertical family.
  */
-function renderT(renderer, cx, cy, scale, dpr, overrides) {
+function buildT(cx, cy, scale, dpr, overrides) {
   // ── Fat bar (main downstroke) ───────────────────────────────────
   const fbOff = resolveOffset('fatBar', T_FAT_BAR_OFFSET, overrides, dpr);
   const hw = T_FAT_BAR_HALF_WIDTH * scale;
@@ -2409,12 +2531,20 @@ function renderT(renderer, cx, cy, scale, dpr, overrides) {
   );
   const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // ── Render all components (no bowl — use drawFills directly) ────
-  renderer.drawFills([
-    { points: fatBar, pressure: 0.85 },
+  return {
+    bowls: [
+    ],
+    fills: [
+      { points: fatBar, pressure: 0.85 },
     { points: crossbar, pressure: 0.70 },
     ...entrFills,
-  ]);
+    ],
+  };
+}
+
+function renderT(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildT(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2425,7 +2555,7 @@ function renderT(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'h'.
  * Components: entrance flick + bar-bowl + combined downstroke/hump ribbon.
  */
-function renderH(renderer, cx, cy, scale, dpr, overrides) {
+function buildH(cx, cy, scale, dpr, overrides) {
   // ── Bar-bowl (tall stem) ──────────────────────────────────────
   const inner = scaleEllipse(H_BAR_BOWL.inner, cx, cy, scale, H_REF_CENTER);
   const outer = scaleEllipse(H_BAR_BOWL.outer, cx, cy, scale, H_REF_CENTER);
@@ -2452,18 +2582,30 @@ function renderH(renderer, cx, cy, scale, dpr, overrides) {
   );
   const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // ── Render: bar-bowl + overlays for everything else ───────────
-  renderer.drawBowl(outer, inner, {
-    densityFn: hBarBowlDensity,
-    widthFn: hBarBowlWidth,
-    overlayFills: [
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: hBarBowlWidth,
+        densityFn: hBarBowlDensity,
+        overlayFills: [
       ...strokeFills,
       ...entrFills,
     ],
-  });
+      },
+    ],
+    fills: [
+    ],
+  };
 }
 
-function renderG(renderer, cx, cy, scale, dpr, overrides) {
+function renderH(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildH(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildG(cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(G_BOWL.inner, cx, cy, scale, G_REF_CENTER);
   const outer = scaleEllipse(G_BOWL.outer, cx, cy, scale, G_REF_CENTER);
 
@@ -2477,12 +2619,24 @@ function renderG(renderer, cx, cy, scale, dpr, overrides) {
   const dsQuads = buildRibbon(dsCenter, (t) => gDownstrokeWidth(t, scale));
   const dsFills = dsQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // Bowl first, then descender via overlayFills (survives inner cutout)
-  renderer.drawBowl(outer, inner, {
-    densityFn: gBowlDensity,
-    widthFn: gBowlWidth,
-    overlayFills: dsFills,
-  });
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: gBowlWidth,
+        densityFn: gBowlDensity,
+        overlayFills: dsFills,
+      },
+    ],
+    fills: [
+    ],
+  };
+}
+
+function renderG(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildG(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2490,7 +2644,7 @@ function renderG(renderer, cx, cy, scale, dpr, overrides) {
  * Components: entrance flick + downstroke (power taper) + dot (filled blob).
  * No bowl, no piecewise width function — just clean tapered ribbons.
  */
-function renderI(renderer, cx, cy, scale, dpr, overrides) {
+function buildI(cx, cy, scale, dpr, overrides) {
   // ── Downstroke (power taper ribbon) ───────────────────────────
   const dsOff = resolveOffset('downstroke', I_DOWNSTROKE_OFFSET, overrides, dpr);
   const dsCenter = sampleSegments(
@@ -2525,18 +2679,27 @@ function renderI(renderer, cx, cy, scale, dpr, overrides) {
     cx + dotOff.dx, cy + dotOff.dy, scale, I_REF_CENTER
   );
 
-  renderer.drawFills([
-    ...dsFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...dsFills,
     ...entrFills,
     { points: dot, pressure: 0.85 },
-  ]);
+    ],
+  };
+}
+
+function renderI(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildI(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'j'.
  * Components: dot + entrance flick + downstroke + bar-bowl (bottom loop) + exit flick.
  */
-function renderJ(renderer, cx, cy, scale, dpr, overrides) {
+function buildJ(cx, cy, scale, dpr, overrides) {
   // ── Bar-bowl (bottom loop) ────────────────────────────────────
   const inner = scaleEllipse(J_BAR_BOWL.inner, cx, cy, scale, J_REF_CENTER);
   const outer = scaleEllipse(J_BAR_BOWL.outer, cx, cy, scale, J_REF_CENTER);
@@ -2583,24 +2746,36 @@ function renderJ(renderer, cx, cy, scale, dpr, overrides) {
     cx + dotOff.dx, cy + dotOff.dy, scale, J_REF_CENTER
   );
 
-  // ── Render: bar-bowl + overlays for everything else ───────────
-  renderer.drawBowl(outer, inner, {
-    densityFn: jBarBowlDensity,
-    widthFn: jBarBowlWidth,
-    overlayFills: [
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: jBarBowlWidth,
+        densityFn: jBarBowlDensity,
+        overlayFills: [
       ...dsFills,
       ...entrFills,
       ...exitFills,
       { points: dot, pressure: 0.85 },
     ],
-  });
+      },
+    ],
+    fills: [
+    ],
+  };
+}
+
+function renderJ(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildJ(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'k'.
  * Components: entrance flick + bar-bowl + downstroke + upper crescent + exit stroke.
  */
-function renderK(renderer, cx, cy, scale, dpr, overrides) {
+function buildK(cx, cy, scale, dpr, overrides) {
   // ── Bar-bowl (tall stem) ──────────────────────────────────────
   const bbInner = scaleEllipse(K_BAR_BOWL.inner, cx, cy, scale, K_REF_CENTER);
   const bbOuter = scaleEllipse(K_BAR_BOWL.outer, cx, cy, scale, K_REF_CENTER);
@@ -2653,29 +2828,41 @@ function renderK(renderer, cx, cy, scale, dpr, overrides) {
   const exitQuads = buildRibbon(exitCenter, (t) => kExitWidth(t, scale));
   const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // ── Render: bar-bowl first ────────────────────────────────────
-  renderer.drawBowl(bbOuter, bbInner, {
-    densityFn: kBarBowlDensity,
-    widthFn: kBarBowlWidth,
-    overlayFills: [
+  return {
+    bowls: [
+      {
+        outer: bbOuter,
+        inner: bbInner,
+        widthFn: kBarBowlWidth,
+        densityFn: kBarBowlDensity,
+        overlayFills: [
       { points: downstroke, pressure: 0.85 },
       ...entrFills,
     ],
-  });
+      },
+      {
+        outer: crOuter,
+        inner: crInner,
+        widthFn: kCrescentWidth,
+        densityFn: kCrescentDensity,
+        overlayFills: exitFills,
+      },
+    ],
+    fills: [
+    ],
+  };
+}
 
-  // ── Render: upper crescent (separate drawBowl call) ───────────
-  renderer.drawBowl(crOuter, crInner, {
-    densityFn: kCrescentDensity,
-    widthFn: kCrescentWidth,
-    overlayFills: exitFills,
-  });
+function renderK(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildK(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'l'.
  * Single continuous loop stroke, like 'e' but taller.
  */
-function renderL(renderer, cx, cy, scale, dpr, overrides) {
+function buildL(cx, cy, scale, dpr, overrides) {
   const loopCenter = sampleSegments(
     L_LOOP_SEGS,
     [0, 1, 2, 3, 4, 5, 6, 7],
@@ -2683,14 +2870,26 @@ function renderL(renderer, cx, cy, scale, dpr, overrides) {
   );
   const loopQuads = buildRibbon(loopCenter, (t) => lLoopWidth(t, scale));
   const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-  renderer.drawFills(loopFills);
+
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...loopFills,
+    ],
+  };
+}
+
+function renderL(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildL(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'm'.
  * Components: entrance flick + double-hump ribbon.
  */
-function renderM(renderer, cx, cy, scale, dpr, overrides) {
+function buildM(cx, cy, scale, dpr, overrides) {
   // Double-hump centerline as variable-width ribbon
   const humpsCenter = sampleSegments(
     M_HUMPS_SEGS,
@@ -2713,17 +2912,26 @@ function renderM(renderer, cx, cy, scale, dpr, overrides) {
   );
   const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    ...humpsFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...humpsFills,
     ...entrFills,
-  ]);
+    ],
+  };
+}
+
+function renderM(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildM(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'n'.
  * Components: entrance flick + single-hump ribbon.
  */
-function renderN(renderer, cx, cy, scale, dpr, overrides) {
+function buildN(cx, cy, scale, dpr, overrides) {
   const humpCenter = sampleSegments(
     N_HUMP_SEGS,
     Array.from({ length: N_HUMP_SEGS.length }, (_, i) => i),
@@ -2744,10 +2952,19 @@ function renderN(renderer, cx, cy, scale, dpr, overrides) {
   );
   const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    ...humpFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...humpFills,
     ...entrFills,
-  ]);
+    ],
+  };
+}
+
+function renderN(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildN(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2755,7 +2972,7 @@ function renderN(renderer, cx, cy, scale, dpr, overrides) {
  * Components: main downstroke (fat bar) + upstroke hairline + second downstroke (power taper).
  * No bowl — Matlack's actual 'p' form.
  */
-function renderP(renderer, cx, cy, scale, dpr, overrides) {
+function buildP(cx, cy, scale, dpr, overrides) {
   // ── Main downstroke (long descender fat bar) ──────────────────
   const mainOff = resolveOffset('mainDownstroke', P_MAIN_OFFSET, overrides, dpr);
   const mhw = P_MAIN_HALF_WIDTH * scale;
@@ -2794,11 +3011,20 @@ function renderP(renderer, cx, cy, scale, dpr, overrides) {
   const secQuads = buildRibbon(secCenter, (t) => pSecondWidth(t, scale));
   const secFills = secQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    { points: mainBar, pressure: 0.85 },
+  return {
+    bowls: [
+    ],
+    fills: [
+      { points: mainBar, pressure: 0.85 },
     ...upFills,
     ...secFills,
-  ]);
+    ],
+  };
+}
+
+function renderP(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildP(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2830,7 +3056,7 @@ function renderP(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'v'.
  * Components: entrance flick + V-stroke ribbon + fat exit ribbon.
  */
-function renderV(renderer, cx, cy, scale, dpr, overrides) {
+function buildV(cx, cy, scale, dpr, overrides) {
   const strokeCenter = sampleSegments(
     V_STROKE_SEGS,
     Array.from({ length: V_STROKE_SEGS.length }, (_, i) => i),
@@ -2856,14 +3082,23 @@ function renderV(renderer, cx, cy, scale, dpr, overrides) {
   const exitQuads = buildRibbon(exitCenter, (t) => vExitWidth(t, scale));
   const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    ...strokeFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...strokeFills,
     ...entrFills,
     ...exitFills,
-  ]);
+    ],
+  };
 }
 
-function renderU(renderer, cx, cy, scale, dpr, overrides) {
+function renderV(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildV(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildU(cx, cy, scale, dpr, overrides) {
   const strokeCenter = sampleSegments(
     U_STROKE_SEGS,
     Array.from({ length: U_STROKE_SEGS.length }, (_, i) => i),
@@ -2889,14 +3124,23 @@ function renderU(renderer, cx, cy, scale, dpr, overrides) {
   );
   const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    ...strokeFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...strokeFills,
     ...entrFills,
     ...exitFills,
-  ]);
+    ],
+  };
 }
 
-function renderS(renderer, cx, cy, scale, dpr, overrides) {
+function renderU(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildU(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildS(cx, cy, scale, dpr, overrides) {
   // Swoopy S-curve
   const swoopCenter = sampleSegments(
     S_SWOOP_SEGS,
@@ -2916,13 +3160,22 @@ function renderS(renderer, cx, cy, scale, dpr, overrides) {
   );
   const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    ...swoopFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...swoopFills,
     ...entrFills,
-  ]);
+    ],
+  };
 }
 
-function renderX(renderer, cx, cy, scale, dpr, overrides) {
+function renderS(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildS(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildX(cx, cy, scale, dpr, overrides) {
   // Right crescent
   const rightCenter = sampleSegments(
     X_RIGHT_SEGS,
@@ -2942,13 +3195,22 @@ function renderX(renderer, cx, cy, scale, dpr, overrides) {
   const leftQuads = buildRibbon(leftCenter, (t) => xCrescentWidth(t, scale));
   const leftFills = leftQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    ...rightFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...rightFills,
     ...leftFills,
-  ]);
+    ],
+  };
 }
 
-function renderW(renderer, cx, cy, scale, dpr, overrides) {
+function renderX(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildX(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildW(cx, cy, scale, dpr, overrides) {
   // Combined stroke ribbon
   const strokeCenter = sampleSegments(
     W_STROKE_SEGS,
@@ -2989,15 +3251,24 @@ function renderW(renderer, cx, cy, scale, dpr, overrides) {
   );
   const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    ...strokeFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...strokeFills,
     ...entrFills,
     { points: blob, pressure: 0.85 },
     ...exitFills,
-  ]);
+    ],
+  };
 }
 
-function renderR(renderer, cx, cy, scale, dpr, overrides) {
+function renderW(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildW(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildR(cx, cy, scale, dpr, overrides) {
   // Swoop + downstroke as one ribbon
   const strokeCenter = sampleSegments(
     R_STROKE_SEGS, [0, 1, 2], 12, cx, cy, scale, R_REF_CENTER
@@ -3032,18 +3303,27 @@ function renderR(renderer, cx, cy, scale, dpr, overrides) {
   );
   const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  renderer.drawFills([
-    ...strokeFills,
+  return {
+    bowls: [
+    ],
+    fills: [
+      ...strokeFills,
     ...entrFills,
     ...exitFills,
-  ]);
+    ],
+  };
+}
+
+function renderR(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildR(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 /**
  * Render a Matlack-style lowercase 'z'.
  * Components: entry flick + zigzag weird stroke + bar-bowl loop + exit flick.
  */
-function renderZ(renderer, cx, cy, scale, dpr, overrides) {
+function buildZ(cx, cy, scale, dpr, overrides) {
   // Bar-bowl (descender loop)
   const bbOff = resolveOffset('barBowl', { dx: 0, dy: -8 }, overrides, dpr);  // review round 2
   const bbInner = scaleEllipse(Z_BAR_BOWL.inner, cx + bbOff.dx, cy + bbOff.dy, scale, Z_REF_CENTER);
@@ -3077,19 +3357,31 @@ function renderZ(renderer, cx, cy, scale, dpr, overrides) {
   );
   const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // Render: bar-bowl + everything else as overlays
-  renderer.drawBowl(bbOuter, bbInner, {
-    densityFn: zBarBowlDensity,
-    widthFn: zBarBowlWidth,
-    overlayFills: [
+  return {
+    bowls: [
+      {
+        outer: bbOuter,
+        inner: bbInner,
+        widthFn: zBarBowlWidth,
+        densityFn: zBarBowlDensity,
+        overlayFills: [
       ...strokeFills,
       ...entrFills,
       ...exitFills,
     ],
-  });
+      },
+    ],
+    fills: [
+    ],
+  };
 }
 
-function renderY(renderer, cx, cy, scale, dpr, overrides) {
+function renderZ(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildZ(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildY(cx, cy, scale, dpr, overrides) {
   // ── Initial downstroke (variable-width ribbon, no outline needed) ──
   const initCenter = sampleSegments(
     Y_INITIAL_SEGS, [0, 1, 2, 3], 12, cx, cy, scale, Y_REF_CENTER
@@ -3138,27 +3430,52 @@ function renderY(renderer, cx, cy, scale, dpr, overrides) {
   const bbInner = scaleEllipse(Y_BAR_BOWL.inner, cx + bbOff.dx, cy + bbOff.dy, scale, Y_REF_CENTER);
   const bbOuter = scaleEllipse(Y_BAR_BOWL.outer, cx + bbOff.dx, cy + bbOff.dy, scale, Y_REF_CENTER);
 
-  // Render bar-bowl with all other components as overlays
-  renderer.drawBowl(bbOuter, bbInner, {
-    densityFn: yBarBowlDensity,
-    widthFn: yBarBowlWidth,
-    overlayFills: [
+  return {
+    bowls: [
+      {
+        outer: bbOuter,
+        inner: bbInner,
+        widthFn: yBarBowlWidth,
+        densityFn: yBarBowlDensity,
+        overlayFills: [
       ...initFills,
       ...secFills,
       ...entrFills,
       ...exitFills,
     ],
-  });
+      },
+    ],
+    fills: [
+    ],
+  };
 }
 
-function renderO(renderer, cx, cy, scale, dpr, overrides) {
+function renderY(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildY(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
+}
+
+function buildO(cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
   const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
 
-  renderer.drawBowl(outer, inner, {
-    densityFn: oBowlDensity,
-    widthFn: oBowlWidth,
-  });
+  return {
+    bowls: [
+      {
+        outer: outer,
+        inner: inner,
+        widthFn: oBowlWidth,
+        densityFn: oBowlDensity,
+      },
+    ],
+    fills: [
+    ],
+  };
+}
+
+function renderO(renderer, cx, cy, scale, dpr, overrides) {
+  const geo = buildO(cx, cy, scale, dpr, overrides);
+  renderFromGeo(renderer, geo);
 }
 
 
