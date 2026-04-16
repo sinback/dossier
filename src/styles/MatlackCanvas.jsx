@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { renderGlyph, B_ELLIPSE_DATA } from './matlackGlyphs.js';
+import { renderGlyph } from './matlackGlyphs.js';
 import { exportAlphabetSVG, exportGlyphsForFont } from './matlackSVGExport.js';
 import MatlackRenderer from './MatlackRenderer.jsx';
 
@@ -33,67 +33,6 @@ export default function MatlackCanvas() {
     });
   }, []);
 
-  // ── Reference strip ────────────────────────────────────────────────────────
-  const REF_H = 80;
-
-  function RefImage({ src, w, h, inner, outer, dot, label }) {
-    const scale = REF_H / h;
-    const dispW = w * scale;
-    return (
-      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-        <div style={{ position: 'relative', width: dispW, height: REF_H }}>
-          <img src={src} alt={label}
-            style={{ width: dispW, height: REF_H, display: 'block',
-                     border: '1px solid #ddd', borderRadius: 2 }} />
-          <svg style={{ position: 'absolute', top: 0, left: 0, width: dispW, height: REF_H, pointerEvents: 'none' }}>
-            {inner && (
-              <ellipse
-                cx={inner.cx * scale} cy={inner.cy * scale}
-                rx={inner.a * scale}  ry={inner.b * scale}
-                transform={`rotate(${inner.tilt} ${inner.cx * scale} ${inner.cy * scale})`}
-                fill="none" stroke="cyan" strokeWidth="1.2" opacity="0.85" />
-            )}
-            {outer && (
-              <ellipse
-                cx={outer.cx * scale} cy={outer.cy * scale}
-                rx={outer.a * scale}  ry={outer.b * scale}
-                transform={`rotate(${outer.tilt} ${outer.cx * scale} ${outer.cy * scale})`}
-                fill="none" stroke="magenta" strokeWidth="1.0" opacity="0.6"
-                strokeDasharray="3 2" />
-            )}
-            {dot && (
-              <circle cx={dot.x * scale} cy={dot.y * scale} r={3} fill="red" opacity="0.9" />
-            )}
-          </svg>
-        </div>
-        <div style={{ fontSize: 7, color: '#888', textAlign: 'center', lineHeight: '1.1' }}>{label}</div>
-      </div>
-    );
-  }
-
-  // Automated ellipse fits from crescent model (scipy Nelder-Mead, 1x coords)
-  const C_FIT = {
-    '01': { w: 67, h: 67,
-            inner: { cx: 39.7, cy: 27.5, a: 14.5, b: 7.1, tilt: -41.6 },
-            outer: { cx: 32.2, cy: 28.4, a: 34.5, b: 9.0, tilt: -44.1 }},
-    '02': { w: 68, h: 78, inner: null, outer: null },
-  };
-  const O_FIT = {
-    '03': { w: 75, h: 66,
-            inner: { cx: 40.3, cy: 33.5, a: 20.8, b: 10.8, tilt: -45.5 },
-            outer: { cx: 38.2, cy: 33.1, a: 38.8, b: 15.3, tilt: -45.5 }},
-  };
-
-  // 'y' reference with proposed REF_CENTER shown as red dot
-  const Y_REF = { w: 227, h: 196, dot: { x: 95, y: 113 } };
-
-  const refs = [
-    { src: '/ref/y/01.png', key: 'y01', w: Y_REF.w, h: Y_REF.h, inner: null, outer: null,
-      dot: Y_REF.dot, label: 'y 01 (ref center?)' },
-    { src: '/ref/c/01.png', key: 'c01', ...C_FIT['01'], label: 'c 01 (auto)' },
-    { src: '/ref/o/03.png', key: 'o03', ...O_FIT['03'], label: 'o 03 (auto)' },
-    { src: '/ref/b/01.png', key: 'b01', ...B_ELLIPSE_DATA['01'], label: 'b 01 ★' },
-  ];
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
@@ -106,11 +45,6 @@ export default function MatlackCanvas() {
         borderBottom: '1px solid #ccc',
         fontFamily: 'monospace', fontSize: 11, color: '#666',
       }}>
-        <span style={{ marginRight: 4 }}>ref:</span>
-        {refs.map(r => (
-          <RefImage key={r.key} src={r.src} w={r.w} h={r.h}
-            inner={r.inner} outer={r.outer} dot={r.dot} label={r.label} />
-        ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => {
             const svg = exportAlphabetSVG();
