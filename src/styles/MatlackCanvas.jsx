@@ -10,19 +10,21 @@ import MatlackRenderer from './MatlackRenderer.jsx';
 export default function MatlackCanvas() {
   const matlackRef = useRef(null);
 
-  // Called by MatlackRenderer on mount + every resize — 2×3 grid of default vs afterHigh for r/e/o.
+  // 2×3 grid: rows = [e, o], cols = [default, afterHigh, omit].
   const handleDraw = useCallback((renderer, canvas) => {
     renderer.clear();
     renderer.setInkColor(30, 38, 58);
     const dpr = window.devicePixelRatio || 1;
     const sz  = 240;
-    const letters = ['r', 'e', 'o'];
-    const cxL = canvas.width * 0.30;
-    const cxR = canvas.width * 0.70;
-    letters.forEach((l, row) => {
-      const cy = canvas.height * (0.22 + row * 0.28);
-      renderGlyph(l, renderer, cxL, cy, sz, dpr, {}, 'default');
-      renderGlyph(l, renderer, cxR, cy, sz, dpr, {}, 'afterHigh');
+    const letters = ['e', 'o'];
+    const variants = ['default', 'afterHigh', 'omit'];
+    const cols = variants.length;
+    variants.forEach((v, col) => {
+      letters.forEach((l, row) => {
+        const cx = canvas.width  * (0.20 + col * (0.60 / (cols - 1)));
+        const cy = canvas.height * (0.30 + row * 0.35);
+        renderGlyph(l, renderer, cx, cy, sz, dpr, {}, v);
+      });
     });
   }, []);
 

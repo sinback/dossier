@@ -840,8 +840,15 @@ const E_LOOP_SEGS = [
   [[30.51,49.90],[29.86,51.47],[53.56,40.27],[53.59,40.21]],
 ];
 
-// Entrance flick — afterHigh variant (e after b/f/o/v/w).
-// Enters at ~rule.y-center and arrives at the crossbar start (21.33, 35.41).
+// Entrance flick — default (e after @low_exit).
+// Enters from ~rule.y-bottom, arcing up to crossbar start (21.33, 35.41).
+const E_ENTRANCE_DEFAULT_SEGS = [
+  [[4, 50],[8, 42],[14, 36],[21.33, 35.41]],
+];
+const E_ENTRANCE_DEFAULT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
+
+// Entrance flick — afterHigh variant (e after @high_exit = b/f/o/v/w).
+// Enters at ~rule.y-center and arrives at the crossbar start.
 const E_ENTRANCE_AFTERHIGH_SEGS = [
   [[4, 31],[11, 30],[17, 32],[21.33, 35.41]],
 ];
@@ -1982,7 +1989,14 @@ const O_BOWL = {
   },
 };
 
-// Entrance flick — afterHigh variant (o after b/f/v/w, or after strong 'o' exit).
+// Entrance flick — default (o after @low_exit).
+// Enters from ~rule.y-bottom, arcing up to the top-left of the bowl.
+const O_ENTRANCE_DEFAULT_SEGS = [
+  [[4, 55],[8, 45],[15, 30],[27.3, 22.4]],
+];
+const O_ENTRANCE_DEFAULT = { startWidth: 1.2, taperPower: 1.7, liftPoint: 1.0 };
+
+// Entrance flick — afterHigh variant (o after @high_exit = b/f/v/w, or after strong o-exit).
 // Enters at ~rule.y-center and arrives at the top-left of the bowl (~θ=-π/2 in
 // ref ellipse coords, at (27.3, 22.4)).
 const O_ENTRANCE_AFTERHIGH_SEGS = [
@@ -2370,18 +2384,23 @@ function buildE(cx, cy, scale, dpr, overrides, variant = 'default') {
   const loopQuads = buildRibbon(loopCenter, (t) => eLoopWidth(t, scale));
   const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // afterHigh variant: add an entry flick arriving at the crossbar start.
-  let entrFills = [];
+  // Entrance flick depends on variant. 'omit' = no entry stroke at all.
+  let entrSegs = null, entrParams = null;
   if (variant === 'afterHigh') {
-    const entrCenter = sampleSegments(
-      E_ENTRANCE_AFTERHIGH_SEGS, [0], 12, cx, cy, scale, E_REF_CENTER
-    );
+    entrSegs = E_ENTRANCE_AFTERHIGH_SEGS; entrParams = E_ENTRANCE_AFTERHIGH;
+  } else if (variant === 'default') {
+    entrSegs = E_ENTRANCE_DEFAULT_SEGS; entrParams = E_ENTRANCE_DEFAULT;
+  }
+
+  let entrFills = [];
+  if (entrSegs) {
+    const entrCenter = sampleSegments(entrSegs, [0], 12, cx, cy, scale, E_REF_CENTER);
     const entrReversed = [...entrCenter].reverse();
     const entrQuads = buildTaperedRibbon(
       entrReversed,
-      E_ENTRANCE_AFTERHIGH.startWidth * scale,
-      E_ENTRANCE_AFTERHIGH.taperPower,
-      E_ENTRANCE_AFTERHIGH.liftPoint,
+      entrParams.startWidth * scale,
+      entrParams.taperPower,
+      entrParams.liftPoint,
     );
     entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
   }
@@ -3502,18 +3521,23 @@ function buildO(cx, cy, scale, dpr, overrides, variant = 'default') {
   const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
   const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
 
-  // afterHigh variant: add an entry flick arriving at the top-left of the bowl.
-  let entrFills = [];
+  // Entrance flick depends on variant. 'omit' = no entry stroke (bare bowl).
+  let entrSegs = null, entrParams = null;
   if (variant === 'afterHigh') {
-    const entrCenter = sampleSegments(
-      O_ENTRANCE_AFTERHIGH_SEGS, [0], 12, cx, cy, scale, O_REF_CENTER
-    );
+    entrSegs = O_ENTRANCE_AFTERHIGH_SEGS; entrParams = O_ENTRANCE_AFTERHIGH;
+  } else if (variant === 'default') {
+    entrSegs = O_ENTRANCE_DEFAULT_SEGS; entrParams = O_ENTRANCE_DEFAULT;
+  }
+
+  let entrFills = [];
+  if (entrSegs) {
+    const entrCenter = sampleSegments(entrSegs, [0], 12, cx, cy, scale, O_REF_CENTER);
     const entrReversed = [...entrCenter].reverse();
     const entrQuads = buildTaperedRibbon(
       entrReversed,
-      O_ENTRANCE_AFTERHIGH.startWidth * scale,
-      O_ENTRANCE_AFTERHIGH.taperPower,
-      O_ENTRANCE_AFTERHIGH.liftPoint,
+      entrParams.startWidth * scale,
+      entrParams.taperPower,
+      entrParams.liftPoint,
     );
     entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
   }
