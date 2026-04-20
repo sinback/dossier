@@ -840,6 +840,13 @@ const E_LOOP_SEGS = [
   [[30.51,49.90],[29.86,51.47],[53.56,40.27],[53.59,40.21]],
 ];
 
+// Entrance flick — afterHigh variant (e after b/f/o/v/w).
+// Enters at ~rule.y-center and arrives at the crossbar start (21.33, 35.41).
+const E_ENTRANCE_AFTERHIGH_SEGS = [
+  [[4, 31],[11, 30],[17, 32],[21.33, 35.41]],
+];
+const E_ENTRANCE_AFTERHIGH = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
+
 // Width function for the loop. t = arc-length fraction [0, 1].
 // The loop goes: crossbar entry (thin) → top curve → left descent (thickening)
 //                → bottom (peak) → right ascent → exit (thinning)
@@ -1975,6 +1982,14 @@ const O_BOWL = {
   },
 };
 
+// Entrance flick — afterHigh variant (o after b/f/v/w, or after strong 'o' exit).
+// Enters at ~rule.y-center and arrives at the top-left of the bowl (~θ=-π/2 in
+// ref ellipse coords, at (27.3, 22.4)).
+const O_ENTRANCE_AFTERHIGH_SEGS = [
+  [[4, 22],[12, 20],[20, 21],[27.3, 22.4]],
+];
+const O_ENTRANCE_AFTERHIGH = { startWidth: 1.2, taperPower: 1.7, liftPoint: 1.0 };
+
 // ── 'o' bowl width function ──────────────────────────────────────────────────
 // Very similar to 'a' — thickest on the bottom-left (pen slowest),
 // thinnest at the top (pen fastest). No downstroke overlap zone,
@@ -2085,7 +2100,7 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant = '
     case 'd':
       return buildD(cx, cy, scale, dpr, overrides)
     case 'e':
-      return buildE(cx, cy, scale, dpr, overrides)
+      return buildE(cx, cy, scale, dpr, overrides, variant)
     case 'f':
       return buildF(cx, cy, scale, dpr, overrides)
     case 'g':
@@ -2105,7 +2120,7 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant = '
     case 'n':
       return buildN(cx, cy, scale, dpr, overrides)
     case 'o':
-      return buildO(cx, cy, scale, dpr, overrides)
+      return buildO(cx, cy, scale, dpr, overrides, variant)
     case 'p':
       return buildP(cx, cy, scale, dpr, overrides)
     case 'q':
@@ -2346,7 +2361,7 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'e'.
  * Single continuous loop stroke rendered as a variable-width ribbon.
  */
-function buildE(cx, cy, scale, dpr, overrides) {
+function buildE(cx, cy, scale, dpr, overrides, variant = 'default') {
   const loopCenter = sampleSegments(
     E_LOOP_SEGS,
     [0, 1, 2, 3, 4, 5, 6],
@@ -2355,17 +2370,34 @@ function buildE(cx, cy, scale, dpr, overrides) {
   const loopQuads = buildRibbon(loopCenter, (t) => eLoopWidth(t, scale));
   const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
+  // afterHigh variant: add an entry flick arriving at the crossbar start.
+  let entrFills = [];
+  if (variant === 'afterHigh') {
+    const entrCenter = sampleSegments(
+      E_ENTRANCE_AFTERHIGH_SEGS, [0], 12, cx, cy, scale, E_REF_CENTER
+    );
+    const entrReversed = [...entrCenter].reverse();
+    const entrQuads = buildTaperedRibbon(
+      entrReversed,
+      E_ENTRANCE_AFTERHIGH.startWidth * scale,
+      E_ENTRANCE_AFTERHIGH.taperPower,
+      E_ENTRANCE_AFTERHIGH.liftPoint,
+    );
+    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  }
+
   return {
     bowls: [
     ],
     fills: [
       ...loopFills,
+      ...entrFills,
     ],
   };
 }
 
-function renderE(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildE(cx, cy, scale, dpr, overrides);
+function renderE(renderer, cx, cy, scale, dpr, overrides, variant = 'default') {
+  const geo = buildE(cx, cy, scale, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
 
@@ -3466,9 +3498,25 @@ function renderY(renderer, cx, cy, scale, dpr, overrides) {
   renderFromGeo(renderer, geo);
 }
 
-function buildO(cx, cy, scale, dpr, overrides) {
+function buildO(cx, cy, scale, dpr, overrides, variant = 'default') {
   const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
   const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
+
+  // afterHigh variant: add an entry flick arriving at the top-left of the bowl.
+  let entrFills = [];
+  if (variant === 'afterHigh') {
+    const entrCenter = sampleSegments(
+      O_ENTRANCE_AFTERHIGH_SEGS, [0], 12, cx, cy, scale, O_REF_CENTER
+    );
+    const entrReversed = [...entrCenter].reverse();
+    const entrQuads = buildTaperedRibbon(
+      entrReversed,
+      O_ENTRANCE_AFTERHIGH.startWidth * scale,
+      O_ENTRANCE_AFTERHIGH.taperPower,
+      O_ENTRANCE_AFTERHIGH.liftPoint,
+    );
+    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  }
 
   return {
     bowls: [
@@ -3480,12 +3528,13 @@ function buildO(cx, cy, scale, dpr, overrides) {
       },
     ],
     fills: [
+      ...entrFills,
     ],
   };
 }
 
-function renderO(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildO(cx, cy, scale, dpr, overrides);
+function renderO(renderer, cx, cy, scale, dpr, overrides, variant = 'default') {
+  const geo = buildO(cx, cy, scale, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
 
