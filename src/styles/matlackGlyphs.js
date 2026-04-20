@@ -76,7 +76,7 @@ function scalePolygon(points, sx, sy) {
 // Builds quads along a centerline with width controlled by an arbitrary function.
 // widthFn(t) returns half-width in canvas pixels, where t is arc-length fraction [0,1].
 // Used for 'e' and other letters where width varies non-trivially along the stroke.
-function buildRibbon(centerline, widthFn) {
+export function buildRibbon(centerline, widthFn) {
   const n = centerline.length;
   if (n < 2) return [];
 
@@ -211,7 +211,7 @@ function scaleEllipse(e, cx, cy, scale, refCenter) {
 // Builds a polyline from an array of bezier segments, skipping duplicate
 // junction points between consecutive segments.
 // segIndices: which segments to include (e.g., [2,3,4,5,6,7] for 'a' body)
-function sampleSegments(segs, segIndices, n, cx, cy, scale, refCenter) {
+export function sampleSegments(segs, segIndices, n, cx, cy, scale, refCenter) {
   const pts = [];
   for (const si of segIndices) {
     const segPts = sampleBezier(...segs[si], n, cx, cy, scale, refCenter);
@@ -841,9 +841,12 @@ const E_LOOP_SEGS = [
 ];
 
 // Entrance flick — default (e after @low_exit).
-// Enters from ~rule.y-bottom, arcing up to crossbar start (21.33, 35.41).
+// Straight line on the same trajectory the crossbar sets out on before it
+// starts pulling up into the loop. Slope ≈ -0.19 (matches crossbar tangent
+// around t=0.15). Lower-positioned than afterHigh's y=31 start, but can't
+// reach all the way to y-bottom without becoming absurdly long.
 const E_ENTRANCE_DEFAULT_SEGS = [
-  [[4, 50],[8, 42],[14, 36],[21.33, 35.41]],
+  [[1.67, 39.15],[1.67, 39.15],[21.33, 35.41],[21.33, 35.41]],
 ];
 const E_ENTRANCE_DEFAULT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
 
@@ -1990,9 +1993,12 @@ const O_BOWL = {
 };
 
 // Entrance flick — default (o after @low_exit).
-// Enters from ~rule.y-bottom, arcing up to the top-left of the bowl.
+// Enters from ~rule.y-bottom with horizontal-rightward tangent, bows
+// downward (stays low) as the pen continues from the preceding letter's
+// y-bottom exit, then sweeps up to meet the top-left of the bowl at the
+// bowl's own tangent direction (≈ (+0.70, -0.71) at θ=-π/2).
 const O_ENTRANCE_DEFAULT_SEGS = [
-  [[4, 55],[8, 45],[15, 30],[27.3, 22.4]],
+  [[4, 55],[14, 55],[20.3, 29.5],[27.3, 22.4]],
 ];
 const O_ENTRANCE_DEFAULT = { startWidth: 1.2, taperPower: 1.7, liftPoint: 1.0 };
 
@@ -3527,6 +3533,22 @@ function buildO(cx, cy, scale, dpr, overrides, variant = 'default') {
     entrSegs = O_ENTRANCE_AFTERHIGH_SEGS; entrParams = O_ENTRANCE_AFTERHIGH;
   } else if (variant === 'default') {
     entrSegs = O_ENTRANCE_DEFAULT_SEGS; entrParams = O_ENTRANCE_DEFAULT;
+  }
+
+  // Optional CW rotation of the default entry flick around its junction (P3)
+  // with the bowl. Used for iterating on the flick's angle; in y-down image
+  // coords, math CCW rotation visually reads as CW on the page.
+  if (entrSegs && variant === 'default' && overrides.defaultEntryRotation) {
+    const rad = overrides.defaultEntryRotation * Math.PI / 180;
+    const c = Math.cos(rad), s = Math.sin(rad);
+    entrSegs = entrSegs.map(seg => {
+      const [px, py] = seg[3];
+      return seg.map((p, i) => {
+        if (i === 3) return p;
+        const dx = p[0] - px, dy = p[1] - py;
+        return [dx * c - dy * s + px, dx * s + dy * c + py];
+      });
+    });
   }
 
   let entrFills = [];
