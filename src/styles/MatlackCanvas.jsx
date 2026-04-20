@@ -10,27 +10,17 @@ import MatlackRenderer from './MatlackRenderer.jsx';
 export default function MatlackCanvas() {
   const matlackRef = useRef(null);
 
-  // Called by MatlackRenderer on mount + every resize — draws the static letter spread.
+  // Called by MatlackRenderer on mount + every resize — draws default r and r.afterHigh side-by-side.
   const handleDraw = useCallback((renderer, canvas) => {
     renderer.clear();
     renderer.setInkColor(30, 38, 58);
     const dpr = window.devicePixelRatio || 1;
-    const sz  = 90;
-    const row1 = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'];
-    const row2 = ['m', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x'];
-    const row3 = ['y', 'z'];
-    const letters = [...row1, ...row2, ...row3];
-    const cols = 10;
-    const colSpacing = 0.85 / cols;
-    letters.forEach((l, i) => {
-      let row, col;
-      if (i < row1.length) { row = 0; col = i; }
-      else if (i < row1.length + row2.length) { row = 1; col = i - row1.length; }
-      else { row = 2; col = i - row1.length - row2.length; }
-      const cx = canvas.width * (0.05 + col * colSpacing);
-      const cy = canvas.height * (0.20 + row * 0.30);
-      renderGlyph(l, renderer, cx, cy, sz, dpr);
-    });
+    const sz  = 220;
+    const cy  = canvas.height * 0.5;
+    const cxL = canvas.width * 0.33;
+    const cxR = canvas.width * 0.66;
+    renderGlyph('r', renderer, cxL, cy, sz, dpr, {}, 'default');
+    renderGlyph('r', renderer, cxR, cy, sz, dpr, {}, 'afterHigh');
   }, []);
 
 

@@ -1478,6 +1478,14 @@ const R_ENTRANCE_SEGS = [
 ];
 const R_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
 
+// Entrance flick — afterHigh variant (flat-topped r, follows b/f/o/v/w).
+// Enters at ~rule.y-center instead of sweeping up from rule.y-bottom.
+// Gentle hat arc: starts left of junction at roughly junction's y, arches
+// slightly higher, then arrives at the junction.
+const R_ENTRANCE_AFTERHIGH_SEGS = [
+  [[22, 37.5],[32, 35.5],[44, 36.2],[51.44, 37.99]],
+];
+
 // Swoop + downstroke as one continuous stroke
 const R_STROKE_SEGS = [
   // Swoop (the little hook that makes 'r' recognizable)
@@ -2065,7 +2073,7 @@ function renderFromGeo(renderer, geo) {
   }
 }
 
-export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}) {
+export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant = 'default') {
   const scale = (size * dpr) / 100;
   switch(glyph) {
     case 'a':
@@ -2103,7 +2111,7 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}) {
     case 'q':
       return buildQ(cx, cy, scale, dpr, overrides)
     case 'r':
-      return buildR(cx, cy, scale, dpr, overrides)
+      return buildR(cx, cy, scale, dpr, overrides, variant)
     case 's':
       return buildS(cx, cy, scale, dpr, overrides)
     case 't':
@@ -2125,8 +2133,8 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}) {
   }
 }
 
-export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}) {
-  const geo = buildGlyph(glyph, cx, cy, size, dpr, overrides);
+export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}, variant = 'default') {
+  const geo = buildGlyph(glyph, cx, cy, size, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
 
@@ -3268,7 +3276,7 @@ function renderW(renderer, cx, cy, scale, dpr, overrides) {
   renderFromGeo(renderer, geo);
 }
 
-function buildR(cx, cy, scale, dpr, overrides) {
+function buildR(cx, cy, scale, dpr, overrides, variant = 'default') {
   // Swoop + downstroke as one ribbon
   const strokeCenter = sampleSegments(
     R_STROKE_SEGS, [0, 1, 2], 12, cx, cy, scale, R_REF_CENTER
@@ -3276,9 +3284,12 @@ function buildR(cx, cy, scale, dpr, overrides) {
   const strokeQuads = buildRibbon(strokeCenter, (t) => rStrokeWidth(t, scale));
   const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // Entrance flick (reversed taper)
+  // Entrance flick (reversed taper) — geometry depends on variant.
+  const entrSegs = variant === 'afterHigh'
+    ? R_ENTRANCE_AFTERHIGH_SEGS
+    : R_ENTRANCE_SEGS;
   const entrCenter = sampleSegments(
-    R_ENTRANCE_SEGS, [0], 12, cx, cy, scale, R_REF_CENTER
+    entrSegs, [0], 12, cx, cy, scale, R_REF_CENTER
   );
   const entrReversed = [...entrCenter].reverse();
   const entrQuads = buildTaperedRibbon(
@@ -3314,8 +3325,8 @@ function buildR(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderR(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildR(cx, cy, scale, dpr, overrides);
+function renderR(renderer, cx, cy, scale, dpr, overrides, variant = 'default') {
+  const geo = buildR(cx, cy, scale, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
 
