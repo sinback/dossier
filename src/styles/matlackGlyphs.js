@@ -829,6 +829,21 @@ const T_ENTRANCE = {
 
 const E_REF_CENTER = { x: 34.5, y: 32.0 };  // approximate center of the letter
 
+// Rule-line y-values in e's local frame.
+// e's loop tops around y=9 (x-height top) and reaches baseline around y=52.
+const E_RULE = { yTop: -34, yCenter: 9, yBottom: 52 };
+
+// Join anchors — curs attach points in e's local frame.
+//   entry: where both low and high entrance flicks terminate at the
+//          crossbar start.
+//   exit:  where the loop naturally ends (end of E_LOOP_SEGS), at the
+//          upper-right. Technically a low exit per the rules table; the
+//          loop currently ends partway between yCenter and yBottom.
+const E_JOIN_ANCHORS = {
+  entry: { x: 21.33, y: 35.41 },
+  exit:  { x: 53.59, y: 40.21 },
+};
+
 // The full loop as bezier segments, traced from the 'e Loop' path in e/01_paths.
 const E_LOOP_SEGS = [
   [[21.33,35.41],[21.27,36.14],[35.04,31.65],[35.61,29.65]],
@@ -1489,6 +1504,23 @@ function pSecondWidth(t, scale) {
 
 const R_REF_CENTER = { x: 55, y: 44 };  // junction of entrance/swoop/downstroke
 
+// Rule-line y-values in r's local frame.
+// rule.y-top is extrapolated (r doesn't reach into the ascender zone),
+// preserving (yTop + yBottom) / 2 = yCenter.
+const R_RULE = { yTop: -18, yCenter: 38, yBottom: 94 };
+
+// Join anchors — curs attach points in r's local frame.
+//   entry: where preceding letter's exit anchor should coincide;
+//          lives at the top of r's body (where both default and afterHigh
+//          entrance flicks terminate, and where the downstroke begins).
+//   exit:  where the next letter's entry anchor should coincide;
+//          placed midway along r's exit flick so the flick overhangs in
+//          both directions when curs aligns it with a neighbor.
+const R_JOIN_ANCHORS = {
+  entry: { x: 51.44, y: 37.99 },
+  exit:  { x: 55.00, y: 90.00 },  // TODO: refine once we have r-after-x data
+};
+
 // Entrance flick
 const R_ENTRANCE_SEGS = [
   [[18.10,64.90],[18.10,64.90],[51.44,37.99],[51.44,37.99]],
@@ -1970,6 +2002,23 @@ const Y_EXIT_OFFSET = { dx: 0, dy: 0 };
 // Reference anchor: center of 'o's inner ellipse in ref o/03.
 // Image: reference/lowercase/o/03.png (75×66, 1x from high-res facsimile)
 const O_REF_CENTER = { x: 40.3, y: 33.5 };
+
+// Rule-line y-values in o's local frame.
+// o's bowl reaches from about y=3 (top, at θ where the tilted outer ellipse
+// peaks) to y=63 (bottom). rule.y-top is extrapolated — o doesn't extend
+// into the ascender zone.
+const O_RULE = { yTop: -57, yCenter: 3, yBottom: 63 };
+
+// Join anchors — curs attach points in o's local frame.
+//   entry: top-left of the bowl (~θ=-π/2 on the tilted outer ellipse),
+//          where both low and high entry flicks terminate at the body.
+//   exit:  upper-right of the bowl at ~rule.y-center height. o.exit is
+//          "strong" (per the rules table) so this anchor governs how a
+//          following letter lines up.
+const O_JOIN_ANCHORS = {
+  entry: { x: 27.3, y: 22.4 },
+  exit:  { x: 52.0,  y:  5.0 },  // TODO: refine once o has a rendered exit flick
+};
 
 // ── 'o' bowl ellipses ────────────────────────────────────────────────────────
 // Automated fit via scipy Nelder-Mead crescent model (93.8% → 86.2% constrained).
@@ -3910,4 +3959,28 @@ export const ELLIPSE_DATA = {
   '10': { w: 120, h: 112,  // ★
           inner: { cx: 55.7, cy: 63.7, a: 35.7, b: 14.0, tilt: -41.6 },
           outer: { cx: 56.0, cy: 61.6, a: 54.3, b: 26.4, tilt: -38.6 }},
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// RULE LINES + JOIN ANCHORS (per-glyph, in each letter's own local frame)
+//
+// Groundwork for svg-to-glyph alignment. Each scan declares its rule lines
+// in scan coords; each glyph declares its rule lines in local coords. The
+// pair gives a linear y-mapping. An additional named join anchor (entry or
+// exit) gives one x-correspondence — enough to solve the similarity
+// transform between scan and glyph frames.
+//
+// Only populated for variant-aware letters so far (e, o, r). Fill in
+// others as they gain anchor data.
+// ═════════════════════════════════════════════════════════════════════════════
+export const GLYPH_RULES = {
+  e: E_RULE,
+  o: O_RULE,
+  r: R_RULE,
+};
+
+export const GLYPH_JOIN_ANCHORS = {
+  e: E_JOIN_ANCHORS,
+  o: O_JOIN_ANCHORS,
+  r: R_JOIN_ANCHORS,
 };
