@@ -6,7 +6,7 @@
   "descender": -200,
   "lsb": 50,
   "rsb": 50,
-  "features": "@high_exit   = [b f o v w];\n@all_letters = [a b c d e f g h i j k l m n o p q r s t u v w x y z];\n\nfeature calt {\n  # Contextual joins after @high_exit letters. Runs first so the\n  # afterHigh-form substitutions win before init/flourish features.\n  sub @high_exit e' by e.afterHigh;\n  sub @high_exit o' by o.afterHigh;\n  sub @high_exit r' by r.afterHigh;\n\n  # Word-initial o gets the init form (no entry flick).\n  # The ignore-sub inverts the context so the rule fires only when o is\n  # NOT preceded by a letter — i.e. at start of text or after whitespace /\n  # punctuation.\n  ignore sub @all_letters o';\n           sub            o' by o.init;\n} calt;\n",
+  "features": "@high_exit   = [b f o v w];\n@all_letters = [a b c d e f g h i j k l m n o p q r s t u v w x y z];\n\nfeature calt {\n  # Standalone o (neither preceded nor followed by a letter) → isol form.\n  # Both ignore-subs guard the substitution; it fires only when neither\n  # context matches, i.e. the o is truly alone.\n  ignore sub @all_letters o';\n  ignore sub              o' @all_letters;\n           sub            o' by o.isol;\n\n  # Word-initial o (not preceded by a letter, IS followed by one) → init.\n  # The ignore inverts the preceding-letter context; the lookahead\n  # @all_letters in the sub restricts to the \"followed by letter\" case —\n  # which rules out the standalone case already handled above.\n  ignore sub @all_letters o';\n           sub            o' @all_letters by o.init;\n\n  # Contextual joins after @high_exit letters.\n  sub @high_exit e' by e.afterHigh;\n  sub @high_exit o' by o.afterHigh;\n  sub @high_exit r' by r.afterHigh;\n} calt;\n",
   "glyphs": {
     "a": {
       "paths": [
@@ -4481,6 +4481,25 @@
         {
           "d": "M 70.952 -17.378 L 72.598 -17.682 L 72.478 -18.320 L 70.872 -18.112 Z",
           "evenodd": false
+        }
+      ],
+      "rule": {
+        "yTop": -57,
+        "yCenter": 3,
+        "yBottom": 63
+      },
+      "refCenter": {
+        "x": 40.3,
+        "y": 33.5
+      },
+      "letter": "o",
+      "isDefault": false
+    },
+    "o.isol": {
+      "paths": [
+        {
+          "d": "M 50.191 -56.148 L 47.789 -57.984 L 44.888 -59.269 L 41.513 -59.991 L 37.698 -60.143 L 33.480 -59.723 L 28.899 -58.736 L 23.999 -57.191 L 18.827 -55.103 L 13.434 -52.492 L 7.871 -49.383 L 2.191 -45.806 L -3.550 -41.796 L -9.297 -37.391 L -14.995 -32.634 L -20.589 -27.570 L -26.025 -22.248 L -31.252 -16.719 L -36.217 -11.038 L -40.874 -5.258 L -45.178 0.566 L -49.088 6.376 L -52.565 12.117 L -55.576 17.733 L -58.093 23.171 L -60.090 28.378 L -61.550 33.305 L -62.457 37.902 L -62.803 42.127 L -62.584 45.939 L -61.803 49.300 L -60.468 52.179 L -58.591 54.548 L -56.189 56.384 L -53.288 57.669 L -49.913 58.391 L -46.098 58.543 L -41.880 58.123 L -37.299 57.136 L -32.399 55.591 L -27.227 53.503 L -21.834 50.892 L -16.271 47.783 L -10.591 44.206 L -4.850 40.196 L 0.897 35.791 L 6.595 31.034 L 12.189 25.970 L 17.625 20.648 L 22.852 15.119 L 27.817 9.438 L 32.474 3.658 L 36.778 -2.166 L 40.688 -7.976 L 44.165 -13.717 L 47.176 -19.333 L 49.693 -24.771 L 51.690 -29.978 L 53.150 -34.905 L 54.057 -39.502 L 54.403 -43.727 L 54.184 -47.539 L 53.403 -50.900 L 52.068 -53.779 Z M 46.683 -47.346 L 47.953 -44.712 L 48.732 -41.654 L 49.010 -38.200 L 48.787 -34.384 L 47.818 -30.019 L 45.801 -24.919 L 42.923 -19.373 L 39.433 -13.694 L 35.608 -8.172 L 31.706 -3.039 L 27.937 1.560 L 24.431 5.582 L 21.225 9.083 L 18.262 12.204 L 15.406 15.140 L 12.474 17.975 L 9.422 20.637 L 6.279 23.101 L 3.075 25.342 L -0.158 27.339 L -3.389 29.073 L -6.588 30.526 L -9.724 31.686 L -12.766 32.541 L -15.685 33.082 L -18.452 33.304 L -21.043 33.206 L -23.430 32.788 L -25.592 32.055 L -27.516 31.020 L -29.335 29.821 L -31.097 28.503 L -32.780 27.050 L -34.355 25.437 L -35.777 23.633 L -36.995 21.603 L -37.951 19.312 L -38.582 16.727 L -38.828 13.825 L -38.631 10.588 L -37.942 7.014 L -36.721 3.113 L -34.946 -1.088 L -32.606 -5.546 L -29.711 -10.203 L -26.290 -14.987 L -22.387 -19.813 L -18.066 -24.587 L -13.405 -29.211 L -8.493 -33.583 L -3.429 -37.607 L 1.683 -41.188 L 6.750 -44.305 L 11.722 -47.001 L 16.551 -49.249 L 21.190 -51.029 L 25.595 -52.323 L 29.723 -53.119 L 33.534 -53.409 L 36.992 -53.190 L 40.064 -52.465 L 42.719 -51.241 L 44.932 -49.529 Z",
+          "evenodd": true
         }
       ],
       "rule": {

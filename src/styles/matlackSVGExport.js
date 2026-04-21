@@ -21,6 +21,7 @@ const VARIANT_EXPORTS = {
     ['',          { entry: 'low',  exit: 'high' }],   // mid-word default
     ['afterHigh', { entry: 'high', exit: 'high' }],   // after b/f/o/v/w
     ['init',      { entry: 'none', exit: 'high' }],   // word-initial
+    ['isol',      { entry: 'none', exit: 'none' }],   // standalone (no neighbors)
   ],
   r: [
     ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
@@ -42,18 +43,24 @@ function generateFeatures() {
 @all_letters = [${allLowers}];
 
 feature calt {
-  # Contextual joins after @high_exit letters. Runs first so the
-  # afterHigh-form substitutions win before init/flourish features.
+  # Standalone o (neither preceded nor followed by a letter) → isol form.
+  # Both ignore-subs guard the substitution; it fires only when neither
+  # context matches, i.e. the o is truly alone.
+  ignore sub @all_letters o';
+  ignore sub              o' @all_letters;
+           sub            o' by o.isol;
+
+  # Word-initial o (not preceded by a letter, IS followed by one) → init.
+  # The ignore inverts the preceding-letter context; the lookahead
+  # @all_letters in the sub restricts to the "followed by letter" case —
+  # which rules out the standalone case already handled above.
+  ignore sub @all_letters o';
+           sub            o' @all_letters by o.init;
+
+  # Contextual joins after @high_exit letters.
   sub @high_exit e' by e.afterHigh;
   sub @high_exit o' by o.afterHigh;
   sub @high_exit r' by r.afterHigh;
-
-  # Word-initial o gets the init form (no entry flick).
-  # The ignore-sub inverts the context so the rule fires only when o is
-  # NOT preceded by a letter — i.e. at start of text or after whitespace /
-  # punctuation.
-  ignore sub @all_letters o';
-           sub            o' by o.init;
 } calt;
 `.trim() + '\n';
 }
