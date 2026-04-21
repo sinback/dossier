@@ -2036,15 +2036,20 @@ const O_JOIN_ANCHORS = {
 
 const O_STRUCTURAL_ANCHORS = {
   bowlCenter: { x: 40.3, y: 33.5 },  // inner ellipse center (= O_REF_CENTER)
+  // Topmost point of the outer ellipse (at rule.y-center). Where the
+  // pen emerges from the bowl on its way out. Anchor for the left end
+  // of O_EXIT_SEGS so the flick starts flush with the bowl.
+  bowlTop:    { x: 59.66, y:  3.40 },
 };
 
 // Exit-flick Bezier segments in o's local frame.
-// Source: 'or/01' path2 ('o Exit → r Entry'), sliced at t≈0.68 on its second
-// cubic so the endpoint coincides with sinback's chosen o.exit font-anchor.
-// Segments transformed from scan coords to glyph-local via the structural
-// alignment transform for 'or/01' (scale≈0.417, offset≈(8.41, 21.75)).
+// Right end (90.73, 20.06) = sinback's font-anchor o.exit (picked on 'or/01').
+// Left end (59.66, 3.40)    = bowlTop structural anchor — the pen departs
+// the bowl at its top, tangent to the bowl at rule.y-center.
+// Middle shape takes its character from 'or/01' path2: dip down and right
+// before rising to the anchor end.
 const O_EXIT_SEGS = [
-  [[70.36,  6.12], [69.07,  6.55], [71.10, 25.87], [75.14, 24.53]],
+  [[59.66,  3.40], [65.00,  4.50], [71.10, 25.87], [75.14, 24.53]],
   [[75.14, 24.53], [74.84, 25.24], [84.47, 22.68], [90.73, 20.06]],
 ];
 const O_EXIT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 0.9 };
