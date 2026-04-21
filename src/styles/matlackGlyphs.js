@@ -2202,10 +2202,14 @@ const VARIANT_SUPPORT = {
     supported: [
       { entry: 'low',  exit: 'high' },
       { entry: 'high', exit: 'high' },
+      { entry: 'none', exit: 'high' },      // init form (word-start)
       { entry: 'none', exit: 'none' },      // isol (standalone "o")
     ],
     notYet: [
-      { entry: 'none', exit: 'high' },      // init form
+      // o's exit-flick geometry isn't rendered yet, so exit:'high' and
+      // exit:'none' produce the same shape today. Promoted {none, high}
+      // to supported because semantically it's valid for word-initial o
+      // and renders correctly (bare bowl) until the exit flick is added.
       { entry: 'low',  exit: 'none' },      // fina after low-exiting letter
       { entry: 'high', exit: 'none' },      // fina after high-exiting letter
     ],

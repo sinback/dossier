@@ -36,6 +36,18 @@ import for01    from '../../matlack-declaration/reference/context/for/01.png';
 // visual cue of "this is roughly the transition span Claude is eyeballing."
 const straightPath = (p0, p3) => [[p0, p0, p3, p3]];
 
+// One color per letter for the overlay-glyph mode, so each letter is
+// unambiguously identifiable across all contexts. A glyphLetters spec can
+// override by setting its own `color: [r, g, b]`.
+const LETTER_COLORS = {
+  o: [40, 140, 220],     // blue
+  r: [40, 180,  90],     // green
+  f: [220, 120, 40],     // orange
+  t: [150,  80, 200],    // purple
+  e: [40,  180, 180],    // teal
+};
+const DEFAULT_GLYPH_COLOR = [80, 80, 80];  // grey for any unmapped letter
+
 const CONTEXTS = {
   to: {
     label: 'to/01',
@@ -196,22 +208,16 @@ const CONTEXTS = {
     filePath: 'matlack-declaration/reference/context/or/01.png',
     viewBoxW: 85, viewBoxH: 64,
     ref: { x: 42, y: 32 },
-    // Re-calibrated from path data: r downstroke starts at y≈23 in the scan
-    // (path1 start), so rule.y-center is ~23, not 28 as originally guessed.
     rule: { yTop: -2, yCenter: 23, yBottom: 48 },
     glyphScale: 100,
-    // Overlay uses structural anchors (stable body features), not join
-    // anchors. Join anchors (exit/entry) still marked as red/magenta dots
-    // via exitAnchor / entryAnchor below.
+    // One color per letter (see LETTER_COLORS below). o is word-initial
+    // here, so uses the init form {entry:'none'}. r is after o (high-exit)
+    // so takes the afterHigh form {entry:'high'}.
     glyphLetters: [
-      { letter: 'o', variant: { entry: 'low', exit: 'high' },
+      { letter: 'o', variant: { entry: 'none', exit: 'high' },
         structural: { name: 'bowlCenter', svg: { x: 25.2, y: 33.5 } } },
-      { letter: 'r', variant: { entry: 'low',  exit: 'low' },
-        structural: { name: 'downstrokeTop', svg: { x: 53.64, y: 23.21 } },
-        color: [40, 140, 220] },
       { letter: 'r', variant: { entry: 'high', exit: 'low' },
-        structural: { name: 'downstrokeTop', svg: { x: 53.64, y: 23.21 } },
-        color: [40, 180, 90] },
+        structural: { name: 'downstrokeTop', svg: { x: 53.64, y: 23.21 } } },
     ],
     path3: [
       [[37.73, 24.30], [37.19, 24.48], [38.04, 32.53], [39.72, 31.97]],
@@ -232,14 +238,13 @@ const CONTEXTS = {
     rule: { yTop: 19, yCenter: 96, yBottom: 172 },
     glyphScale: 100,
     glyphLetters: [
-      // f uses legacy manual placement until f has rule-line metadata.
+      // f uses legacy manual placement until it has rule-line metadata.
       { letter: 'f', variant: null,
-        anchorSvg: { x: 93.53, y: 105.40 }, color: [40, 140, 220] },
+        anchorSvg: { x: 93.53, y: 105.40 } },
       { letter: 'o', variant: { entry: 'high', exit: 'high' },
         structural: { name: 'bowlCenter', svg: { x: 113, y: 108 } } },
       { letter: 'r', variant: { entry: 'high', exit: 'low' },
-        structural: { name: 'downstrokeTop', svg: { x: 159.31, y: 85.54 } },
-        color: [40, 180, 90] },
+        structural: { name: 'downstrokeTop', svg: { x: 159.31, y: 85.54 } } },
     ],
     path3: [
       // f Exit → o Entry (path4)
@@ -405,7 +410,9 @@ export default function MatlackCanvas() {
     if (overlayOn && ctx.glyphLetters?.length) {
       const dpr = window.devicePixelRatio || 1;
       for (const spec of ctx.glyphLetters) {
-        const [r, g, b] = spec.color ?? [40, 140, 220];
+        const [r, g, b] = spec.color
+          ?? LETTER_COLORS[spec.letter]
+          ?? DEFAULT_GLYPH_COLOR;
         renderer.setInkColor(r, g, b);
 
         // Prefer computed alignment via rule lines + STRUCTURAL anchor.
