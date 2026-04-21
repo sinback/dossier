@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Matlack draft font preview</title>
+  <style>
+    @font-face {
+      font-family: 'Matlack Draft';
+      src: url('/fonts/matlack-draft.otf') format('opentype');
+    }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f3f0;
+      color: #233;
+      padding: 2em 3em;
+      max-width: 1100px;
+    }
+    h1 { font-size: 16px; font-weight: 600; margin-bottom: 1em; }
+    .sample {
+      font-family: 'Matlack Draft', serif;
+      font-size: 80px;
+      line-height: 1.3;
+      background: white;
+      padding: 0.3em 0.6em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 0.5em 0 1.5em;
+      min-height: 1.2em;
+      outline: none;
+    }
+    .small  { font-size: 32px; }
+    .medium { font-size: 56px; }
+    label { font-size: 12px; color: #777; font-family: monospace; }
+    .features-off { font-feature-settings: 'calt' off; }
+    .row { display: flex; gap: 1em; align-items: baseline; }
+  </style>
+</head>
+<body>
+  <h1>Matlack draft — live preview</h1>
+
+  <label>editable sample — type here</label>
+  <div class="sample" contenteditable spellcheck="false">to or for</div>
+
+  <div class="row">
+    <div style="flex:1">
+      <label>with calt (default)</label>
+      <div class="sample medium">or for to be</div>
+    </div>
+    <div style="flex:1">
+      <label>with calt OFF — raw default glyphs</label>
+      <div class="sample medium features-off">or for to be</div>
+    </div>
+  </div>
+
+  <label>alphabet</label>
+  <div class="sample small">abcdefghijklmnopqrstuvwxyz</div>
+
+  <label>'or' — should show o.init (no entry) + r.afterHigh (flat-top)</label>
+  <div class="sample">or</div>
+
+  <label>'for' — f + o.afterHigh + r.afterHigh</label>
+  <div class="sample">for</div>
+
+  <label>'rose' — r default (not afterHigh, since nothing precedes)</label>
+  <div class="sample">rose</div>
+</body>
+</html>
