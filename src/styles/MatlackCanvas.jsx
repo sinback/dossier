@@ -1,6 +1,7 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { sampleSegments, buildRibbon, renderGlyph,
-         GLYPH_RULES, GLYPH_REF_CENTERS, glyphToScanTransform } from './matlackGlyphs.js';
+         GLYPH_RULES, GLYPH_REF_CENTERS, GLYPH_STRUCTURAL_ANCHORS,
+         glyphToScanTransform } from './matlackGlyphs.js';
 import { exportAlphabetSVG, exportGlyphsForFont } from './matlackSVGExport.js';
 import MatlackRenderer from './MatlackRenderer.jsx';
 import to01     from '../../matlack-declaration/reference/context/to/01.png';
@@ -195,20 +196,22 @@ const CONTEXTS = {
     filePath: 'matlack-declaration/reference/context/or/01.png',
     viewBoxW: 85, viewBoxH: 64,
     ref: { x: 42, y: 32 },
-    rule: { yTop: 8, yCenter: 28, yBottom: 48 },
+    // Re-calibrated from path data: r downstroke starts at y≈23 in the scan
+    // (path1 start), so rule.y-center is ~23, not 28 as originally guessed.
+    rule: { yTop: -2, yCenter: 23, yBottom: 48 },
     glyphScale: 100,
-    // o exits high (o.exit = high), so r gets entry:'high'.
-    // We render both r variants side-by-side: default (entry:'low') in blue,
-    // afterHigh (entry:'high') in green.
-    // anchorName tells glyphToScanTransform which glyph-local anchor the
-    // scan-space anchorSvg corresponds to.
+    // Overlay uses structural anchors (stable body features), not join
+    // anchors. Join anchors (exit/entry) still marked as red/magenta dots
+    // via exitAnchor / entryAnchor below.
     glyphLetters: [
       { letter: 'o', variant: { entry: 'low', exit: 'high' },
-        anchorSvg: { x: 46.22, y: 30.11 }, anchorName: 'exit' },
+        structural: { name: 'bowlCenter', svg: { x: 25.2, y: 33.5 } } },
       { letter: 'r', variant: { entry: 'low',  exit: 'low' },
-        anchorSvg: { x: 43.12, y: 30.87 }, anchorName: 'entry', color: [40, 140, 220] },
+        structural: { name: 'downstrokeTop', svg: { x: 53.64, y: 23.21 } },
+        color: [40, 140, 220] },
       { letter: 'r', variant: { entry: 'high', exit: 'low' },
-        anchorSvg: { x: 43.12, y: 30.87 }, anchorName: 'entry', color: [40, 180, 90] },
+        structural: { name: 'downstrokeTop', svg: { x: 53.64, y: 23.21 } },
+        color: [40, 180, 90] },
     ],
     path3: [
       [[37.73, 24.30], [37.19, 24.48], [38.04, 32.53], [39.72, 31.97]],
@@ -229,12 +232,14 @@ const CONTEXTS = {
     rule: { yTop: 19, yCenter: 96, yBottom: 172 },
     glyphScale: 100,
     glyphLetters: [
+      // f uses legacy manual placement until f has rule-line metadata.
       { letter: 'f', variant: null,
-        anchorSvg: { x: 93.53, y: 105.40 }, anchorName: 'exit', color: [40, 140, 220] },
+        anchorSvg: { x: 93.53, y: 105.40 }, color: [40, 140, 220] },
       { letter: 'o', variant: { entry: 'high', exit: 'high' },
-        anchorSvg: { x: 81.25, y: 107.29 }, anchorName: 'entry' },
+        structural: { name: 'bowlCenter', svg: { x: 113, y: 108 } } },
       { letter: 'r', variant: { entry: 'high', exit: 'low' },
-        anchorSvg: { x: 139.02, y: 100.23 }, anchorName: 'entry', color: [40, 180, 90] },
+        structural: { name: 'downstrokeTop', svg: { x: 159.31, y: 85.54 } },
+        color: [40, 180, 90] },
     ],
     path3: [
       // f Exit → o Entry (path4)
@@ -403,31 +408,29 @@ export default function MatlackCanvas() {
         const [r, g, b] = spec.color ?? [40, 140, 220];
         renderer.setInkColor(r, g, b);
 
-        // Prefer computed scan↔glyph alignment via rule lines + anchor.
-        // Falls back to the manual glyphScale knob if the letter has no
-        // rule metadata or the spec doesn't declare an anchorName.
+        // Prefer computed alignment via rule lines + STRUCTURAL anchor.
+        // Falls back to manual glyphScale if the letter has no metadata or
+        // the spec doesn't declare a structural anchor.
         let gcx, gcy, gsize;
-        const haveMetadata = GLYPH_RULES[spec.letter] && spec.anchorName && spec.anchorSvg;
+        const glyphRule = GLYPH_RULES[spec.letter];
+        const structural = spec.structural;
+        const glyphAnchor = structural
+          ? GLYPH_STRUCTURAL_ANCHORS[spec.letter]?.[structural.name]
+          : null;
+        const haveMetadata = glyphRule && structural && glyphAnchor;
 
         if (haveMetadata) {
-          try {
-            const t = glyphToScanTransform(
-              ctx.rule, spec.anchorSvg, spec.letter, spec.anchorName,
-            );
-            const refC = GLYPH_REF_CENTERS[spec.letter];
-            // Glyph's REF_CENTER in scan coords:
-            const scanRefX = t.offsetX + t.scale * refC.x;
-            const scanRefY = t.offsetY + t.scale * refC.y;
-            // Convert scan coords → canvas device pixels.
-            gcx = cx0 + (scanRefX - REF.x) * scale;
-            gcy = cy0 + (scanRefY - REF.y) * scale;
-            // renderGlyph's internal scale is (size * dpr) / 100; we want
-            // it to equal (t.scale * scale) canvas-px per glyph-unit.
-            gsize = (t.scale * scale * 100) / dpr;
-          } catch (err) {
-            console.warn('glyphToScanTransform error:', spec.letter, err.message);
-            continue;
-          }
+          const t = glyphToScanTransform(
+            ctx.rule, glyphRule, structural.svg, glyphAnchor,
+          );
+          const refC = GLYPH_REF_CENTERS[spec.letter];
+          const scanRefX = t.offsetX + t.scale * refC.x;
+          const scanRefY = t.offsetY + t.scale * refC.y;
+          gcx = cx0 + (scanRefX - REF.x) * scale;
+          gcy = cy0 + (scanRefY - REF.y) * scale;
+          // renderGlyph internal scale is (size * dpr) / 100; want it to
+          // equal (t.scale * scale) canvas-px per glyph-unit.
+          gsize = (t.scale * scale * 100) / dpr;
         } else {
           // Legacy manual placement: anchorSvg marks where REF_CENTER lands.
           const anchorPt = spec.anchorSvg ?? REF;
