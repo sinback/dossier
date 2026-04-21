@@ -2029,12 +2029,25 @@ const O_RULE = { yTop: -57, yCenter: 3, yBottom: 63 };
 //          following letter lines up.
 const O_JOIN_ANCHORS = {
   entry: { x: 27.3, y: 22.4 },
-  exit:  { x: 52.0,  y:  5.0 },  // TODO: refine once o has a rendered exit flick
+  // Exit font-anchor in glyph local, derived from sinback's scan-space
+  // o.exit (46.22, 30.11) in 'or/01' via the structural alignment transform.
+  exit:  { x: 90.73, y: 20.06 },
 };
 
 const O_STRUCTURAL_ANCHORS = {
   bowlCenter: { x: 40.3, y: 33.5 },  // inner ellipse center (= O_REF_CENTER)
 };
+
+// Exit-flick Bezier segments in o's local frame.
+// Source: 'or/01' path2 ('o Exit → r Entry'), sliced at t≈0.68 on its second
+// cubic so the endpoint coincides with sinback's chosen o.exit font-anchor.
+// Segments transformed from scan coords to glyph-local via the structural
+// alignment transform for 'or/01' (scale≈0.417, offset≈(8.41, 21.75)).
+const O_EXIT_SEGS = [
+  [[70.36,  6.12], [69.07,  6.55], [71.10, 25.87], [75.14, 24.53]],
+  [[75.14, 24.53], [74.84, 25.24], [84.47, 22.68], [90.73, 20.06]],
+];
+const O_EXIT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 0.9 };
 
 // ── 'o' bowl ellipses ────────────────────────────────────────────────────────
 // Automated fit via scipy Nelder-Mead crescent model (93.8% → 86.2% constrained).
@@ -3721,6 +3734,23 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
     entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
   }
 
+  // Exit flick when variant.exit === 'high'. Geometry is path2 from 'or/01'
+  // (o Exit → r Entry) sliced at the chosen font-anchor, transformed into
+  // o's glyph local frame. Taper goes thick→thin from bowl side to anchor.
+  let exitFills = [];
+  if (variant.exit === 'high') {
+    const exitCenter = sampleSegments(
+      O_EXIT_SEGS, [0, 1], 12, cx, cy, scale, O_REF_CENTER,
+    );
+    const exitQuads = buildTaperedRibbon(
+      exitCenter,
+      O_EXIT.startWidth * scale,
+      O_EXIT.taperPower,
+      O_EXIT.liftPoint,
+    );
+    exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  }
+
   return {
     bowls: [
       {
@@ -3732,6 +3762,7 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
     ],
     fills: [
       ...entrFills,
+      ...exitFills,
     ],
   };
 }
