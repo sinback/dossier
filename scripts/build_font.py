@@ -316,6 +316,16 @@ def main():
     print(f"Done: {out_path}")
     print(f"UFO source kept at: {ufo_dir}")
 
+    # Auto-copy into the dev server's public dir so the browser preview
+    # (public/matlack-preview.html) always sees the latest build.
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    public_fonts = os.path.join(project_root, 'public', 'fonts')
+    if os.path.isdir(public_fonts):
+        import shutil
+        dest = os.path.join(public_fonts, os.path.basename(out_path))
+        shutil.copy(out_path, dest)
+        print(f"Copied to {dest}")
+
 
 if __name__ == '__main__':
     main()
