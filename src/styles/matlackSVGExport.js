@@ -9,7 +9,7 @@
  * so the SVG outline matches what the WebGL renderer draws.
  */
 
-import { buildGlyph } from './matlackGlyphs.js';
+import { buildGlyph, GLYPH_RULES, GLYPH_REF_CENTERS } from './matlackGlyphs.js';
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
@@ -169,19 +169,41 @@ export function exportAlphabetSVG(size = 80, cols = 10) {
 /**
  * Export all glyph path data as a JSON object for the fonttools pipeline.
  *
- * Coordinate convention for the Python script:
- *   - Glyphs are exported at the given `size` (default 200), centered at (0, 0).
- *   - SVG Y-down: positive Y goes toward the baseline and below.
- *   - Python script flips Y (font_y = -svg_y) and adds a baseline offset.
+ * Coordinate convention:
+ *   - Each glyph is built via `buildGlyph(letter, 0, 0, size, 1)`, so paths
+ *     are in an "output frame" with REF_CENTER at origin and scaled by
+ *     (size / 100).
+ *   - SVG y-down within that frame.
+ *
+ * Per-letter `rule` + `refCenter` (for letters that have GLYPH_RULES) let
+ * the Python side position each letter's baseline at the font baseline and
+ * scale so all x-height-zones come out the same in font units. Letters
+ * without metadata fall back to uniform scaling on the Python side.
  *
  * Each letter entry:
- *   { paths: [{d, evenodd}, ...], size }
+ *   {
+ *     paths:     [{d, evenodd}, ...],
+ *     rule:      { yTop, yCenter, yBottom } in glyph-local-ref units, or null
+ *     refCenter: { x, y } in glyph-local-ref units, or null
+ *   }
  */
 export function exportGlyphsForFont(size = 200) {
-  const result = { size, glyphs: {} };
+  const result = {
+    size,
+    upm:       1000,
+    xHeight:    500,
+    ascender:   800,
+    descender: -200,
+    lsb: 50, rsb: 50,
+    glyphs: {},
+  };
   for (const l of ALPHABET) {
     const geo = buildGlyph(l, 0, 0, size, 1);
-    result.glyphs[l] = geoPaths(geo);
+    result.glyphs[l] = {
+      paths:     geoPaths(geo),
+      rule:      GLYPH_RULES[l]       || null,
+      refCenter: GLYPH_REF_CENTERS[l] || null,
+    };
   }
   return JSON.stringify(result, null, 2);
 }

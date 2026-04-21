@@ -3,20 +3,28 @@
 build_font.py — Draft .otf font from Matlack glyph geometry.
 
 Usage:
-  1. In the Matlack canvas, click "export json" to download matlack-glyphs.json.
+  1. Run `node scripts/export_glyphs.mjs` (or the "export json" button
+     in MatlackCanvas) to regenerate matlack-glyphs.json.
   2. uv run python3 scripts/build_font.py matlack-glyphs.json matlack-draft.otf
 
 Requires: ufo2ft, defcon  (uv sync handles this)
 
 Coordinate conversion
 ---------------------
-The JSON exports glyphs at size=200, cx=0, cy=0 (SVG Y-down).
-We convert to font Y-up coords:
-  font_x = svg_x * SCALE + LSB
-  font_y = -svg_y * SCALE + Y_SHIFT
+For each letter the JSON contains:
+  { paths: [{d, evenodd}, ...],
+    rule: {yTop, yCenter, yBottom} in glyph-local-ref units, or null
+    refCenter: {x, y} in glyph-local-ref units, or null }
 
-SCALE     = UPM / EXPORT_SIZE  (maps export units to font units)
-Y_SHIFT   = X_HEIGHT // 2      (REF_CENTER is x-height midline, not baseline)
+Path points from `buildGlyph(letter, 0, 0, size, 1)` are in an *output
+frame* where REF_CENTER sits at origin and coords are scaled by
+(size / 100).
+
+When rule + refCenter are present, we place each letter so that rule.yBottom
+maps to the font baseline (y=0) and rule.yCenter maps to xHeight. This
+gives consistent sizing across letters regardless of each glyph's own
+REF_CENTER or rule-line spread. Without the metadata, fall back to the
+uniform scaling the pipeline used originally.
 """
 
 import json
@@ -31,11 +39,13 @@ ASCENDER    = 800
 X_HEIGHT    = 500
 DESCENDER   = -200
 CAP_HEIGHT  = 700
-EXPORT_SIZE = 200          # must match exportGlyphsForFont(size=) in JS
-SCALE       = UPM / EXPORT_SIZE   # 5.0
-Y_SHIFT     = X_HEIGHT // 2       # 250 — REF_CENTER is x-height midline
 LSB         = 50                  # left side bearing (font units)
 RSB         = 50                  # right side bearing (font units)
+
+# Uniform fallback (only used for letters without rule/refCenter metadata).
+EXPORT_SIZE      = 200            # must match exportGlyphsForFont(size=) in JS
+FALLBACK_SCALE   = UPM / EXPORT_SIZE   # 5.0
+FALLBACK_YSHIFT  = X_HEIGHT // 2       # 250
 
 
 # ── SVG path parser ───────────────────────────────────────────────────────────
@@ -61,20 +71,45 @@ def parse_path_d(d):
     return ops
 
 
-def svg_to_font(x, y):
-    """Convert export SVG coords to font Y-up coords."""
-    return round(x * SCALE + LSB), round(-y * SCALE + Y_SHIFT)
+def glyph_transform(rule, ref_center, export_size):
+    """Return (transform, x_min, x_max) where `transform(x, y)` maps an
+    output-frame path point to font-y-up coords with baseline at y=0.
+
+    When `rule` and `ref_center` are present, the transform makes
+    rule.yBottom land at font y=0 and rule.yCenter at y=xHeight. The
+    global scale is per-letter, driven by (rule.yBottom - rule.yCenter).
+
+    Bounding box is computed in font units so the caller can shift x to
+    LSB and set the advance.
+    """
+    size_scale = export_size / 100  # buildGlyph internal scale at dpr=1
+
+    if rule is not None and ref_center is not None:
+        # Paths are in output-frame; REF_CENTER is at (0, 0) there.
+        # rule.yBottom in output frame:
+        out_y_bottom = size_scale * (rule["yBottom"] - ref_center["y"])
+        # Scale so (out_y_bottom - out_y_center) → X_HEIGHT font units.
+        out_y_center = size_scale * (rule["yCenter"] - ref_center["y"])
+        font_scale   = X_HEIGHT / (out_y_bottom - out_y_center)
+
+        def tx(x, y):
+            return (x * font_scale,
+                    (out_y_bottom - y) * font_scale)
+        return tx
+
+    # Fallback: uniform transform used before rule metadata existed.
+    def tx_fallback(x, y):
+        return (x * FALLBACK_SCALE,
+                -y * FALLBACK_SCALE + FALLBACK_YSHIFT)
+    return tx_fallback
 
 
-# ── Advance width estimation ──────────────────────────────────────────────────
-def estimate_advance(paths):
-    max_x = 0.0
+def path_points(paths):
+    """Yield (x, y) floats for every M/L point in a list of {d, ...} paths."""
     for p in paths:
-        nums = re.findall(r'[-+]?\d+\.?\d*', p['d'])
-        xs = [float(nums[i]) for i in range(0, len(nums) - 1, 2)]
-        if xs:
-            max_x = max(max_x, max(xs))
-    return round(max_x * SCALE + LSB + RSB)
+        for cmd, args in parse_path_d(p["d"]):
+            if args:
+                yield args[0], args[1]
 
 
 # ── GLIF builder ─────────────────────────────────────────────────────────────
@@ -86,7 +121,7 @@ def contour_xml(pts):
     return '\n'.join(lines)
 
 
-def paths_to_glif(gname, unicode_val, adv, paths):
+def paths_to_glif(gname, unicode_val, adv, paths, transform, x_shift):
     contours = []
     for p in paths:
         current = []
@@ -94,9 +129,11 @@ def paths_to_glif(gname, unicode_val, adv, paths):
             if cmd == 'M':
                 if current:
                     contours.append(contour_xml(current))
-                current = [svg_to_font(args[0], args[1])]
+                fx, fy = transform(args[0], args[1])
+                current = [(round(fx + x_shift), round(fy))]
             elif cmd == 'L':
-                current.append(svg_to_font(args[0], args[1]))
+                fx, fy = transform(args[0], args[1])
+                current.append((round(fx + x_shift), round(fy)))
             elif cmd == 'Z':
                 if current:
                     contours.append(contour_xml(current))
@@ -117,7 +154,7 @@ def paths_to_glif(gname, unicode_val, adv, paths):
 
 
 # ── UFO writer ────────────────────────────────────────────────────────────────
-def write_ufo(ufo_dir, glyph_order, glyph_metrics, glyphs):
+def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size):
     os.makedirs(os.path.join(ufo_dir, 'glyphs'), exist_ok=True)
 
     # metainfo.plist
@@ -195,10 +232,26 @@ def write_ufo(ufo_dir, glyph_order, glyph_metrics, glyphs):
         f.write(space)
     glyph_files['space'] = 'space.glif'
 
-    for letter, paths in glyphs.items():
+    for letter, entry in glyphs_data.items():
+        paths     = entry['paths']
+        rule      = entry.get('rule')
+        ref_center = entry.get('refCenter')
+
+        transform = glyph_transform(rule, ref_center, export_size)
+
+        # Compute x bounds in transformed font coords so we can shift to LSB
+        # and compute advance.
+        xs = [transform(x, y)[0] for x, y in path_points(paths)]
+        if xs:
+            x_min, x_max = min(xs), max(xs)
+            x_shift = LSB - x_min
+            advance = round(x_max - x_min + LSB + RSB)
+        else:
+            x_shift = 0
+            advance = 500  # placeholder
+
         gname = f'uni{ord(letter):04X}'
-        adv = glyph_metrics[gname]
-        glif = paths_to_glif(gname, ord(letter), adv, paths)
+        glif = paths_to_glif(gname, ord(letter), advance, paths, transform, x_shift)
         fname = f'{gname}.glif'
         with open(os.path.join(ufo_dir, 'glyphs', fname), 'w') as f:
             f.write(glif)
@@ -223,19 +276,16 @@ def main():
     with open(sys.argv[1]) as f:
         data = json.load(f)
 
-    glyphs = data['glyphs']
+    glyphs_data = data['glyphs']
+    export_size = data.get('size', EXPORT_SIZE)
     out_path = sys.argv[2]
 
     glyph_order = (['.notdef', 'space'] +
                    [f'uni{ord(c):04X}' for c in 'abcdefghijklmnopqrstuvwxyz'])
 
-    glyph_metrics = {'.notdef': 500, 'space': 250}
-    for letter, paths in glyphs.items():
-        glyph_metrics[f'uni{ord(letter):04X}'] = estimate_advance(paths)
-
     ufo_dir = tempfile.mkdtemp(suffix='.ufo')
     print(f"Writing UFO to {ufo_dir}")
-    write_ufo(ufo_dir, glyph_order, glyph_metrics, glyphs)
+    write_ufo(ufo_dir, glyph_order, glyphs_data, export_size)
 
     print(f"Compiling to {out_path}...")
     import ufo2ft
