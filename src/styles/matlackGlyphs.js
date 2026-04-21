@@ -3984,3 +3984,52 @@ export const GLYPH_JOIN_ANCHORS = {
   o: O_JOIN_ANCHORS,
   r: R_JOIN_ANCHORS,
 };
+
+/**
+ * Compute a glyph→scan similarity transform for rendering a glyph on top
+ * of a scan image.
+ *
+ * Given the scan's rule lines + one of its anchors, and knowing the
+ * corresponding glyph's rule lines + matching anchor (from the exports
+ * above), solve for a uniform scale + 2D translation such that:
+ *
+ *   scan_pt = { x: glyph_pt.x * scale + offsetX,
+ *               y: glyph_pt.y * scale + offsetY }
+ *
+ * y-axis alignment comes from the rule lines (linear map yCenter→yCenter,
+ * yBottom→yBottom). x-axis alignment comes from the one matching anchor.
+ * No rotation assumed.
+ *
+ * Params:
+ *   scanRule   — { yTop, yCenter, yBottom } in scan coords
+ *   scanAnchor — { x, y } in scan coords (e.g. an exitAnchor or entryAnchor)
+ *   letter     — one of the keys in GLYPH_RULES / GLYPH_JOIN_ANCHORS
+ *   anchorName — 'entry' | 'exit' (whichever is stored on the scan side)
+ *
+ * Returns { scale, offsetX, offsetY }.
+ * Throws if the letter has no rule/anchor metadata yet.
+ */
+export function glyphToScanTransform(scanRule, scanAnchor, letter, anchorName) {
+  const glyphRule = GLYPH_RULES[letter];
+  const glyphAnchors = GLYPH_JOIN_ANCHORS[letter];
+  if (!glyphRule) {
+    throw new Error(`glyphToScanTransform: no rule lines defined for '${letter}'`);
+  }
+  if (!glyphAnchors || !glyphAnchors[anchorName]) {
+    throw new Error(
+      `glyphToScanTransform: no '${anchorName}' anchor defined for '${letter}'`
+    );
+  }
+  const glyphAnchor = glyphAnchors[anchorName];
+
+  // Uniform scale from the x-height zone (well-defined for every letter).
+  const scale = (scanRule.yBottom  - scanRule.yCenter)
+              / (glyphRule.yBottom - glyphRule.yCenter);
+
+  // y-offset: yBottom maps to yBottom.
+  const offsetY = scanRule.yBottom - scale * glyphRule.yBottom;
+  // x-offset: the given anchor maps to the given anchor.
+  const offsetX = scanAnchor.x - scale * glyphAnchor.x;
+
+  return { scale, offsetX, offsetY };
+}
