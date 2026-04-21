@@ -289,9 +289,9 @@ export default function MatlackCanvas() {
 
   // ── Task 1: glyph overlay state ────────────────────────────────────────────
   const [overlayOn, setOverlayOn] = useState(false);
-  // Per-context scale overrides, keyed by contextKey. Falls back to ctx.glyphScale.
-  const [glyphScales, setGlyphScales] = useState({});
-  const currentGlyphScale = glyphScales[contextKey] ?? (ctx.glyphScale ?? 100);
+  // Legacy scale knob for glyphs without structural-anchor metadata (falls
+  // back here if spec.structural is missing). Fixed; not user-adjustable.
+  const legacyGlyphScale = ctx.glyphScale ?? 100;
 
   // ── Task 2: FS browser panel state ────────────────────────────────────────
   const [sidebarOpen, setSidebarOpen]   = useState(false);
@@ -436,7 +436,7 @@ export default function MatlackCanvas() {
           const anchorPt = spec.anchorSvg ?? REF;
           gcx = cx0 + (anchorPt.x - REF.x) * scale;
           gcy = cy0 + (anchorPt.y - REF.y) * scale;
-          gsize = currentGlyphScale;
+          gsize = legacyGlyphScale;
         }
 
         try {
@@ -452,7 +452,7 @@ export default function MatlackCanvas() {
       // Restore ink to default dark for any subsequent draws
       renderer.setInkColor(30, 38, 58);
     }
-  }, [ctx, overlayOn, currentGlyphScale]);
+  }, [ctx, overlayOn, legacyGlyphScale]);
 
   // Re-draw when the context (and therefore handleDraw) changes.
   useEffect(() => {
@@ -565,25 +565,9 @@ export default function MatlackCanvas() {
         ))}
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {/* Task 1: overlay toggle + scale control */}
           <button onClick={() => setOverlayOn(v => !v)} style={btnStyle(overlayOn)}>
             overlay glyph
           </button>
-          {overlayOn && (
-            <>
-              <span style={{ color: '#888' }}>size:</span>
-              <input
-                type="number"
-                value={currentGlyphScale}
-                min={10} max={500} step={5}
-                onChange={e => setGlyphScales(prev => ({ ...prev, [contextKey]: +e.target.value }))}
-                style={{
-                  fontFamily: 'monospace', fontSize: 11, width: 50,
-                  border: '1px solid #bbb', padding: '1px 4px',
-                }}
-              />
-            </>
-          )}
 
           {/* Task 3: click mode toggle */}
           <span style={{ color: '#888', marginLeft: 4 }}>click:</span>
@@ -707,7 +691,10 @@ export default function MatlackCanvas() {
           top:    `${overlay.top}px`,
           width:  `${overlay.width}px`,
           height: `${overlay.height}px`,
-          opacity: 0.55,
+          // More opaque during overlay mode so the ink pops against the
+          // color-coded glyphs; translucent otherwise so anchor dots and
+          // path3 annotations read through cleanly.
+          opacity: overlayOn ? 0.9 : 0.55,
           mixBlendMode: 'multiply',
           pointerEvents: 'none',
           zIndex: 2,
