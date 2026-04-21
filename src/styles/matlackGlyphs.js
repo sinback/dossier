@@ -1539,12 +1539,16 @@ const R_ENTRANCE_SEGS = [
 ];
 const R_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
 
-// Entrance flick — afterHigh variant (flat-topped r, follows b/f/o/v/w).
-// Enters at ~rule.y-center instead of sweeping up from rule.y-bottom.
-// Gentle hat arc: starts left of junction at roughly junction's y, arches
-// slightly higher, then arrives at the junction.
+// Entrance flick — afterHigh variant (r after b/f/o/v/w, or after strong o-exit).
+// Source: or/01 path2 ('o Exit → r Entry'), sliced at t≈0.45 on its 2nd
+// cubic so the flick starts at the user's r.entry font-anchor. Transformed
+// to r's glyph local frame, then translated (-2.98, +0.54) so the endpoint
+// lands on R_STRUCTURAL_ANCHORS.downstrokeTop (= rule.y-center) for clean
+// tangent continuity with the afterHigh body at the top.
+// Two cubic segments.
 const R_ENTRANCE_AFTERHIGH_SEGS = [
-  [[22, 37.5],[32, 35.5],[44, 36.2],[51.44, 37.99]],
+  [[25.20, 56.16], [31.00, 55.29], [37.10, 53.14], [37.46, 52.17]],
+  [[37.46, 52.17], [40.03, 53.94], [53.16, 39.67], [51.75, 38.69]],
 ];
 
 // Swoop + downstroke as one continuous stroke
@@ -3540,8 +3544,9 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
 
   // Entrance flick (reversed taper).
   const entrSegs = isAfterHigh ? R_ENTRANCE_AFTERHIGH_SEGS : R_ENTRANCE_SEGS;
+  const entrIdxs = Array.from({ length: entrSegs.length }, (_, i) => i);
   const entrCenter = sampleSegments(
-    entrSegs, [0], 12, cx, cy, scale, R_REF_CENTER
+    entrSegs, entrIdxs, 12, cx, cy, scale, R_REF_CENTER
   );
   const entrReversed = [...entrCenter].reverse();
   const entrQuads = buildTaperedRibbon(
