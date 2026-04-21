@@ -22,6 +22,10 @@ export default function MatlackCanvas() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Mouse position as svg coordinates (null when not hovering).
+  const [mouseSvg, setMouseSvg] = useState(null);
+  const [mouseCss, setMouseCss] = useState({ x: 0, y: 0 });
+
   // Overlay image transform: must mirror the svg→canvas math below
   // (but in CSS pixels, i.e., without the dpr multiplier).
   const cssScale = Math.min(winSize.w / 140, winSize.h / 120);
@@ -39,11 +43,14 @@ export default function MatlackCanvas() {
   // — the junction between Matlack's two authored Bezier segments (red).
   const handleDraw = useCallback((renderer, canvas) => {
     renderer.clear();
-    const dpr = window.devicePixelRatio || 1;
 
     // svg viewBox is 0..116 × 0..89. Center the view on (58, 55).
+    // canvas.width is in DEVICE pixels (= CSS pixels × dpr), so
+    // canvas.width/140 already gives device-pixels per svg unit. Don't
+    // multiply by dpr again — that double-scales and breaks alignment
+    // with HTML overlays at any dpr ≠ 1 (e.g. browser zoom).
     const REF = { x: 58, y: 55 };
-    const scale = Math.min(canvas.width / 140, canvas.height / 120) * dpr;
+    const scale = Math.min(canvas.width / 140, canvas.height / 120);
     const cx0 = canvas.width / 2;
     const cy0 = canvas.height / 2;
     const toCanvas = (sx, sy) => ({
@@ -91,8 +98,21 @@ export default function MatlackCanvas() {
   }, []);
 
 
+  // Invert the svg→CSS transform for the live tooltip.
+  const cssToSvg = (cssX, cssY) => ({
+    x: 58 + (cssX - winSize.w / 2) / cssScale,
+    y: 55 + (cssY - winSize.h / 2) / cssScale,
+  });
+
+  const handleMouseMove = (e) => {
+    setMouseCss({ x: e.clientX, y: e.clientY });
+    setMouseSvg(cssToSvg(e.clientX, e.clientY));
+  };
+
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}
+         onMouseMove={handleMouseMove}
+         onMouseLeave={() => setMouseSvg(null)}>
       {/* Toolbar */}
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1,
@@ -151,6 +171,95 @@ export default function MatlackCanvas() {
           zIndex: 2,
         }}
       />
+
+      {/* Live svg-coord readout, floats near the cursor. */}
+      {mouseSvg && (
+        <div style={{
+          position: 'fixed', zIndex: 5, pointerEvents: 'none',
+          left:    `${mouseCss.x + 12}px`,
+          top:     `${mouseCss.y + 12}px`,
+          fontFamily: 'monospace', fontSize: 11, color: '#234',
+          background: 'rgba(255,255,255,0.92)',
+          border: '1px solid #aac',
+          padding: '2px 6px', borderRadius: 3,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+        }}>
+          svg: ({mouseSvg.x.toFixed(2)}, {mouseSvg.y.toFixed(2)})
+        </div>
+      )}
+
+      {/* Axis overlay — origin at svg (0,0), ticks at every 10 svg units. */}
+      {/* svg (sx, sy) → CSS (winSize.w/2 + (sx-58)*cssScale, winSize.h/2 + (sy-55)*cssScale) */}
+      {(() => {
+        const svgToCss = (sx, sy) => ({
+          x: winSize.w / 2 + (sx - 58) * cssScale,
+          y: winSize.h / 2 + (sy - 55) * cssScale,
+        });
+        const origin = svgToCss(0, 0);
+        const xEnd   = svgToCss(116, 0);
+        const yEnd   = svgToCss(0, 89);
+        const axisColor = 'rgba(0, 120, 200, 0.7)';
+        const tickLabelStyle = {
+          position: 'fixed', zIndex: 4, pointerEvents: 'none',
+          fontFamily: 'monospace', fontSize: 9,
+          color: 'rgba(0, 90, 150, 0.9)',
+          background: 'rgba(255,255,255,0.7)', padding: '0 2px',
+        };
+        const ticks = [];
+        for (let v = 0; v <= 116; v += 10) {
+          const p = svgToCss(v, 0);
+          ticks.push(
+            <div key={`tx${v}`} style={{
+              position: 'fixed', zIndex: 4, pointerEvents: 'none',
+              left: `${p.x - 0.5}px`, top: `${p.y - 3}px`,
+              width: '1px', height: '6px', background: axisColor,
+            }}/>,
+            <div key={`txL${v}`} style={{
+              ...tickLabelStyle,
+              left: `${p.x - 6}px`, top: `${p.y - 14}px`,
+            }}>{v}</div>
+          );
+        }
+        for (let v = 0; v <= 89; v += 10) {
+          const p = svgToCss(0, v);
+          ticks.push(
+            <div key={`ty${v}`} style={{
+              position: 'fixed', zIndex: 4, pointerEvents: 'none',
+              left: `${p.x - 3}px`, top: `${p.y - 0.5}px`,
+              width: '6px', height: '1px', background: axisColor,
+            }}/>,
+            <div key={`tyL${v}`} style={{
+              ...tickLabelStyle,
+              left: `${p.x - 22}px`, top: `${p.y - 5}px`,
+            }}>{v}</div>
+          );
+        }
+        return (
+          <>
+            {/* X-axis along svg y=0 */}
+            <div style={{
+              position: 'fixed', zIndex: 4, pointerEvents: 'none',
+              left: `${origin.x}px`, top: `${origin.y - 0.5}px`,
+              width: `${xEnd.x - origin.x}px`, height: '1px',
+              background: axisColor,
+            }}/>
+            {/* Y-axis along svg x=0 */}
+            <div style={{
+              position: 'fixed', zIndex: 4, pointerEvents: 'none',
+              left: `${origin.x - 0.5}px`, top: `${origin.y}px`,
+              width: '1px', height: `${yEnd.y - origin.y}px`,
+              background: axisColor,
+            }}/>
+            {/* Origin label */}
+            <div style={{
+              ...tickLabelStyle,
+              left: `${origin.x - 26}px`, top: `${origin.y - 14}px`,
+              color: 'rgba(0, 90, 150, 1)', fontWeight: 'bold',
+            }}>0,0</div>
+            {ticks}
+          </>
+        );
+      })()}
 
       {/* Rule lines (drawn on top of the reference image for visibility). */}
       {[
