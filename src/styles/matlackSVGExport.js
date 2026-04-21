@@ -13,6 +13,51 @@ import { buildGlyph, GLYPH_RULES, GLYPH_REF_CENTERS } from './matlackGlyphs.js';
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
+// Per-letter variant-glyph exports. First entry (suffix '') is the "default"
+// used without any calt substitution. Remaining entries become separate glyphs
+// named `<letter>.<suffix>`, referenced by the calt rules emitted alongside.
+const VARIANT_EXPORTS = {
+  o: [
+    ['',          { entry: 'low',  exit: 'high' }],   // mid-word default
+    ['afterHigh', { entry: 'high', exit: 'high' }],   // after b/f/o/v/w
+    ['init',      { entry: 'none', exit: 'high' }],   // word-initial
+  ],
+  r: [
+    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
+    ['afterHigh', { entry: 'high', exit: 'low' }],    // after b/f/o/v/w
+  ],
+  e: [
+    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
+    ['afterHigh', { entry: 'high', exit: 'low' }],    // after b/f/o/v/w
+  ],
+};
+
+// Returns a minimal calt+classes `.fea` snippet covering the variant glyphs
+// above. Written into the UFO features.fea by the Python side.
+function generateFeatures() {
+  const highExit   = 'b f o v w';
+  const allLowers  = 'a b c d e f g h i j k l m n o p q r s t u v w x y z';
+  return `
+@high_exit   = [${highExit}];
+@all_letters = [${allLowers}];
+
+feature calt {
+  # Contextual joins after @high_exit letters. Runs first so the
+  # afterHigh-form substitutions win before init/flourish features.
+  sub @high_exit e' by e.afterHigh;
+  sub @high_exit o' by o.afterHigh;
+  sub @high_exit r' by r.afterHigh;
+
+  # Word-initial o gets the init form (no entry flick).
+  # The ignore-sub inverts the context so the rule fires only when o is
+  # NOT preceded by a letter — i.e. at start of text or after whitespace /
+  # punctuation.
+  ignore sub @all_letters o';
+           sub            o' by o.init;
+} calt;
+`.trim() + '\n';
+}
+
 // ── Ellipse point sampler ─────────────────────────────────────────────────────
 // Returns {x, y} on the ellipse at the given angle (radians).
 // Matches renderer: angle = -arcFrac * 2π (negative = CW in math coords).
@@ -195,15 +240,22 @@ export function exportGlyphsForFont(size = 200) {
     ascender:   800,
     descender: -200,
     lsb: 50, rsb: 50,
-    glyphs: {},
+    features:  generateFeatures(),
+    glyphs:    {},
   };
   for (const l of ALPHABET) {
-    const geo = buildGlyph(l, 0, 0, size, 1);
-    result.glyphs[l] = {
-      paths:     geoPaths(geo),
-      rule:      GLYPH_RULES[l]       || null,
-      refCenter: GLYPH_REF_CENTERS[l] || null,
-    };
+    const variants = VARIANT_EXPORTS[l] || [['', undefined]];
+    for (const [suffix, variant] of variants) {
+      const geo = buildGlyph(l, 0, 0, size, 1, {}, variant);
+      const glyphName = suffix ? `${l}.${suffix}` : l;
+      result.glyphs[glyphName] = {
+        paths:     geoPaths(geo),
+        rule:      GLYPH_RULES[l]       || null,
+        refCenter: GLYPH_REF_CENTERS[l] || null,
+        letter:    l,           // source letter (for unicode lookup on default)
+        isDefault: !suffix,     // only default gets a unicode code point
+      };
+    }
   }
   return JSON.stringify(result, null, 2);
 }

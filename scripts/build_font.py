@@ -154,7 +154,7 @@ def paths_to_glif(gname, unicode_val, adv, paths, transform, x_shift):
 
 
 # ── UFO writer ────────────────────────────────────────────────────────────────
-def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size):
+def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size, features_fea=None):
     os.makedirs(os.path.join(ufo_dir, 'glyphs'), exist_ok=True)
 
     # metainfo.plist
@@ -232,10 +232,12 @@ def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size):
         f.write(space)
     glyph_files['space'] = 'space.glif'
 
-    for letter, entry in glyphs_data.items():
+    for glyph_name, entry in glyphs_data.items():
         paths     = entry['paths']
         rule      = entry.get('rule')
         ref_center = entry.get('refCenter')
+        source_letter = entry.get('letter', glyph_name)
+        is_default    = entry.get('isDefault', True)
 
         transform = glyph_transform(rule, ref_center, export_size)
 
@@ -250,12 +252,22 @@ def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size):
             x_shift = 0
             advance = 500  # placeholder
 
-        gname = f'uni{ord(letter):04X}'
-        glif = paths_to_glif(gname, ord(letter), advance, paths, transform, x_shift)
-        fname = f'{gname}.glif'
-        with open(os.path.join(ufo_dir, 'glyphs', fname), 'w') as f:
+        # Use readable glyph names ('e', 'o', 'r.afterHigh') so the
+        # features.fea file can reference them directly. Only default
+        # single-letter glyphs get a Unicode code point.
+        gname = glyph_name   # e.g. 'e' or 'r.afterHigh'
+        if is_default and len(source_letter) == 1:
+            unicode_val = ord(source_letter)
+        else:
+            unicode_val = None
+
+        glif = paths_to_glif(gname, unicode_val, advance, paths, transform, x_shift)
+        # Filenames sanitized for UFO3; '.' replaced so OS-level filenames
+        # don't collide with extension parsing.
+        safe_fname = gname.replace('.', '_') + '.glif'
+        with open(os.path.join(ufo_dir, 'glyphs', safe_fname), 'w') as f:
             f.write(glif)
-        glyph_files[gname] = fname
+        glyph_files[gname] = safe_fname
 
     # contents.plist
     entries = '\n'.join(f'  <key>{g}</key><string>{fn}</string>'
@@ -265,6 +277,11 @@ def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size):
                 f'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"'
                 f' "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
                 f'<plist version="1.0"><dict>\n{entries}\n</dict></plist>\n')
+
+    # features.fea (OpenType calt + glyph classes)
+    if features_fea:
+        with open(os.path.join(ufo_dir, 'features.fea'), 'w') as f:
+            f.write(features_fea)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -278,14 +295,17 @@ def main():
 
     glyphs_data = data['glyphs']
     export_size = data.get('size', EXPORT_SIZE)
+    features_fea = data.get('features', None)
     out_path = sys.argv[2]
 
-    glyph_order = (['.notdef', 'space'] +
-                   [f'uni{ord(c):04X}' for c in 'abcdefghijklmnopqrstuvwxyz'])
+    # Glyph order: notdef, space, defaults, then variants.
+    base_order = list('abcdefghijklmnopqrstuvwxyz')
+    variant_order = [name for name in glyphs_data.keys() if '.' in name]
+    glyph_order = ['.notdef', 'space'] + base_order + variant_order
 
     ufo_dir = tempfile.mkdtemp(suffix='.ufo')
     print(f"Writing UFO to {ufo_dir}")
-    write_ufo(ufo_dir, glyph_order, glyphs_data, export_size)
+    write_ufo(ufo_dir, glyph_order, glyphs_data, export_size, features_fea)
 
     print(f"Compiling to {out_path}...")
     import ufo2ft
