@@ -1,0 +1,75 @@
+  # NOTE: 'entry-y' is annotated:
+    - ! prepending: stroke is omitted if this letter is beginning a word
+    - . prepending: stroke is kept if this letter is beginning a word
+    - ~ prepending: stroke is kept but nerfed if this letter is beginning a word. For example, a "nerfed" y-bottom entry typically starts halfway between y-bottom and y-center (similar area to "undefined" in many short letters' y-center)
+    - ? prepending: no data on beginning-of-word behavior
+    - - appending:  stroke's entry is "weaker" than preceeding letter's exit-y
+  # NOTE: 'exit-y' is annotated:
+    - + appending:  stroke's entry is "stronger" than next letter's entry-y
+    - ! appending:  stroke is omitted if this letter is ending a word
+    - . appending:  stroke is kept if this letter is ending a word
+    - ~ appending:  stroke is sometimes flourished if ending a sentence or line; otherwise kept same.
+    - ? appending:  no data on end-of-word behavior
+  ┌────────┬───────────────┬───────────────┬───────────────┬───────────────┬───────────────┐
+  │ letter │     y-top     │   y-center    │   y-bottom    │    entry-y    │    exit-y     │
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   a    │ rule.y-center │   undefined   │ rule.y-bottom │!rule.y-bottom │ rule.y-bottom.│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   b    │  rule.y-top   │ rule.y-center │ rule.y-bottom │.rule.y-bottom │ rule.y-center?│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   c    │ rule.y-center │   undefined   │ rule.y-bottom │!rule.y-bottom │ rule.y-bottom.│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   d    │  rule.y-top   │   undefined   │ rule.y-bottom │!rule.y-bottom │ rule.y-bottom~│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   e    │ rule.y-center │   undefined   │ rule.y-bottom │.rule.y-bottom-│ rule.y-bottom~│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   f    │  rule.y-top   │ rule.y-center │ rule.y-below  │~rule.y-bottom │ rule.y-center~│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   g    │ rule.y-center │ rule.y-bottom │ rule.y-below  │!rule.y-bottom │ rule.y-bottom~│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   h    │  rule.y-top   │ rule.y-center │ rule.y-bottom │.rule.y-bottom │ rule.y-bottom.│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   i    │ rule.y-center │   undefined   │ rule.y-bottom │.rule.y-bottom │ rule.y-bottom?│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   j    │ rule.y-center │ rule.y-bottom │ rule.y-below  │.rule.y-bottom │ rule.y-bottom?│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   k    │  rule.y-top   │ rule.y-center │ rule.y-bottom │.rule.y-bottom │ rule.y-bottom!│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   l    │  rule.y-top   │ rule.y-center │ rule.y-bottom │.rule.y-bottom │ rule.y-bottom.│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   m    │ rule.y-center │   undefined   │ rule.y-bottom │.rule.y-bottom │ rule.y-bottom~│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   n    │ rule.y-center │   undefined   │ rule.y-bottom │.rule.y-center │ rule.y-bottom.│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   o    │ rule.y-center │   undefined   │ rule.y-bottom │!  undefined  -│+rule.y-center!│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   p    │ rule.y-center │ rule.y-bottom │ rule.y-below  │!rule.y-bottom │ rule.y-bottom?│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   q    │ rule.y-center │ rule.y-bottom │ rule.y-below  │?rule.y-bottom │ rule.y-bottom?│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   r    │ rule.y-center │   undefined   │ rule.y-bottom │.rule.y-bottom-│ inconsistent ~│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   s    │ rule.y-center │   undefined   │ rule.y-bottom │.rule.y-bottom │ rule.y-bottom!│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   t    │  rule.y-top   │ rule.y-center │ rule.y-bottom │.rule.y-bottom │ rule.y-bottom~│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   u    │ rule.y-center │   undefined   │ rule.y-bottom │~rule.y-bottom │ rule.y-bottom?│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   v    │ rule.y-center │   undefined   │ rule.y-bottom │~rule.y-bottom │ rule.y-center?│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   w    │ rule.y-center │   undefined   │ rule.y-bottom │~rule.y-bottom │ rule.y-center~│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   x    │ rule.y-center │   undefined   │ rule.y-bottom │?rule.y-center │ rule.y-bottom?│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   y    │ rule.y-center │ rule.y-bottom │ rule.y-below  │?rule.y-bottom │ rule.y-bottom.│
+  ├────────┼───────────────┼───────────────┼───────────────┼───────────────┼───────────────┤
+  │   z    │ rule.y-center │ rule.y-bottom │ rule.y-below  │?rule.y-bottom │ rule.y-bottom?│
+  └────────┴───────────────┴───────────────┴───────────────┴───────────────┴───────────────┘
+
+  NOTES/specific evidence on annotations:
+  - 'o' entry "undefined" and "weak": omitted if pen lifted before 'o', y-center if previous letter's exit is y-center, y-bottom if previous letter's exit was y-bottom. See "Colonies" (uppercase 'C' has a pen lift prior to 'o', "Despotism" ('p's y-bottom exit becomes o y-bottom entry), "of" (initial 'o' has no entry), "form", ('f's y-center exit becomes o y-center entry), etc.
+  - 'r' entry "weak": "naturally" a y-bottom (as evidenced by beginning-of-word behavior), but will be y-center if preceeded by a y-center exit
+  - 'o' y-center exit is very strong: stronger than {'l', 's', 'r'}, see "Colonies", "most", "transporting"
+  - 's' data applies to modern "s" glyph (in Copperplate, there's a secondary 's' glyph sometimes used at beginning of words, always used prior to a second 's'; we haven't captured this one yet
+  - 'b' exit stronger than 'e' entry, see "be"
+  - 'r' exit typically "low_exit"/"rule.y-bottom", but it's been observed to have a rule.y-center "high_exit" in some words, such as "truths" and one instance of "rights" (another instance of "rights" has a low_exit, though. Let's pretend 'r' is low_exit always for simplicity

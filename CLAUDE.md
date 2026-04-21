@@ -41,3 +41,9 @@ If you're working on handwriting or styling, you can do ./snap.sh clear → ./sn
 ```
 
 If you don't see Firefox in the snapshot, pause and ask the user to switch the Firefox tab back to Dossier.
+
+## Visual processing on reference scans
+- Matlack reference scans live under `matlack-declaration/reference/context/<word>/NN.png`. You can reliably read rule lines (long thin horizontal bands) off these, but you **cannot** read soft ink-edge features to pixel precision — visual tokens are not pixel data, and there's no self-correction signal on a bad guess.
+- Expect ~10-20 svg-unit error on ink-edge guesses (where a t's downstroke ends, where an o's bowl starts, etc.) when reading the raster directly.
+- When precision matters, use the hand-traced path data at `matlack-declaration/reference/context/<word>/NN_paths` instead. See `matlack-declaration/reference/context/workflow.md` for the full tracing workflow.
+- If no path data exists for the letter you need, **ask the user to trace it** before fine-tuning anchor coordinates. Do not fabricate pixel positions from the scan.

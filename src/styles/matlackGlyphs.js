@@ -2108,7 +2108,81 @@ function renderFromGeo(renderer, geo) {
   }
 }
 
-export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant = 'default') {
+// ═════════════════════════════════════════════════════════════════════════════
+// VARIANT SUPPORT — which {entry, exit} combinations are valid for each letter.
+//
+// Three categories:
+//   - supported:  geometry implemented, returns correct shape
+//   - notYet:     valid per `lowercase_rules_table.txt` but geometry TODO;
+//                 build falls back to nearest supported variant + logs warning
+//   - (implicit) never: not in either list — build throws
+//
+// Add entries as letters gain variants. Not all letters need a support entry
+// yet; missing letters treat their variant arg as "ignored" for compatibility.
+// ═════════════════════════════════════════════════════════════════════════════
+const VARIANT_SUPPORT = {
+  e: {
+    supported: [
+      { entry: 'low',  exit: 'low' },
+      { entry: 'high', exit: 'low' },
+    ],
+    notYet: [
+      { entry: 'none', exit: 'low' },       // init form
+      { entry: 'low',  exit: 'flourish' },
+      { entry: 'high', exit: 'flourish' },
+      { entry: 'none', exit: 'flourish' },
+    ],
+  },
+  o: {
+    supported: [
+      { entry: 'low',  exit: 'high' },
+      { entry: 'high', exit: 'high' },
+      { entry: 'none', exit: 'none' },      // isol (standalone "o")
+    ],
+    notYet: [
+      { entry: 'none', exit: 'high' },      // init form
+      { entry: 'low',  exit: 'none' },      // fina after low-exiting letter
+      { entry: 'high', exit: 'none' },      // fina after high-exiting letter
+    ],
+  },
+  r: {
+    supported: [
+      { entry: 'low',  exit: 'low' },
+      { entry: 'high', exit: 'low' },       // afterHigh
+    ],
+    notYet: [
+      { entry: 'low',  exit: 'flourish' },
+      { entry: 'high', exit: 'flourish' },
+    ],
+  },
+};
+
+function variantMatches(v, list) {
+  return list.some(x => x.entry === v.entry && x.exit === v.exit);
+}
+
+// Returns the variant to actually build. Throws on 'never', warns + substitutes
+// on 'notYet'. Returns the input unchanged for 'supported'.
+function resolveVariant(letter, variant) {
+  const support = VARIANT_SUPPORT[letter];
+  if (!support) return variant;  // letter has no variant awareness yet
+  if (variantMatches(variant, support.supported)) return variant;
+  if (variantMatches(variant, support.notYet)) {
+    const fallback = support.supported[0];
+    console.warn(
+      `build${letter.toUpperCase()}: variant ${JSON.stringify(variant)} is ` +
+      `valid per the rules table but geometry not yet implemented. ` +
+      `Falling back to ${JSON.stringify(fallback)}.`
+    );
+    return fallback;
+  }
+  throw new Error(
+    `build${letter.toUpperCase()}: variant ${JSON.stringify(variant)} is not ` +
+    `supported for '${letter}' (never will be; see lowercase_rules_table.txt).`
+  );
+}
+
+export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
   const scale = (size * dpr) / 100;
   switch(glyph) {
     case 'a':
@@ -2168,7 +2242,7 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant = '
   }
 }
 
-export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}, variant = 'default') {
+export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}, variant) {
   const geo = buildGlyph(glyph, cx, cy, size, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
@@ -2381,7 +2455,9 @@ function renderC(renderer, cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'e'.
  * Single continuous loop stroke rendered as a variable-width ribbon.
  */
-function buildE(cx, cy, scale, dpr, overrides, variant = 'default') {
+function buildE(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'low' }) {
+  variant = resolveVariant('e', variant);
+
   const loopCenter = sampleSegments(
     E_LOOP_SEGS,
     [0, 1, 2, 3, 4, 5, 6],
@@ -2390,13 +2466,17 @@ function buildE(cx, cy, scale, dpr, overrides, variant = 'default') {
   const loopQuads = buildRibbon(loopCenter, (t) => eLoopWidth(t, scale));
   const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // Entrance flick depends on variant. 'omit' = no entry stroke at all.
+  // Entrance flick depends on variant.entry. 'none' → no entry stroke.
   let entrSegs = null, entrParams = null;
-  if (variant === 'afterHigh') {
-    entrSegs = E_ENTRANCE_AFTERHIGH_SEGS; entrParams = E_ENTRANCE_AFTERHIGH;
-  } else if (variant === 'default') {
-    entrSegs = E_ENTRANCE_DEFAULT_SEGS; entrParams = E_ENTRANCE_DEFAULT;
+  if (variant.entry === 'low') {
+    entrSegs = E_ENTRANCE_DEFAULT_SEGS;
+    entrParams = E_ENTRANCE_DEFAULT;
+  } else if (variant.entry === 'high') {
+    entrSegs = E_ENTRANCE_AFTERHIGH_SEGS;
+    entrParams = E_ENTRANCE_AFTERHIGH;
   }
+  // variant.exit === 'flourish' is not yet implemented — resolveVariant will
+  // have already mapped it to a supported variant.
 
   let entrFills = [];
   if (entrSegs) {
@@ -2421,7 +2501,7 @@ function buildE(cx, cy, scale, dpr, overrides, variant = 'default') {
   };
 }
 
-function renderE(renderer, cx, cy, scale, dpr, overrides, variant = 'default') {
+function renderE(renderer, cx, cy, scale, dpr, overrides, variant) {
   const geo = buildE(cx, cy, scale, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
@@ -3333,7 +3413,9 @@ function renderW(renderer, cx, cy, scale, dpr, overrides) {
   renderFromGeo(renderer, geo);
 }
 
-function buildR(cx, cy, scale, dpr, overrides, variant = 'default') {
+function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'low' }) {
+  variant = resolveVariant('r', variant);
+
   // Swoop + downstroke as one ribbon
   const strokeCenter = sampleSegments(
     R_STROKE_SEGS, [0, 1, 2], 12, cx, cy, scale, R_REF_CENTER
@@ -3341,8 +3423,9 @@ function buildR(cx, cy, scale, dpr, overrides, variant = 'default') {
   const strokeQuads = buildRibbon(strokeCenter, (t) => rStrokeWidth(t, scale));
   const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // Entrance flick (reversed taper) — geometry depends on variant.
-  const entrSegs = variant === 'afterHigh'
+  // Entrance flick (reversed taper) — geometry depends on variant.entry.
+  // 'none' not a supported option for r per the rules table.
+  const entrSegs = variant.entry === 'high'
     ? R_ENTRANCE_AFTERHIGH_SEGS
     : R_ENTRANCE_SEGS;
   const entrCenter = sampleSegments(
@@ -3382,7 +3465,7 @@ function buildR(cx, cy, scale, dpr, overrides, variant = 'default') {
   };
 }
 
-function renderR(renderer, cx, cy, scale, dpr, overrides, variant = 'default') {
+function renderR(renderer, cx, cy, scale, dpr, overrides, variant) {
   const geo = buildR(cx, cy, scale, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
@@ -3523,22 +3606,27 @@ function renderY(renderer, cx, cy, scale, dpr, overrides) {
   renderFromGeo(renderer, geo);
 }
 
-function buildO(cx, cy, scale, dpr, overrides, variant = 'default') {
+function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'high' }) {
+  variant = resolveVariant('o', variant);
+
   const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
   const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
 
-  // Entrance flick depends on variant. 'omit' = no entry stroke (bare bowl).
+  // Entrance flick depends on variant.entry.
   let entrSegs = null, entrParams = null;
-  if (variant === 'afterHigh') {
-    entrSegs = O_ENTRANCE_AFTERHIGH_SEGS; entrParams = O_ENTRANCE_AFTERHIGH;
-  } else if (variant === 'default') {
-    entrSegs = O_ENTRANCE_DEFAULT_SEGS; entrParams = O_ENTRANCE_DEFAULT;
+  if (variant.entry === 'high') {
+    entrSegs = O_ENTRANCE_AFTERHIGH_SEGS;
+    entrParams = O_ENTRANCE_AFTERHIGH;
+  } else if (variant.entry === 'low') {
+    entrSegs = O_ENTRANCE_DEFAULT_SEGS;
+    entrParams = O_ENTRANCE_DEFAULT;
   }
+  // 'none' → no entry stroke; entrSegs stays null.
 
-  // Optional CW rotation of the default entry flick around its junction (P3)
+  // Optional CW rotation of the low-entry flick around its junction (P3)
   // with the bowl. Used for iterating on the flick's angle; in y-down image
   // coords, math CCW rotation visually reads as CW on the page.
-  if (entrSegs && variant === 'default' && overrides.defaultEntryRotation) {
+  if (entrSegs && variant.entry === 'low' && overrides.defaultEntryRotation) {
     const rad = overrides.defaultEntryRotation * Math.PI / 180;
     const c = Math.cos(rad), s = Math.sin(rad);
     entrSegs = entrSegs.map(seg => {
@@ -3579,7 +3667,7 @@ function buildO(cx, cy, scale, dpr, overrides, variant = 'default') {
   };
 }
 
-function renderO(renderer, cx, cy, scale, dpr, overrides, variant = 'default') {
+function renderO(renderer, cx, cy, scale, dpr, overrides, variant) {
   const geo = buildO(cx, cy, scale, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
