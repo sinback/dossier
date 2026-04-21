@@ -1585,6 +1585,27 @@ const R_EXIT_SEGS = [
 const R_EXIT = { startWidth: 2.5, taperPower: 1.7, liftPoint: 0.85 };
 const R_EXIT_OFFSET = { dx: 0, dy: 0 };
 
+// ── afterHigh variant body + exit ────────────────────────────────────────────
+// In Copperplate literature the flat-topped r is a structurally different
+// letterform, not just "default r with a different entry flick" — so both
+// the body shape and the exit extension differ.
+//
+// Source: or/01 path1 ("r Downstroke → r Exit"), six cubic segments. That
+// scan's r is the afterHigh variant (o precedes it with a high exit).
+// Segments translated to r's glyph-local frame via the scan→glyph transform
+// for or/01 (scale≈0.446, offsets≈(30.54, 6.04)), then shifted +0.22 in y
+// so the first point coincides with R_STRUCTURAL_ANCHORS.downstrokeTop.
+const R_STROKE_SEGS_AFTERHIGH = [
+  [[51.75, 38.69], [51.55, 38.71], [48.35, 52.66], [50.50, 52.23]],
+  [[50.50, 52.23], [49.83, 52.25], [53.23, 60.23], [54.82, 59.58]],
+  [[54.82, 59.58], [54.53, 59.31], [32.31, 82.00], [37.08, 86.25]],
+  [[37.08, 86.25], [35.19, 86.74], [36.74, 97.25], [44.89, 95.12]],
+  [[44.89, 95.12], [43.39, 96.02], [52.95, 96.58], [56.31, 94.58]],
+];
+const R_EXIT_SEGS_AFTERHIGH = [
+  [[56.31, 94.58], [57.05, 97.99], [103.89, 66.30], [103.62, 65.00]],
+];
+
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'w'
 // Source: hand-traced on w/03 from high-res 1823 facsimile (134×87, 1x).
@@ -3503,18 +3524,22 @@ function renderW(renderer, cx, cy, scale, dpr, overrides) {
 function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'low' }) {
   variant = resolveVariant('r', variant);
 
-  // Swoop + downstroke as one ribbon
+  // Body + exit geometry depends on variant.entry — r.afterHigh is a
+  // structurally different letterform, not just a different entry flick.
+  const isAfterHigh = variant.entry === 'high';
+  const strokeSegs = isAfterHigh ? R_STROKE_SEGS_AFTERHIGH : R_STROKE_SEGS;
+  const exitSegs   = isAfterHigh ? R_EXIT_SEGS_AFTERHIGH   : R_EXIT_SEGS;
+
+  // Swoop + downstroke as one ribbon.
+  const strokeIdxs = Array.from({ length: strokeSegs.length }, (_, i) => i);
   const strokeCenter = sampleSegments(
-    R_STROKE_SEGS, [0, 1, 2], 12, cx, cy, scale, R_REF_CENTER
+    strokeSegs, strokeIdxs, 12, cx, cy, scale, R_REF_CENTER
   );
   const strokeQuads = buildRibbon(strokeCenter, (t) => rStrokeWidth(t, scale));
   const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // Entrance flick (reversed taper) — geometry depends on variant.entry.
-  // 'none' not a supported option for r per the rules table.
-  const entrSegs = variant.entry === 'high'
-    ? R_ENTRANCE_AFTERHIGH_SEGS
-    : R_ENTRANCE_SEGS;
+  // Entrance flick (reversed taper).
+  const entrSegs = isAfterHigh ? R_ENTRANCE_AFTERHIGH_SEGS : R_ENTRANCE_SEGS;
   const entrCenter = sampleSegments(
     entrSegs, [0], 12, cx, cy, scale, R_REF_CENTER
   );
@@ -3527,10 +3552,11 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
   );
   const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
 
-  // Exit flick
+  // Exit flick.
   const exitOff = resolveOffset('exitFlick', R_EXIT_OFFSET, overrides, dpr);
+  const exitIdxs = Array.from({ length: exitSegs.length }, (_, i) => i);
   const exitCenter = sampleSegments(
-    R_EXIT_SEGS, [0, 1], 12,
+    exitSegs, exitIdxs, 12,
     cx + exitOff.dx, cy + exitOff.dy, scale, R_REF_CENTER
   );
   const exitQuads = buildTaperedRibbon(
