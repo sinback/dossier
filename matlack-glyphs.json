@@ -22,7 +22,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "a",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "b": {
       "paths": [
@@ -38,7 +39,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "b",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "c": {
       "paths": [
@@ -138,7 +140,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "c",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "d": {
       "paths": [
@@ -318,7 +321,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "d",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "e": {
       "paths": [
@@ -701,7 +705,17 @@
         "y": 32
       },
       "letter": "e",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": {
+        "entry": {
+          "x": -26.340000000000003,
+          "y": 6.819999999999993
+        },
+        "exit": {
+          "x": 38.18000000000001,
+          "y": 16.42
+        }
+      }
     },
     "e.afterHigh": {
       "paths": [
@@ -1088,7 +1102,17 @@
         "y": 32
       },
       "letter": "e",
-      "isDefault": false
+      "isDefault": false,
+      "joinAnchors": {
+        "entry": {
+          "x": -26.340000000000003,
+          "y": 6.819999999999993
+        },
+        "exit": {
+          "x": 38.18000000000001,
+          "y": 16.42
+        }
+      }
     },
     "f": {
       "paths": [
@@ -1108,7 +1132,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "f",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "g": {
       "paths": [
@@ -1456,7 +1481,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "g",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "h": {
       "paths": [
@@ -1888,7 +1914,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "h",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "i": {
       "paths": [
@@ -2048,7 +2075,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "i",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "j": {
       "paths": [
@@ -2224,7 +2252,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "j",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "k": {
       "paths": [
@@ -2472,7 +2501,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "k",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "l": {
       "paths": [
@@ -2864,7 +2894,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "l",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "m": {
       "paths": [
@@ -3580,7 +3611,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "m",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "n": {
       "paths": [
@@ -4196,7 +4228,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "n",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "o": {
       "paths": [
@@ -4303,7 +4336,17 @@
         "y": 33.5
       },
       "letter": "o",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": {
+        "entry": {
+          "x": -25.999999999999993,
+          "y": -22.200000000000003
+        },
+        "exit": {
+          "x": 100.86000000000001,
+          "y": -26.880000000000003
+        }
+      }
     },
     "o.afterHigh": {
       "paths": [
@@ -4414,7 +4457,17 @@
         "y": 33.5
       },
       "letter": "o",
-      "isDefault": false
+      "isDefault": false,
+      "joinAnchors": {
+        "entry": {
+          "x": -25.999999999999993,
+          "y": -22.200000000000003
+        },
+        "exit": {
+          "x": 100.86000000000001,
+          "y": -26.880000000000003
+        }
+      }
     },
     "o.init": {
       "paths": [
@@ -4493,7 +4546,13 @@
         "y": 33.5
       },
       "letter": "o",
-      "isDefault": false
+      "isDefault": false,
+      "joinAnchors": {
+        "exit": {
+          "x": 100.86000000000001,
+          "y": -26.880000000000003
+        }
+      }
     },
     "o.isol": {
       "paths": [
@@ -4512,7 +4571,8 @@
         "y": 33.5
       },
       "letter": "o",
-      "isDefault": false
+      "isDefault": false,
+      "joinAnchors": null
     },
     "p": {
       "paths": [
@@ -4792,7 +4852,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "p",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "q": {
       "paths": [
@@ -4808,7 +4869,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "q",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "r": {
       "paths": [
@@ -5071,7 +5133,17 @@
         "y": 44
       },
       "letter": "r",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": {
+        "entry": {
+          "x": -7.1200000000000045,
+          "y": -12.019999999999996
+        },
+        "exit": {
+          "x": 0,
+          "y": 92
+        }
+      }
     },
     "r.afterHigh": {
       "paths": [
@@ -5434,7 +5506,17 @@
         "y": 44
       },
       "letter": "r",
-      "isDefault": false
+      "isDefault": false,
+      "joinAnchors": {
+        "entry": {
+          "x": -7.1200000000000045,
+          "y": -12.019999999999996
+        },
+        "exit": {
+          "x": 0,
+          "y": 92
+        }
+      }
     },
     "s": {
       "paths": [
@@ -5718,7 +5800,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "s",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "t": {
       "paths": [
@@ -5770,7 +5853,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "t",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "u": {
       "paths": [
@@ -6178,7 +6262,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "u",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "v": {
       "paths": [
@@ -6606,7 +6691,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "v",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "w": {
       "paths": [
@@ -7018,7 +7104,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "w",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "x": {
       "paths": [
@@ -7650,7 +7737,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "x",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "y": {
       "paths": [
@@ -8014,7 +8102,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "y",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     },
     "z": {
       "paths": [
@@ -8422,7 +8511,8 @@
       "rule": null,
       "refCenter": null,
       "letter": "z",
-      "isDefault": true
+      "isDefault": true,
+      "joinAnchors": null
     }
   }
 }

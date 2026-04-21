@@ -121,7 +121,8 @@ def contour_xml(pts):
     return '\n'.join(lines)
 
 
-def paths_to_glif(gname, unicode_val, adv, paths, transform, x_shift):
+def paths_to_glif(gname, unicode_val, adv, paths, transform, x_shift,
+                  join_anchors=None):
     contours = []
     for p in paths:
         current = []
@@ -143,14 +144,36 @@ def paths_to_glif(gname, unicode_val, adv, paths, transform, x_shift):
 
     uni_el = f'  <unicode hex="{unicode_val:04X}"/>\n' if unicode_val is not None else ''
     outline = '\n'.join(contours)
+
+    # Cursive-attachment anchors. entry/exit live in the 'output frame'
+    # from the JS side; transform them the same way as path points.
+    anchor_xml = ''
+    if join_anchors:
+        for name in ('entry', 'exit'):
+            pt = join_anchors.get(name)
+            if pt is None:
+                continue
+            fx, fy = transform(pt['x'], pt['y'])
+            anchor_xml += (f'  <anchor name="{name}" '
+                           f'x="{round(fx + x_shift)}" y="{round(fy)}"/>\n')
+
     return (
         f'<?xml version="1.0" encoding="UTF-8"?>\n'
         f'<glyph name="{gname}" format="2">\n'
         f'  <advance width="{adv}"/>\n'
         f'{uni_el}'
+        f'{anchor_xml}'
         f'  <outline>\n{outline}\n  </outline>\n'
         f'</glyph>\n'
     )
+
+
+def curs_rule(gname, entry_font, exit_font):
+    """One `pos cursive` rule for the curs feature. `entry_font` / `exit_font`
+    are (x, y) tuples in font coords, or None."""
+    def anchor_str(pt):
+        return f'<anchor {round(pt[0])} {round(pt[1])}>' if pt else '<anchor NULL>'
+    return f'  pos cursive {gname} {anchor_str(entry_font)} {anchor_str(exit_font)};'
 
 
 # ── UFO writer ────────────────────────────────────────────────────────────────
@@ -232,17 +255,17 @@ def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size, features_fea=None)
         f.write(space)
     glyph_files['space'] = 'space.glif'
 
+    curs_rules = []
     for glyph_name, entry in glyphs_data.items():
         paths     = entry['paths']
         rule      = entry.get('rule')
         ref_center = entry.get('refCenter')
         source_letter = entry.get('letter', glyph_name)
         is_default    = entry.get('isDefault', True)
+        join_anchors  = entry.get('joinAnchors')  # in output-frame coords
 
         transform = glyph_transform(rule, ref_center, export_size)
 
-        # Compute x bounds in transformed font coords so we can shift to LSB
-        # and compute advance.
         xs = [transform(x, y)[0] for x, y in path_points(paths)]
         if xs:
             x_min, x_max = min(xs), max(xs)
@@ -250,24 +273,33 @@ def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size, features_fea=None)
             advance = round(x_max - x_min + LSB + RSB)
         else:
             x_shift = 0
-            advance = 500  # placeholder
+            advance = 500
 
-        # Use readable glyph names ('e', 'o', 'r.afterHigh') so the
-        # features.fea file can reference them directly. Only default
-        # single-letter glyphs get a Unicode code point.
-        gname = glyph_name   # e.g. 'e' or 'r.afterHigh'
+        gname = glyph_name
         if is_default and len(source_letter) == 1:
             unicode_val = ord(source_letter)
         else:
             unicode_val = None
 
-        glif = paths_to_glif(gname, unicode_val, advance, paths, transform, x_shift)
-        # Filenames sanitized for UFO3; '.' replaced so OS-level filenames
-        # don't collide with extension parsing.
+        glif = paths_to_glif(gname, unicode_val, advance, paths, transform,
+                             x_shift, join_anchors)
         safe_fname = gname.replace('.', '_') + '.glif'
         with open(os.path.join(ufo_dir, 'glyphs', safe_fname), 'w') as f:
             f.write(glif)
         glyph_files[gname] = safe_fname
+
+        # Collect a pos cursive rule for the curs feature. Transform the
+        # join anchors to font coords and include LSB shift.
+        if join_anchors:
+            entry_pt = join_anchors.get('entry')
+            exit_pt  = join_anchors.get('exit')
+            def to_font(pt):
+                if pt is None: return None
+                fx, fy = transform(pt['x'], pt['y'])
+                return (fx + x_shift, fy)
+            curs_rules.append(
+                curs_rule(gname, to_font(entry_pt), to_font(exit_pt))
+            )
 
     # contents.plist
     entries = '\n'.join(f'  <key>{g}</key><string>{fn}</string>'
@@ -278,10 +310,18 @@ def write_ufo(ufo_dir, glyph_order, glyphs_data, export_size, features_fea=None)
                 f' "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
                 f'<plist version="1.0"><dict>\n{entries}\n</dict></plist>\n')
 
-    # features.fea (OpenType calt + glyph classes)
-    if features_fea:
+    # features.fea (OpenType calt + curs)
+    fea_text = features_fea or ''
+    if curs_rules:
+        fea_text += (
+            '\nfeature curs {\n'
+            '  lookupflag IgnoreMarks;\n'
+            + '\n'.join(curs_rules) + '\n'
+            '} curs;\n'
+        )
+    if fea_text:
         with open(os.path.join(ufo_dir, 'features.fea'), 'w') as f:
-            f.write(features_fea)
+            f.write(fea_text)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

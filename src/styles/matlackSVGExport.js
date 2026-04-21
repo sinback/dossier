@@ -9,7 +9,8 @@
  * so the SVG outline matches what the WebGL renderer draws.
  */
 
-import { buildGlyph, GLYPH_RULES, GLYPH_REF_CENTERS } from './matlackGlyphs.js';
+import { buildGlyph, GLYPH_RULES, GLYPH_REF_CENTERS,
+         GLYPH_JOIN_ANCHORS } from './matlackGlyphs.js';
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
@@ -239,6 +240,26 @@ export function exportAlphabetSVG(size = 80, cols = 10) {
  *     refCenter: { x, y } in glyph-local-ref units, or null
  *   }
  */
+// Transform GLYPH_JOIN_ANCHORS values into the same output frame as the
+// paths (REF_CENTER at origin, scaled by size/100). Drop entry/exit
+// anchors that don't apply to this variant (e.g. init has no entry).
+function anchorsForVariant(letter, variant, size) {
+  const raw = GLYPH_JOIN_ANCHORS[letter];
+  const ref = GLYPH_REF_CENTERS[letter];
+  if (!raw || !ref) return null;
+  const scale = size / 100;
+  const toOutput = (pt) => ({
+    x: (pt.x - ref.x) * scale,
+    y: (pt.y - ref.y) * scale,
+  });
+  const hasEntry = !variant || variant.entry !== 'none';
+  const hasExit  = !variant || variant.exit  !== 'none';
+  const anchors = {};
+  if (hasEntry && raw.entry) anchors.entry = toOutput(raw.entry);
+  if (hasExit  && raw.exit ) anchors.exit  = toOutput(raw.exit);
+  return Object.keys(anchors).length ? anchors : null;
+}
+
 export function exportGlyphsForFont(size = 200) {
   const result = {
     size,
@@ -259,8 +280,9 @@ export function exportGlyphsForFont(size = 200) {
         paths:     geoPaths(geo),
         rule:      GLYPH_RULES[l]       || null,
         refCenter: GLYPH_REF_CENTERS[l] || null,
-        letter:    l,           // source letter (for unicode lookup on default)
-        isDefault: !suffix,     // only default gets a unicode code point
+        letter:    l,
+        isDefault: !suffix,
+        joinAnchors: anchorsForVariant(l, variant, size),
       };
     }
   }
