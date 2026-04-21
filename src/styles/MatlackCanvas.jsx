@@ -1,5 +1,6 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { sampleSegments, buildRibbon, renderGlyph } from './matlackGlyphs.js';
+import { sampleSegments, buildRibbon, renderGlyph,
+         GLYPH_RULES, GLYPH_REF_CENTERS, glyphToScanTransform } from './matlackGlyphs.js';
 import { exportAlphabetSVG, exportGlyphsForFont } from './matlackSVGExport.js';
 import MatlackRenderer from './MatlackRenderer.jsx';
 import to01     from '../../matlack-declaration/reference/context/to/01.png';
@@ -199,13 +200,15 @@ const CONTEXTS = {
     // o exits high (o.exit = high), so r gets entry:'high'.
     // We render both r variants side-by-side: default (entry:'low') in blue,
     // afterHigh (entry:'high') in green.
+    // anchorName tells glyphToScanTransform which glyph-local anchor the
+    // scan-space anchorSvg corresponds to.
     glyphLetters: [
       { letter: 'o', variant: { entry: 'low', exit: 'high' },
-        anchorSvg: { x: 46.22, y: 30.11 } },       // placed at o.exit anchor
+        anchorSvg: { x: 46.22, y: 30.11 }, anchorName: 'exit' },
       { letter: 'r', variant: { entry: 'low',  exit: 'low' },
-        anchorSvg: { x: 43.12, y: 30.87 }, color: [40, 140, 220] },   // r default
+        anchorSvg: { x: 43.12, y: 30.87 }, anchorName: 'entry', color: [40, 140, 220] },
       { letter: 'r', variant: { entry: 'high', exit: 'low' },
-        anchorSvg: { x: 43.12, y: 30.87 }, color: [40, 180, 90] },    // r afterHigh
+        anchorSvg: { x: 43.12, y: 30.87 }, anchorName: 'entry', color: [40, 180, 90] },
     ],
     path3: [
       [[37.73, 24.30], [37.19, 24.48], [38.04, 32.53], [39.72, 31.97]],
@@ -226,12 +229,12 @@ const CONTEXTS = {
     rule: { yTop: 19, yCenter: 96, yBottom: 172 },
     glyphScale: 100,
     glyphLetters: [
-      { letter: 'f', variant: null, anchorSvg: { x: 93.53, y: 105.40 },
-        color: [40, 140, 220] },
-      { letter: 'o', variant: { entry: 'low', exit: 'high' },
-        anchorSvg: { x: 81.25, y: 107.29 } },
+      { letter: 'f', variant: null,
+        anchorSvg: { x: 93.53, y: 105.40 }, anchorName: 'exit', color: [40, 140, 220] },
+      { letter: 'o', variant: { entry: 'high', exit: 'high' },
+        anchorSvg: { x: 81.25, y: 107.29 }, anchorName: 'entry' },
       { letter: 'r', variant: { entry: 'high', exit: 'low' },
-        anchorSvg: { x: 139.02, y: 100.23 }, color: [40, 180, 90] },
+        anchorSvg: { x: 139.02, y: 100.23 }, anchorName: 'entry', color: [40, 180, 90] },
     ],
     path3: [
       // f Exit → o Entry (path4)
@@ -397,23 +400,46 @@ export default function MatlackCanvas() {
     if (overlayOn && ctx.glyphLetters?.length) {
       const dpr = window.devicePixelRatio || 1;
       for (const spec of ctx.glyphLetters) {
-        // Determine canvas-space center for this glyph.
-        // If spec has an anchorSvg, place the glyph so its internal reference
-        // center lands at that SVG coordinate. Otherwise use ctx.ref (image center).
-        const anchorPt = spec.anchorSvg ?? REF;
-        const gcx = cx0 + (anchorPt.x - REF.x) * scale;
-        const gcy = cy0 + (anchorPt.y - REF.y) * scale;
-
         const [r, g, b] = spec.color ?? [40, 140, 220];
         renderer.setInkColor(r, g, b);
+
+        // Prefer computed scan↔glyph alignment via rule lines + anchor.
+        // Falls back to the manual glyphScale knob if the letter has no
+        // rule metadata or the spec doesn't declare an anchorName.
+        let gcx, gcy, gsize;
+        const haveMetadata = GLYPH_RULES[spec.letter] && spec.anchorName && spec.anchorSvg;
+
+        if (haveMetadata) {
+          try {
+            const t = glyphToScanTransform(
+              ctx.rule, spec.anchorSvg, spec.letter, spec.anchorName,
+            );
+            const refC = GLYPH_REF_CENTERS[spec.letter];
+            // Glyph's REF_CENTER in scan coords:
+            const scanRefX = t.offsetX + t.scale * refC.x;
+            const scanRefY = t.offsetY + t.scale * refC.y;
+            // Convert scan coords → canvas device pixels.
+            gcx = cx0 + (scanRefX - REF.x) * scale;
+            gcy = cy0 + (scanRefY - REF.y) * scale;
+            // renderGlyph's internal scale is (size * dpr) / 100; we want
+            // it to equal (t.scale * scale) canvas-px per glyph-unit.
+            gsize = (t.scale * scale * 100) / dpr;
+          } catch (err) {
+            console.warn('glyphToScanTransform error:', spec.letter, err.message);
+            continue;
+          }
+        } else {
+          // Legacy manual placement: anchorSvg marks where REF_CENTER lands.
+          const anchorPt = spec.anchorSvg ?? REF;
+          gcx = cx0 + (anchorPt.x - REF.x) * scale;
+          gcy = cy0 + (anchorPt.y - REF.y) * scale;
+          gsize = currentGlyphScale;
+        }
+
         try {
           renderGlyph(
-            spec.letter,
-            renderer,
-            gcx, gcy,
-            currentGlyphScale,   // size
-            dpr,
-            {},                  // overrides
+            spec.letter, renderer, gcx, gcy, gsize, dpr,
+            {},  // overrides
             spec.variant ?? undefined,
           );
         } catch (err) {

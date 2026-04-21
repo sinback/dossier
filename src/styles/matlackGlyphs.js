@@ -3985,6 +3985,16 @@ export const GLYPH_JOIN_ANCHORS = {
   r: R_JOIN_ANCHORS,
 };
 
+// Per-letter REF_CENTER exports — needed by callers that need to compute
+// where a glyph's local origin lands after applying a glyphToScanTransform.
+// (Each build function uses its own X_REF_CENTER constant internally; this
+// just surfaces them for external transform math.)
+export const GLYPH_REF_CENTERS = {
+  e: E_REF_CENTER,
+  o: O_REF_CENTER,
+  r: R_REF_CENTER,
+};
+
 /**
  * Compute a glyph→scan similarity transform for rendering a glyph on top
  * of a scan image.
