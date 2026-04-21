@@ -844,6 +844,10 @@ const E_JOIN_ANCHORS = {
   exit:  { x: 53.59, y: 40.21 },
 };
 
+const E_STRUCTURAL_ANCHORS = {
+  crossbarStart: { x: 21.33, y: 35.41 },  // where the loop begins
+};
+
 // The full loop as bezier segments, traced from the 'e Loop' path in e/01_paths.
 const E_LOOP_SEGS = [
   [[21.33,35.41],[21.27,36.14],[35.04,31.65],[35.61,29.65]],
@@ -1521,6 +1525,14 @@ const R_JOIN_ANCHORS = {
   exit:  { x: 55.00, y: 90.00 },  // TODO: refine once we have r-after-x data
 };
 
+// Structural anchors — stable, identifiable features on the letter's body,
+// used for aligning the glyph geometry against a scan. Different from join
+// anchors (which live in the curs overlap zone); structural anchors sit on
+// the letter body proper so they're easy to mark on scans by eye.
+const R_STRUCTURAL_ANCHORS = {
+  downstrokeTop: { x: 51.75, y: 38.69 },  // top of r's swoop (R_STROKE_SEGS[0] start)
+};
+
 // Entrance flick
 const R_ENTRANCE_SEGS = [
   [[18.10,64.90],[18.10,64.90],[51.44,37.99],[51.44,37.99]],
@@ -2018,6 +2030,10 @@ const O_RULE = { yTop: -57, yCenter: 3, yBottom: 63 };
 const O_JOIN_ANCHORS = {
   entry: { x: 27.3, y: 22.4 },
   exit:  { x: 52.0,  y:  5.0 },  // TODO: refine once o has a rendered exit flick
+};
+
+const O_STRUCTURAL_ANCHORS = {
+  bowlCenter: { x: 40.3, y: 33.5 },  // inner ellipse center (= O_REF_CENTER)
 };
 
 // ── 'o' bowl ellipses ────────────────────────────────────────────────────────
@@ -3995,13 +4011,21 @@ export const GLYPH_REF_CENTERS = {
   r: R_REF_CENTER,
 };
 
+// Structural anchors — stable features on the letter body (downstroke top,
+// bowl center, etc.), used for aligning the glyph's rendering with a scan.
+// Distinct from join anchors, which live in the curs overlap zone.
+export const GLYPH_STRUCTURAL_ANCHORS = {
+  e: E_STRUCTURAL_ANCHORS,
+  o: O_STRUCTURAL_ANCHORS,
+  r: R_STRUCTURAL_ANCHORS,
+};
+
 /**
  * Compute a glyph→scan similarity transform for rendering a glyph on top
  * of a scan image.
  *
- * Given the scan's rule lines + one of its anchors, and knowing the
- * corresponding glyph's rule lines + matching anchor (from the exports
- * above), solve for a uniform scale + 2D translation such that:
+ * Given rule lines in both frames and one pair of corresponding anchor
+ * points, solve for a uniform scale + 2D translation such that:
  *
  *   scan_pt = { x: glyph_pt.x * scale + offsetX,
  *               y: glyph_pt.y * scale + offsetY }
@@ -4010,28 +4034,19 @@ export const GLYPH_REF_CENTERS = {
  * yBottom→yBottom). x-axis alignment comes from the one matching anchor.
  * No rotation assumed.
  *
+ * Intended to be called with STRUCTURAL anchors (e.g. downstrokeTop) for
+ * body-alignment purposes — not join anchors, which live in the overlap
+ * zone and don't correspond to stable body features.
+ *
  * Params:
- *   scanRule   — { yTop, yCenter, yBottom } in scan coords
- *   scanAnchor — { x, y } in scan coords (e.g. an exitAnchor or entryAnchor)
- *   letter     — one of the keys in GLYPH_RULES / GLYPH_JOIN_ANCHORS
- *   anchorName — 'entry' | 'exit' (whichever is stored on the scan side)
+ *   scanRule    — { yTop, yCenter, yBottom } in scan coords
+ *   glyphRule   — { yTop, yCenter, yBottom } in glyph local coords
+ *   scanAnchor  — { x, y } in scan coords
+ *   glyphAnchor — { x, y } in glyph local coords (same semantic point)
  *
  * Returns { scale, offsetX, offsetY }.
- * Throws if the letter has no rule/anchor metadata yet.
  */
-export function glyphToScanTransform(scanRule, scanAnchor, letter, anchorName) {
-  const glyphRule = GLYPH_RULES[letter];
-  const glyphAnchors = GLYPH_JOIN_ANCHORS[letter];
-  if (!glyphRule) {
-    throw new Error(`glyphToScanTransform: no rule lines defined for '${letter}'`);
-  }
-  if (!glyphAnchors || !glyphAnchors[anchorName]) {
-    throw new Error(
-      `glyphToScanTransform: no '${anchorName}' anchor defined for '${letter}'`
-    );
-  }
-  const glyphAnchor = glyphAnchors[anchorName];
-
+export function glyphToScanTransform(scanRule, glyphRule, scanAnchor, glyphAnchor) {
   // Uniform scale from the x-height zone (well-defined for every letter).
   const scale = (scanRule.yBottom  - scanRule.yCenter)
               / (glyphRule.yBottom - glyphRule.yCenter);
