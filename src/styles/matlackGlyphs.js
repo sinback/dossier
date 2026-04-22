@@ -557,6 +557,40 @@ const F_FAT_BAR_OFFSET = {
   dy: -10,
 }
 
+// ── 'f' rule lines ───────────────────────────────────────────────────────────
+// Derived via for/01 scan, which has visible o + r bodies to anchor
+// rule.y-center (o bowl top ≈ 84) and rule.y-bottom (o bowl bottom ≈ 132).
+// Those rules transformed to fir_4x's frame via the linear y-map
+//   y_fir = 1.5333 * y_for - 25.2
+// fit from f's own landmarks (bar-bowl upper tip + fat-bar bottom) present
+// in both scans.
+//
+// Midpoint check: (yTop + yBottom) / 2 = 103.5 ≈ yCenter ✓
+//
+// "f is extra big": f's bar-bowl peak (y≈7) sits ~23 above yTop=30, i.e.
+// ~31% of x-height zone ABOVE the normal ascender line. This is encoded
+// in the geometry (bar-bowl extents), not in the rule values — so when
+// glyphToScanTransform aligns F_RULE to a scan's rule lines, the peak
+// preserves its "extra-big" overhang automatically.
+const F_RULE = { yTop: 30, yCenter: 104, yBottom: 177 };
+
+// Structural anchor: bar-bowl to fat-bar transition point. Stable landmark
+// matching path3's start point (fat-bar top).
+const F_STRUCTURAL_ANCHORS = {
+  barBowlToFatBar: { x: 119.46, y: 138.92 },
+};
+
+// Join anchors — derived by transforming for/01 trace data into fir_4x frame
+// via y_fir = 1.5333*y_for - 25.2, x_fir = 1.706*x_for. Both are first-pass
+// estimates from path endpoint geometry; TODO: scan-tune once 'for' renders.
+// entry: start of path6 "f Entry → Bar-Bowl" at (44.60, 116.03) in for/01.
+// exit:  mid-path4 "f Exit → o Entry" around (90, 102) in for/01, chosen so
+//        there's overlap with o.entry further down path4.
+const F_JOIN_ANCHORS = {
+  entry: { x: 76, y: 153 },   // TODO: scan-tune
+  exit:  { x: 154, y: 131 },  // TODO: scan-tune
+};
+
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'c'
@@ -3942,12 +3976,14 @@ export const ELLIPSE_DATA = {
 // ═════════════════════════════════════════════════════════════════════════════
 export const GLYPH_RULES = {
   e: E_RULE,
+  f: F_RULE,
   o: O_RULE,
   r: R_RULE,
 };
 
 export const GLYPH_JOIN_ANCHORS = {
   e: E_JOIN_ANCHORS,
+  f: F_JOIN_ANCHORS,
   o: O_JOIN_ANCHORS,
   r: R_JOIN_ANCHORS,
 };
@@ -3958,6 +3994,7 @@ export const GLYPH_JOIN_ANCHORS = {
 // just surfaces them for external transform math.)
 export const GLYPH_REF_CENTERS = {
   e: E_REF_CENTER,
+  f: F_REF_CENTER,
   o: O_REF_CENTER,
   r: R_REF_CENTER,
 };
@@ -3967,6 +4004,7 @@ export const GLYPH_REF_CENTERS = {
 // Distinct from join anchors, which live in the curs overlap zone.
 export const GLYPH_STRUCTURAL_ANCHORS = {
   e: E_STRUCTURAL_ANCHORS,
+  f: F_STRUCTURAL_ANCHORS,
   o: O_STRUCTURAL_ANCHORS,
   r: R_STRUCTURAL_ANCHORS,
 };

@@ -1129,11 +1129,27 @@
           "evenodd": false
         }
       ],
-      "rule": null,
-      "refCenter": null,
+      "rule": {
+        "yTop": 30,
+        "yCenter": 104,
+        "yBottom": 177
+      },
+      "refCenter": {
+        "x": 171.4,
+        "y": 160
+      },
       "letter": "f",
       "isDefault": true,
-      "joinAnchors": null
+      "joinAnchors": {
+        "entry": {
+          "x": -190.8,
+          "y": -14
+        },
+        "exit": {
+          "x": -34.80000000000001,
+          "y": -58
+        }
+      }
     },
     "g": {
       "paths": [
