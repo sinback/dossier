@@ -2069,14 +2069,21 @@ const O_STRUCTURAL_ANCHORS = {
 };
 
 // Exit-flick Bezier segments in o's local frame.
-// Right end (90.73, 20.06) = sinback's font-anchor o.exit (picked on 'or/01').
-// Left end (59.66, 3.40)    = bowlTop structural anchor — the pen departs
-// the bowl at its top, tangent to the bowl at rule.y-center.
-// Middle shape takes its character from 'or/01' path2: dip down and right
-// before rising to the anchor end.
+// Left end (59.66, 3.40) = bowlTop structural anchor; the pen departs the
+// bowl at its top, tangent to the bowl at rule.y-center.
+// Middle (90.73, 20.06) = sinback's font-anchor o.exit (from 'or/01').
+// The flick CONTINUES PAST the font-anchor — following the rest of path2
+// up toward where the pen would reach r's body. Those extra segments
+// provide overlap with the next letter's entry flick after curs attaches
+// the two anchors: both strokes cover the same transition region, so
+// visually they merge into one continuous pen gesture.
 const O_EXIT_SEGS = [
+  // Bowl-top → mid-transition (ends at o.exit font-anchor)
   [[59.66,  3.40], [65.00,  4.50], [71.10, 25.87], [75.14, 24.53]],
   [[75.14, 24.53], [74.84, 25.24], [84.47, 22.68], [90.73, 20.06]],
+  // Past-anchor overlap tail (rest of 'or/01' path2 seg B + full seg C)
+  [[90.73, 20.06], [93.88, 19.25], [96.18, 18.22], [96.43, 17.62]],
+  [[96.43, 17.62], [99.19, 19.51], [113.26, 4.23], [111.76, 3.17]],
 ];
 const O_EXIT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 0.9 };
 
