@@ -26,12 +26,12 @@
  *   3. Hand-trace stroke outline (if the letter has a non-bowl stroke)
  *   4. Define X_BOWL, X_REF_CENTER, X_STROKE_OUTLINE_SEGS
  *   5. Write xBowlWidth() and xBowlDensity() (can start from 'a' and adjust)
- *   6. Write renderX() function
- *   7. Export from this file, import in MatlackCanvas.jsx
+ *   6. Write buildX() function returning { bowls, fills }
+ *   7. Add a case for 'x' in the buildGlyph() switch
  *
  * Usage:
- *   import { renderA, renderB } from './matlackGlyphs.js';
- *   renderA(renderer, cx, cy, size, dpr);
+ *   import { renderGlyph } from './matlackGlyphs.js';
+ *   renderGlyph('a', renderer, cx, cy, size, dpr);
  */
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -2393,11 +2393,6 @@ function buildA(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderA(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildA(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 /**
  * Render a Matlack-style lowercase 'b'.
  * Components: bowl, barBowl.
@@ -2430,11 +2425,6 @@ function buildB(cx, cy, scale, dpr, overrides) {
     fills: [
     ],
   };
-}
-
-function renderB(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildB(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2499,11 +2489,6 @@ function buildF(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderF(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildF(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 /**
  * Render a Matlack-style lowercase 'c'.
  * Components: bowl (partial arc), topBlob (filled), bottomHairline (thin stroke).
@@ -2556,11 +2541,6 @@ function buildC(cx, cy, scale, dpr, overrides) {
     fills: [
     ],
   };
-}
-
-function renderC(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildC(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2619,11 +2599,6 @@ function buildE(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       ...entrFills,
     ],
   };
-}
-
-function renderE(renderer, cx, cy, scale, dpr, overrides, variant) {
-  const geo = buildE(cx, cy, scale, dpr, overrides, variant);
-  renderFromGeo(renderer, geo);
 }
 
 function buildD(cx, cy, scale, dpr, overrides) {
@@ -2689,11 +2664,6 @@ function buildD(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderD(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildD(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 /**
  * Render a Matlack-style lowercase 'q'.
  * Components: bowl, downstroke (descender).
@@ -2734,11 +2704,6 @@ function buildQ(cx, cy, scale, dpr, overrides) {
     fills: [
     ],
   };
-}
-
-function renderQ(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildQ(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2807,11 +2772,6 @@ function buildT(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderT(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildT(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 /**
  * Render a Matlack-style lowercase 'g'.
  * Components: bowl + variable-width descender ribbon.
@@ -2865,11 +2825,6 @@ function buildH(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderH(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildH(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 function buildG(cx, cy, scale, dpr, overrides) {
   const inner = scaleEllipse(G_BOWL.inner, cx, cy, scale, G_REF_CENTER);
   const outer = scaleEllipse(G_BOWL.outer, cx, cy, scale, G_REF_CENTER);
@@ -2897,11 +2852,6 @@ function buildG(cx, cy, scale, dpr, overrides) {
     fills: [
     ],
   };
-}
-
-function renderG(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildG(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -2953,11 +2903,6 @@ function buildI(cx, cy, scale, dpr, overrides) {
     { points: dot, pressure: 0.85 },
     ],
   };
-}
-
-function renderI(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildI(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -3029,11 +2974,6 @@ function buildJ(cx, cy, scale, dpr, overrides) {
     fills: [
     ],
   };
-}
-
-function renderJ(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildJ(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -3118,11 +3058,6 @@ function buildK(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderK(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildK(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 /**
  * Render a Matlack-style lowercase 'l'.
  * Single continuous loop stroke, like 'e' but taller.
@@ -3143,11 +3078,6 @@ function buildL(cx, cy, scale, dpr, overrides) {
       ...loopFills,
     ],
   };
-}
-
-function renderL(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildL(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -3187,11 +3117,6 @@ function buildM(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderM(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildM(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 /**
  * Render a Matlack-style lowercase 'n'.
  * Components: entrance flick + single-hump ribbon.
@@ -3225,11 +3150,6 @@ function buildN(cx, cy, scale, dpr, overrides) {
     ...entrFills,
     ],
   };
-}
-
-function renderN(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildN(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -3285,11 +3205,6 @@ function buildP(cx, cy, scale, dpr, overrides) {
     ...secFills,
     ],
   };
-}
-
-function renderP(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildP(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 /**
@@ -3358,11 +3273,6 @@ function buildV(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderV(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildV(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 function buildU(cx, cy, scale, dpr, overrides) {
   const strokeCenter = sampleSegments(
     U_STROKE_SEGS,
@@ -3400,11 +3310,6 @@ function buildU(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderU(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildU(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 function buildS(cx, cy, scale, dpr, overrides) {
   // Swoopy S-curve
   const swoopCenter = sampleSegments(
@@ -3435,11 +3340,6 @@ function buildS(cx, cy, scale, dpr, overrides) {
   };
 }
 
-function renderS(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildS(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
-}
-
 function buildX(cx, cy, scale, dpr, overrides) {
   // Right crescent
   const rightCenter = sampleSegments(
@@ -3468,11 +3368,6 @@ function buildX(cx, cy, scale, dpr, overrides) {
     ...leftFills,
     ],
   };
-}
-
-function renderX(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildX(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 function buildW(cx, cy, scale, dpr, overrides) {
@@ -3526,11 +3421,6 @@ function buildW(cx, cy, scale, dpr, overrides) {
     ...exitFills,
     ],
   };
-}
-
-function renderW(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildW(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'low' }) {
@@ -3591,11 +3481,6 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
   };
 }
 
-function renderR(renderer, cx, cy, scale, dpr, overrides, variant) {
-  const geo = buildR(cx, cy, scale, dpr, overrides, variant);
-  renderFromGeo(renderer, geo);
-}
-
 /**
  * Render a Matlack-style lowercase 'z'.
  * Components: entry flick + zigzag weird stroke + bar-bowl loop + exit flick.
@@ -3651,11 +3536,6 @@ function buildZ(cx, cy, scale, dpr, overrides) {
     fills: [
     ],
   };
-}
-
-function renderZ(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildZ(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 function buildY(cx, cy, scale, dpr, overrides) {
@@ -3725,11 +3605,6 @@ function buildY(cx, cy, scale, dpr, overrides) {
     fills: [
     ],
   };
-}
-
-function renderY(renderer, cx, cy, scale, dpr, overrides) {
-  const geo = buildY(cx, cy, scale, dpr, overrides);
-  renderFromGeo(renderer, geo);
 }
 
 function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'high' }) {
@@ -3811,11 +3686,6 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       ...exitFills,
     ],
   };
-}
-
-function renderO(renderer, cx, cy, scale, dpr, overrides, variant) {
-  const geo = buildO(cx, cy, scale, dpr, overrides, variant);
-  renderFromGeo(renderer, geo);
 }
 
 
