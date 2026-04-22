@@ -3784,7 +3784,9 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
   let exitFills = [];
   if (variant.exit === 'high') {
     const exitCenter = sampleSegments(
-      O_EXIT_SEGS, [0, 1], 12, cx, cy, scale, O_REF_CENTER,
+      O_EXIT_SEGS,
+      Array.from({ length: O_EXIT_SEGS.length }, (_, i) => i),
+      12, cx, cy, scale, O_REF_CENTER,
     );
     const exitQuads = buildTaperedRibbon(
       exitCenter,
