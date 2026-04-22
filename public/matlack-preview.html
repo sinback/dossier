@@ -5,8 +5,9 @@
   <title>Matlack draft font preview</title>
   <style>
     @font-face {
+      /* ?v=... cache-buster so each reload picks up the freshly-built font */
+      src: url('/fonts/matlack-draft.otf?v=9') format('opentype');
       font-family: 'Matlack Draft';
-      src: url('/fonts/matlack-draft.otf') format('opentype');
     }
     body {
       font-family: system-ui, sans-serif;
@@ -14,6 +15,10 @@
       color: #233;
       padding: 2em 3em;
       max-width: 1100px;
+    }
+    /* curs isn't on by default for Latin in HarfBuzz — explicitly enable. */
+    .sample {
+      font-feature-settings: 'curs' 1, 'calt' 1;
     }
     h1 { font-size: 16px; font-weight: 600; margin-bottom: 1em; }
     .sample {

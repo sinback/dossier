@@ -1514,14 +1514,15 @@ const R_REF_CENTER = { x: 55, y: 44 };  // junction of entrance/swoop/downstroke
 const R_RULE = { yTop: -18, yCenter: 38, yBottom: 94 };
 
 // Join anchors — curs attach points in r's local frame.
-//   entry: where preceding letter's exit anchor should coincide;
-//          lives at the top of r's body (where both default and afterHigh
-//          entrance flicks terminate, and where the downstroke begins).
-//   exit:  where the next letter's entry anchor should coincide;
-//          placed midway along r's exit flick so the flick overhangs in
-//          both directions when curs aligns it with a neighbor.
+//   entry: the overlap-zone anchor where the previous letter's exit lands.
+//          Derived from sinback's scan-space r.entry font-anchor (43.12,
+//          30.87 in 'or/01') via the structural transform. Sits on r's
+//          entry flick, past the body-side end, so the prev letter's
+//          exit stroke can overlap with r's entry flick.
+//   exit:  curs-attach for the next letter. Placeholder value pending
+//          r-before-x scan data.
 const R_JOIN_ANCHORS = {
-  entry: { x: 51.44, y: 37.99 },
+  entry: { x: 28.18, y: 55.62 },
   exit:  { x: 55.00, y: 90.00 },  // TODO: refine once we have r-after-x data
 };
 
