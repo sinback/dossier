@@ -11,3 +11,7 @@ for_claude.png
 reviews/
 # Books are not code
 *.pdf
+# Python bytecode / pytest cache
+__pycache__/
+*.pyc
+.pytest_cache/
