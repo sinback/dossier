@@ -11,8 +11,8 @@ Usage:
   python3 fit_paths.py <svg_path_file> --egg    # also fit egg curves
 
 Examples:
-  python3 fit_paths.py matlack-declaration/reference/lowercase/b_4x/01_paths
-  python3 fit_paths.py matlack-declaration/reference/context/for_4x/01_paths --egg
+  python3 fit_paths.py matlack/reference/lowercase/b_4x/01_paths
+  python3 fit_paths.py matlack/reference/context/for_4x/01_paths --egg
 
 The script auto-detects path names from <title> elements in the SVG.
 Paths with "Inner" in the name get both ellipse and egg fits.

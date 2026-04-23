@@ -236,7 +236,7 @@ const openInGimpPlugin = {
   },
 };
 
-// GET /api/contexts — walks matlack-declaration/reference/context/*/**.png and
+// GET /api/contexts — walks matlack/reference/context/*/**.png and
 // returns [{dir, png, hasAnchors, viewBoxW, viewBoxH}] grouped by dir.
 // viewBoxW/viewBoxH come from the PNG IHDR if available (fallback 0,0).
 const contextsPlugin = {
@@ -245,7 +245,7 @@ const contextsPlugin = {
     server.middlewares.use('/api/contexts', (req, res) => {
       if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
       try {
-        const contextRoot = path.resolve(__dirname, 'matlack-declaration/reference/context');
+        const contextRoot = path.resolve(__dirname, 'matlack/reference/context');
         const results = [];
         const dirs = fs.readdirSync(contextRoot);
         for (const dir of dirs) {
@@ -273,7 +273,7 @@ const contextsPlugin = {
             results.push({
               dir,
               png,
-              relativePath: `matlack-declaration/reference/context/${dir}/${png}`,
+              relativePath: `matlack/reference/context/${dir}/${png}`,
               hasAnchors,
               viewBoxW,
               viewBoxH,

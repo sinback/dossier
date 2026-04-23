@@ -252,7 +252,7 @@ const ARC_RISE  = 0.78;  // bottom-right: pen starts rising
 
 // Reference anchor: the center of 'a's inner (counter) ellipse in ref 09.
 // All 'a' coordinates are relative to this point.
-// Image: matlack-declaration/reference/lowercase/a_4x/09.png (132×104 at 4x)
+// Image: matlack/reference/lowercase/a_4x/09.png (132×104 at 4x)
 const A_REF_CENTER = { x: 55.1, y: 51.7 };
 
 // ── 'a' bowl ellipses ────────────────────────────────────────────────────────
@@ -385,7 +385,7 @@ function buildADownstrokeBody(cx, cy, scale) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 // Reference anchor: center of 'b's inner (counter) ellipse in ref b/01.
-// Image: matlack-declaration/reference/lowercase/b_4x/01.png (140×196 at 4x)
+// Image: matlack/reference/lowercase/b_4x/01.png (140×196 at 4x)
 const B_REF_CENTER = { x: 34.7, y: 149.2 };
 
 // ── 'b' bowl ellipses ────────────────────────────────────────────────────────
@@ -495,7 +495,7 @@ function bBarBowlDensity() { return 0.85; }
 const F_REF_CENTER = { x: 70, y: 108 };
 
 // ── 'f' bar-bowl ellipses ────────────────────────────────────────────────────
-// Fitted by matlack-declaration/tools/fit_paths.py on 01_better_bar_bowl
+// Fitted by matlack/tools/fit_paths.py on 01_better_bar_bowl
 // (path7 "f Bar-Bowl Outer", path8 "f Bar-Bowl Inner"):
 //   outer: residual 0.088 [GOOD]
 //   inner: residual 0.139 [FAIR] as ellipse;

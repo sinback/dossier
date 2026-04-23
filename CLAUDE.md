@@ -20,7 +20,7 @@ Routes (all under the dev server):
 - `uv sync` — install deps from `pyproject.toml` (pillow, scipy, fonttools, ufo2ft, defcon; pytest+hypothesis in dev)
 - `uv run pytest` — run the test suite (pytest + Hypothesis property tests; `testpaths = ["tests"]`)
 - `uv run pytest tests/path/to/test_x.py::test_name` — single test
-- `uv run python matlack-declaration/tools/fit_paths.py <svg_path_file> [--egg]` — fit ellipses/eggs to traced paths
+- `uv run python matlack/tools/fit_paths.py <svg_path_file> [--egg]` — fit ellipses/eggs to traced paths
 
 ### Font pipeline
 1. `node scripts/export_glyphs.mjs` (or the "export json" button in `/matlack`) → writes `matlack-glyphs.json`
@@ -47,11 +47,11 @@ Dossier has **two largely independent subsystems** sharing a Vite dev server:
 - State persists in `localStorage`. `SEED_DATA` seeds a fresh localStorage — **clear localStorage to pick up seed changes**.
 - Developer vs. player "mode": same prompt pools, different restrictions. Players have a prompt budget per **sitting** (not "session").
 
-### 2. Matlack handwriting R&D (`src/styles/`, `matlack-declaration/`)
+### 2. Matlack handwriting R&D (`src/styles/`, `matlack/`)
 Two rendering systems that can be composited:
 - **Paper canvas** (`InteractivePaperCanvas.jsx` + `inkText.js`): WebGL2 ink simulation. `inkText.js` plans trajectories (natural cubic spline → 2/3 power law velocity → min-jerk endpoint taper → 10 Hz tremor → nib-angle stamps). `InteractivePaperCanvas` runs the ping-pong ink/wetness simulation on the GPU. See `src/styles/README.md` for the full motor-neuroscience/ink-physics writeup.
 - **Matlack WebGL glyph renderer** (`MatlackCanvas.jsx`, `MatlackRenderer.jsx`, `matlackGlyphs.js`): per-letter component geometry (fatBar, hairline, downstroke, bowls) with override offsets. Used by `/matlack` and the `/review` grid.
-- `matlack-declaration/` holds reference scans, analysis notes (`analysis/*.md`), hand-traced path data (`reference/context/<word>/NN_paths/`), and the Python `tools/fit_paths.py`. The tracing + fitting workflow is documented in `matlack-declaration/reference/context/workflow.md`.
+- `matlack/` holds reference scans, analysis notes (`analysis/*.md`), hand-traced path data (`reference/context/<word>/NN_paths/`), and the Python `tools/fit_paths.py`. The tracing + fitting workflow is documented in `matlack/reference/context/workflow.md`.
 - See `memory/project_matlack_architecture.md` for the cross-system merge strategy and per-letter status.
 
 ### Routing
@@ -105,7 +105,7 @@ If you're working on handwriting or styling, you can do ./snap.sh clear → ./sn
 If you don't see Firefox in the snapshot, pause and ask the user to switch the Firefox tab back to Dossier.
 
 ### Visual processing on reference scans
-- Matlack reference scans live under `matlack-declaration/reference/context/<word>/NN.png`. You can reliably read rule lines (long thin horizontal bands) off these, but you **cannot** read soft ink-edge features to pixel precision — visual tokens are not pixel data, and there's no self-correction signal on a bad guess.
+- Matlack reference scans live under `matlack/reference/context/<word>/NN.png`. You can reliably read rule lines (long thin horizontal bands) off these, but you **cannot** read soft ink-edge features to pixel precision — visual tokens are not pixel data, and there's no self-correction signal on a bad guess.
 - Expect ~10-20 svg-unit error on ink-edge guesses (where a t's downstroke ends, where an o's bowl starts, etc.) when reading the raster directly.
-- When precision matters, use the hand-traced path data at `matlack-declaration/reference/context/<word>/NN_paths` instead. See `matlack-declaration/reference/context/workflow.md` for the full tracing workflow.
+- When precision matters, use the hand-traced path data at `matlack/reference/context/<word>/NN_paths` instead. See `matlack/reference/context/workflow.md` for the full tracing workflow.
 - If no path data exists for the letter you need, **ask the user to trace it** before fine-tuning anchor coordinates. Do not fabricate pixel positions from the scan.

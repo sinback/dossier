@@ -91,7 +91,7 @@ Bowl components return `{ inner: [[x,y],...], outer: [[x,y],...] }`. Polygon com
 
 ## Python analysis tools
 
-The `matlack-declaration/tools/` directory contains analysis scripts for handwriting and glyph development.
+The `matlack/tools/` directory contains analysis scripts for handwriting and glyph development.
 
 ### Setup
 
@@ -106,8 +106,8 @@ uv sync
 Then run analysis scripts from the repo root:
 
 ```bash
-python3 matlack-declaration/tools/fit_paths.py <svg_path_file>
-python3 matlack-declaration/tools/fit_paths.py <svg_path_file> --egg  # also fit egg curves
+python3 matlack/tools/fit_paths.py <svg_path_file>
+python3 matlack/tools/fit_paths.py <svg_path_file> --egg  # also fit egg curves
 ```
 
 ### Development

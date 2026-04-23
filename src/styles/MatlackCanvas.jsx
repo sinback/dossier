@@ -4,17 +4,17 @@ import { sampleSegments, buildRibbon, renderGlyph,
          glyphToScanTransform } from './matlackGlyphs.js';
 import { exportAlphabetSVG, exportGlyphsForFont } from './matlackSVGExport.js';
 import MatlackRenderer from './MatlackRenderer.jsx';
-import to01     from '../../matlack-declaration/reference/context/to/01.png';
-import to02     from '../../matlack-declaration/reference/context/to/02.png';
-import to03     from '../../matlack-declaration/reference/context/to/03.png';
-import to04     from '../../matlack-declaration/reference/context/to/04.png';
-import to05     from '../../matlack-declaration/reference/context/to/05.png';
-import to06     from '../../matlack-declaration/reference/context/to/06.png';
-import to07     from '../../matlack-declaration/reference/context/to/07.png';
-import tobe01   from '../../matlack-declaration/reference/context/to be/01.png';
-import tothe01  from '../../matlack-declaration/reference/context/to the/01.png';
-import or01     from '../../matlack-declaration/reference/context/or/01.png';
-import for01    from '../../matlack-declaration/reference/context/for/01.png';
+import to01     from '../../matlack/reference/context/to/01.png';
+import to02     from '../../matlack/reference/context/to/02.png';
+import to03     from '../../matlack/reference/context/to/03.png';
+import to04     from '../../matlack/reference/context/to/04.png';
+import to05     from '../../matlack/reference/context/to/05.png';
+import to06     from '../../matlack/reference/context/to/06.png';
+import to07     from '../../matlack/reference/context/to/07.png';
+import tobe01   from '../../matlack/reference/context/to be/01.png';
+import tothe01  from '../../matlack/reference/context/to the/01.png';
+import or01     from '../../matlack/reference/context/or/01.png';
+import for01    from '../../matlack/reference/context/for/01.png';
 
 /**
  * Per-context review data: image, its pixel size (used as the svg
@@ -52,7 +52,7 @@ const CONTEXTS = {
   to: {
     label: 'to/01',
     image: to01,
-    filePath: 'matlack-declaration/reference/context/to/01.png',
+    filePath: 'matlack/reference/context/to/01.png',
     viewBoxW: 116, viewBoxH: 89,
     ref: { x: 58, y: 55 },
     rule: { yTop: 20, yCenter: 48, yBottom: 76 },
@@ -71,7 +71,7 @@ const CONTEXTS = {
   'to/02': {
     label: 'to/02',
     image: to02,
-    filePath: 'matlack-declaration/reference/context/to/02.png',
+    filePath: 'matlack/reference/context/to/02.png',
     viewBoxW: 241, viewBoxH: 153,
     ref: { x: 120, y: 76 },
     rule: { yTop: 17, yCenter: 67, yBottom: 117 },
@@ -90,7 +90,7 @@ const CONTEXTS = {
   'to/03': {
     label: 'to/03',
     image: to03,
-    filePath: 'matlack-declaration/reference/context/to/03.png',
+    filePath: 'matlack/reference/context/to/03.png',
     viewBoxW: 235, viewBoxH: 168,
     ref: { x: 117, y: 84 },
     rule: { yTop: 35, yCenter: 85, yBottom: 140 },
@@ -106,7 +106,7 @@ const CONTEXTS = {
   'to/04': {
     label: 'to/04',
     image: to04,
-    filePath: 'matlack-declaration/reference/context/to/04.png',
+    filePath: 'matlack/reference/context/to/04.png',
     viewBoxW: 302, viewBoxH: 180,
     ref: { x: 151, y: 90 },
     rule: { yTop: 25, yCenter: 80, yBottom: 135 },
@@ -122,7 +122,7 @@ const CONTEXTS = {
   'to/05': {
     label: 'to/05',
     image: to05,
-    filePath: 'matlack-declaration/reference/context/to/05.png',
+    filePath: 'matlack/reference/context/to/05.png',
     viewBoxW: 286, viewBoxH: 222,
     ref: { x: 143, y: 111 },
     rule: { yTop: 65, yCenter: 124, yBottom: 182 },
@@ -141,7 +141,7 @@ const CONTEXTS = {
   'to/06': {
     label: 'to/06',
     image: to06,
-    filePath: 'matlack-declaration/reference/context/to/06.png',
+    filePath: 'matlack/reference/context/to/06.png',
     viewBoxW: 251, viewBoxH: 187,
     ref: { x: 125, y: 93 },
     rule: { yTop: 45, yCenter: 100, yBottom: 155 },
@@ -157,7 +157,7 @@ const CONTEXTS = {
   'to/07': {
     label: 'to/07',
     image: to07,
-    filePath: 'matlack-declaration/reference/context/to/07.png',
+    filePath: 'matlack/reference/context/to/07.png',
     viewBoxW: 290, viewBoxH: 166,
     ref: { x: 145, y: 83 },
     rule: { yTop: 30, yCenter: 75, yBottom: 130 },
@@ -173,7 +173,7 @@ const CONTEXTS = {
   'to be': {
     label: 'to be',
     image: tobe01,
-    filePath: 'matlack-declaration/reference/context/to be/01.png',
+    filePath: 'matlack/reference/context/to be/01.png',
     viewBoxW: 317, viewBoxH: 175,
     ref: { x: 158, y: 87 },
     rule: { yTop: 25, yCenter: 80, yBottom: 140 },
@@ -189,7 +189,7 @@ const CONTEXTS = {
   'to the': {
     label: 'to the',
     image: tothe01,
-    filePath: 'matlack-declaration/reference/context/to the/01.png',
+    filePath: 'matlack/reference/context/to the/01.png',
     viewBoxW: 425, viewBoxH: 157,
     ref: { x: 212, y: 78 },
     rule: { yTop: 20, yCenter: 75, yBottom: 125 },
@@ -205,7 +205,7 @@ const CONTEXTS = {
   or: {
     label: 'or',
     image: or01,
-    filePath: 'matlack-declaration/reference/context/or/01.png',
+    filePath: 'matlack/reference/context/or/01.png',
     viewBoxW: 85, viewBoxH: 64,
     ref: { x: 42, y: 32 },
     rule: { yTop: -2, yCenter: 23, yBottom: 48 },
@@ -232,7 +232,7 @@ const CONTEXTS = {
   for: {
     label: 'for',
     image: for01,
-    filePath: 'matlack-declaration/reference/context/for/01.png',
+    filePath: 'matlack/reference/context/for/01.png',
     viewBoxW: 238, viewBoxH: 214,
     ref: { x: 119, y: 107 },
     rule: { yTop: 19, yCenter: 96, yBottom: 172 },
