@@ -61,8 +61,10 @@ const LETTER_PARAMS = {
     flick:      { taper: { startWidth: 4.5, taperPower: 1.7 } },
   },
   f: {
-    fatBar:   { position: { dx: 8, dy: -10 }, scale: { sx: 1.0, sy: 1.0 } },
-    hairline: { position: { dx: 8, dy: -2 }, scale: { sx: 1.0, sy: 1.0 } },
+    barBowl:    { position: { dx: -8, dy: 8 }, fine: { dx: -8, dy: 8 } },  // round 2 winner (candidate 7); locked as buildF default
+    fatBar:     { position: { dx: 0, dy: 0 } },
+    entryFlick: { position: { dx: 0, dy: 0 } },
+    exit:       { position: { dx: 0, dy: 0 } },
   },
   o: {},
   s: {},  // single swoopy stroke — no separate components

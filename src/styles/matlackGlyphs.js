@@ -479,116 +479,128 @@ function bBarBowlDensity() { return 0.85; }
 
 
 // ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'f'
-// Source: sinback's hand traces on context/fir/01 (4x upscaled Declaration)
-// 'f' = bar-bowl (the tall curved stem) + horizontal hairline crossbar.
-// The bar-bowl is the whole letter except the crossbar.
-// Matlack's 'f' extends well above cap-height and below baseline ("a BEAST").
+// LOWERCASE 'f' — rebuilt from for/01_paths
+// Components: bar-bowl (ellipse, ascender loop), fat-bar (filled polygon,
+// descender), entry flick (tapered ribbon), exit crossbar (tapered ribbon).
+// All coords in for/01's native frame (viewBox 238×214).
+//
+// This is a fresh fit: the previous 'f' was traced from fir/01 at 4× upscale
+// and that frame didn't give us room to line f up nicely with o and r. The
+// for/01 scan has f + o + r together, so everything calibrates in one frame.
 // ═════════════════════════════════════════════════════════════════════════════
 
-// Reference anchor: center of 'f's inner bar-bowl ellipse in ref fir/01.
-// Image: matlack-declaration/reference/context/fir_4x/01.png (304×312 at 4x)
-// REF_CENTER at the crossbar y-level so 'f' aligns vertically with other letters.
-// Original inner ellipse center was (171.4, 74.6); crossbar is at y≈160.
-const F_REF_CENTER = { x: 171.4, y: 160.0 };
+// Reference anchor: bar-bowl → fat-bar transition (gestalt midpoint).
+// Matches path5 start (fat-bar top) and path6 end (where bar-bowl descends
+// into the stem).
+const F_REF_CENTER = { x: 70, y: 108 };
 
 // ── 'f' bar-bowl ellipses ────────────────────────────────────────────────────
-// Both inner and outer are GOOD ellipse fits (residuals ~0.098).
-// Tilt is consistent with 'a' and 'b' (~-49° to -50°).
-// Very elongated: aspect 0.13 inner, 0.17 outer.
+// Fitted by matlack-declaration/tools/fit_paths.py on 01_better_bar_bowl
+// (path7 "f Bar-Bowl Outer", path8 "f Bar-Bowl Inner"):
+//   outer: residual 0.088 [GOOD]
+//   inner: residual 0.139 [FAIR] as ellipse;
+//          egg-curve fit would drop to 0.035 [GOOD, 75% better, k=+0.576]
+// — so Matlack's inner boundary is asymmetric (one end of the loop is
+// wider than the other). Sticking with ellipse for now since the renderer
+// doesn't have an egg-curve primitive yet; flagged as a future upgrade.
 const F_BAR_BOWL = {
   inner: {
-    cx: 171.4,   // = F_REF_CENTER.x
-    cy: 74.6,    // = F_REF_CENTER.y
-    a: 52.9,     // semi-major (stem length)
-    b: 7.1,      // semi-minor (stem width) — very thin
-    tilt: -48.8  // consistent with other letters
+    cx: 112.4,
+    cy:  58.2,
+    a:   37.7,
+    b:    4.7,
+    tilt: -51.0,
   },
   outer: {
-    cx: 176.0,   // offset from inner: (+4.6, -2.8)
-    cy: 71.8,
-    a: 84.9,     // inner→outer ratio: 1.60×
-    b: 14.4,     // inner→outer ratio: 2.03×
-    tilt: -50.0  // tilt diff from inner: -1.2° (very uniform width)
+    cx: 116.2,
+    cy:  50.8,
+    a:   51.6,   // inner→outer ratio: 1.37×
+    b:    9.7,   // inner→outer ratio: 2.07×
+    tilt: -51.1,
   },
 };
 
-// ── 'f' bar-bowl width function ──────────────────────────────────────────────
-// Same approach as 'b' bar-bowl: gentle variation, thinner at tips.
-// 'f' is taller than 'b's bar-bowl so the thin tips are more visible.
+// Bar-bowl width function: gentle taper at tips, full thickness in middle.
+// Same shape as the prior 'f'.
 function fBarBowlWidth(arcFracRaw) {
   const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f < 0.10) return smoothStep(0.35, 0.65, f / 0.10);          // top tip
+  if (f < 0.10) return smoothStep(0.35, 0.65, f / 0.10);
   if (f < 0.40) return smoothStep(0.65, 1.0, (f - 0.10) / 0.30);
-  if (f < 0.60) return 1.0;                                        // middle: full
+  if (f < 0.60) return 1.0;
   if (f < 0.90) return smoothStep(1.0, 0.65, (f - 0.60) / 0.30);
-  return smoothStep(0.65, 0.35, (f - 0.90) / 0.10);               // bottom tip
+  return smoothStep(0.65, 0.35, (f - 0.90) / 0.10);
 }
 
 function fBarBowlDensity() { return 0.85; }
 
-// ── 'f' hairline crossbar ────────────────────────────────────────────────────
-// Nearly flat horizontal line. Traced as two points from ref fir/01.
-// Extends from left of the bar-bowl to right side.
-const F_HAIRLINE = {
-  x1: 74.56, y1: 160.37,   // left end — extended 30% wider (was 81.56, delta ~7px each side)
-  x2: 143.24, y2: 159.03,  // right end — extended 30% wider (was 136.24)
-  halfHeight: 2.25,         // 50% thicker (was 1.5)
+// ── 'f' fat-bar (descender) ──────────────────────────────────────────────────
+// Direct ink-outline fill using path5 of 01_better_downstroke — 13 cubic
+// segments forming a closed shape. Preserves Matlack's subtle asymmetry
+// (slight curvature changes along each edge) and, crucially, the FLAT
+// bottom cut parallel to rule.y-below at ≈y=212 (sign of good penmanship
+// in Copperplate). No extrusion or width param — the polygon IS the ink.
+const F_FAT_BAR_SEGS = [
+  [[71.77,  96.22], [71.77,  96.22], [65.98,  93.58], [65.98,  93.58]],
+  [[65.98,  93.58], [65.83,  93.46], [60.44, 100.55], [62.07, 101.88]],
+  [[62.07, 101.88], [61.30, 101.75], [60.31, 115.23], [61.65, 115.61]],
+  [[61.65, 115.61], [63.10, 118.64], [37.74, 157.18], [37.33, 156.41]],
+  [[37.33, 156.41], [34.18, 154.60], [11.12, 193.81], [ 8.15, 199.58]],
+  [[ 8.15, 199.58], [ 7.56, 199.44], [ 5.77, 211.60], [ 7.48, 211.86]],
+  [[ 7.48, 211.86], [ 8.41, 216.30], [23.60, 213.28], [23.54, 212.29]],
+  [[23.54, 212.29], [23.11, 212.47], [39.22, 184.79], [44.54, 182.44]],
+  [[44.54, 182.44], [42.95, 182.60], [44.28, 170.96], [44.75, 170.88]],
+  [[44.75, 170.88], [44.70, 170.91], [71.43, 111.58], [76.04, 109.38]],
+  [[76.04, 109.38], [75.71, 109.43], [76.60,  99.26], [76.75,  99.23]],
+  [[76.75,  99.23], [77.93,  98.75], [77.38,  95.98], [76.99,  96.14]],
+  [[76.99,  96.14], [76.66,  95.11], [71.64,  95.83], [71.77,  96.22]],
+];
+
+// ── 'f' entry flick ──────────────────────────────────────────────────────────
+// From path9 "f Entry" in 01_better_bar_bowl — single cubic from low-left
+// (44.60, 116.03) up to the bar-bowl's outer start (81.68, 92.38).
+const F_ENTRY_FLICK_SEGS = [
+  [[44.60, 116.03], [45.14, 116.67], [82.88, 94.24], [81.68, 92.38]],
+];
+const F_ENTRY_FLICK = {
+  startWidth: 1.2,   // very thin at entry tip
+  taperPower: 0.6,   // ease toward thicker end
+  liftPoint: 1.0,
 };
 
-const F_HAIRLINE_OFFSET = {
-  dx: 8,
-  dy: -2,
-}
-
-// ── 'f' fat bar (descender stroke) ──────────────────────────────────────────
-// The thick downstroke extending below the bar-bowl. Runs from the base
-// of the bar-bowl down to the descender line. Oriented along the bar-bowl's
-// major axis (same ~-49° tilt). Rendered as a straight filled rectangle
-// using the two endpoint coords from the original traced bezier path.
-
-// The fat bar width: should be slightly fatter than the bar-bowl's thickest
-// part. The bar-bowl outer minor axis is 14.4px at 4x, so the fat bar
-// half-width should be about 8-9px at 4x (full width ~16-18px).
-const F_FAT_BAR_HALF_WIDTH = 6.3;  // ~70% of original 9.0
-
-const F_FAT_BAR_OFFSET = {
-  dx: 8,
-  dy: -10,
-}
+// ── 'f' exit crossbar ────────────────────────────────────────────────────────
+// All of path4 "f Exit → o Entry", used as one continuous tapered stroke
+// extending from f's stem (70.13, 104.10) out past where o's entry begins.
+const F_EXIT_SEGS = [
+  [[ 70.13, 104.10], [ 70.34, 108.89], [ 97.64, 107.03], [ 99.22, 103.05]],
+  [[ 99.22, 103.05], [100.63, 104.43], [108.50,  97.61], [108.65,  97.08]],
+  [[108.65,  97.08], [108.32,  95.01], [125.80,  86.98], [125.90,  87.58]],
+];
+const F_EXIT = {
+  startWidth: 1.8,   // medium thin
+  taperPower: 0.8,   // gentle taper toward o
+  liftPoint: 1.0,
+};
 
 // ── 'f' rule lines ───────────────────────────────────────────────────────────
-// Derived via for/01 scan, which has visible o + r bodies to anchor
-// rule.y-center (o bowl top ≈ 84) and rule.y-bottom (o bowl bottom ≈ 132).
-// Those rules transformed to fir_4x's frame via the linear y-map
-//   y_fir = 1.5333 * y_for - 25.2
-// fit from f's own landmarks (bar-bowl upper tip + fat-bar bottom) present
-// in both scans.
+// In for/01 frame. Tilted rule.y-center is Matlack's own irregularity; we
+// compromise (option 3): yCenter midway between f's gestalt (y=108) and
+// where o/r's tops sit on the tilted rule line (y≈83). This keeps f's
+// xHeight zone comparable to other letters without the comical scale
+// blow-up we'd get from strictly anchoring gestalt to rule.y-center.
 //
-// Midpoint check: (yTop + yBottom) / 2 = 103.5 ≈ yCenter ✓
-//
-// "f is extra big": f's bar-bowl peak (y≈7) sits ~23 above yTop=30, i.e.
-// ~31% of x-height zone ABOVE the normal ascender line. This is encoded
-// in the geometry (bar-bowl extents), not in the rule values — so when
-// glyphToScanTransform aligns F_RULE to a scan's rule lines, the peak
-// preserves its "extra-big" overhang automatically.
-const F_RULE = { yTop: 30, yCenter: 104, yBottom: 177 };
+// yBottom from rule.y-bottom (path2) extrapolated to x=70: ≈ 136.
+// yTop from f's actual peak (y=21 in path6).
+const F_RULE = { yTop: 21, yCenter: 96, yBottom: 137 };
 
-// Structural anchor: bar-bowl to fat-bar transition point. Stable landmark
-// matching path3's start point (fat-bar top).
+// Structural anchor: gestalt midpoint (same as REF_CENTER for this glyph).
 const F_STRUCTURAL_ANCHORS = {
-  barBowlToFatBar: { x: 119.46, y: 138.92 },
+  gestalt: { x: 70, y: 108 },
 };
 
-// Join anchors — derived by transforming for/01 trace data into fir_4x frame
-// via y_fir = 1.5333*y_for - 25.2, x_fir = 1.706*x_for. Both are first-pass
-// estimates from path endpoint geometry; TODO: scan-tune once 'for' renders.
-// entry: start of path6 "f Entry → Bar-Bowl" at (44.60, 116.03) in for/01.
-// exit:  mid-path4 "f Exit → o Entry" around (90, 102) in for/01, chosen so
-//        there's overlap with o.entry further down path4.
+// Join anchors — first-pass; curs disabled for f while we build. TODO.
 const F_JOIN_ANCHORS = {
-  entry: { x: 76, y: 153 },   // TODO: scan-tune
-  exit:  { x: 154, y: 131 },  // TODO: scan-tune
+  entry: { x: 44.60, y: 116.03 },  // path6 start (before entry flick)
+  exit:  { x: 99,    y: 103 },     // mid-path4; TODO: scan-tune
 };
 
 
@@ -2462,48 +2474,55 @@ function buildB(cx, cy, scale, dpr, overrides) {
 }
 
 /**
- * Render a Matlack-style lowercase 'f'.
- * Components: barBowl (anchor), fatBar, hairline.
+ * Render a Matlack-style lowercase 'f', rebuilt from for/01_paths.
+ * Components:
+ *   - barBowl (ellipse, ascender loop)
+ *   - fatBar (filled polygon sampled from path5)
+ *   - entryFlick (tapered ribbon, path6 segment 1)
+ *   - exit (tapered ribbon, path4, the crossbar → o-handoff stroke)
  */
 function buildF(cx, cy, scale, dpr, overrides) {
-  // ── Bar-bowl (anchor — no offset) ─────────────────────────────
-  const inner = scaleEllipse(F_BAR_BOWL.inner, cx, cy, scale, F_REF_CENTER);
-  const outer = scaleEllipse(F_BAR_BOWL.outer, cx, cy, scale, F_REF_CENTER);
+  // ── Bar-bowl (nudge default locked in via grid-search round 2) ──
+  const bbOff = resolveOffset('barBowl', { dx: -8, dy: 8 }, overrides, dpr);
+  const inner = scaleEllipse(F_BAR_BOWL.inner, cx + bbOff.dx, cy + bbOff.dy, scale, F_REF_CENTER);
+  const outer = scaleEllipse(F_BAR_BOWL.outer, cx + bbOff.dx, cy + bbOff.dy, scale, F_REF_CENTER);
 
-  // ── Hairline crossbar ─────────────────────────────────────────
-  const hlOff = resolveOffset('hairline', F_HAIRLINE_OFFSET, overrides, dpr);
-  const h = F_HAIRLINE;
-  const hl = refToCanvas(h.x1, h.y1, cx, cy, scale, F_REF_CENTER);
-  const hr = refToCanvas(h.x2, h.y2, cx, cy, scale, F_REF_CENTER);
-  hl.x += hlOff.dx; hl.y += hlOff.dy;
-  hr.x += hlOff.dx; hr.y += hlOff.dy;
-  const hh = h.halfHeight * scale;
-  const hdx = hr.x - hl.x, hdy = hr.y - hl.y;
-  const hlen = Math.hypot(hdx, hdy);
-  const hnx = -hdy / hlen * hh, hny = hdx / hlen * hh;
-  const hairline = [
-    { x: hl.x + hnx, y: hl.y + hny },
-    { x: hr.x + hnx, y: hr.y + hny },
-    { x: hr.x - hnx, y: hr.y - hny },
-    { x: hl.x - hnx, y: hl.y - hny },
-  ];
+  // ── Fat-bar: sample the closed ink outline into a fill polygon ─
+  const fbOff = resolveOffset('fatBar', { dx: 0, dy: 0 }, overrides, dpr);
+  const fatBarPoly = sampleSegments(
+    F_FAT_BAR_SEGS,
+    F_FAT_BAR_SEGS.map((_, i) => i),
+    10,
+    cx + fbOff.dx, cy + fbOff.dy, scale, F_REF_CENTER,
+  );
 
-  // ── Fat bar (descender) ───────────────────────────────────────
-  const fbOff = resolveOffset('fatBar', F_FAT_BAR_OFFSET, overrides, dpr);
-  const hw = F_FAT_BAR_HALF_WIDTH * scale;
-  const p0 = refToCanvas(119.46, 138.92, cx, cy, scale, F_REF_CENTER);
-  const p1 = refToCanvas(22.36, 282.93, cx, cy, scale, F_REF_CENTER);
-  p0.x += fbOff.dx; p0.y += fbOff.dy;
-  p1.x += fbOff.dx; p1.y += fbOff.dy;
-  const dx = p1.x - p0.x, dy = p1.y - p0.y;
-  const len = Math.hypot(dx, dy);
-  const nx = -dy / len * hw, ny = dx / len * hw;
-  const fatBarPoly = [
-    { x: p0.x + nx, y: p0.y + ny },
-    { x: p1.x + nx, y: p1.y + ny },
-    { x: p1.x - nx, y: p1.y - ny },
-    { x: p0.x - nx, y: p0.y - ny },
-  ];
+  // ── Entry flick: tapered ribbon from path6 seg 1 ──────────────
+  const efOff = resolveOffset('entryFlick', { dx: 0, dy: 0 }, overrides, dpr);
+  const efParams = overrides.entryFlick ?? F_ENTRY_FLICK;
+  const efCenter = sampleSegments(
+    F_ENTRY_FLICK_SEGS, [0], 14,
+    cx + efOff.dx, cy + efOff.dy, scale, F_REF_CENTER,
+  );
+  const entryFlick = buildTaperedRibbon(
+    efCenter,
+    (efParams.startWidth ?? F_ENTRY_FLICK.startWidth) * scale,
+    efParams.taperPower ?? F_ENTRY_FLICK.taperPower,
+    efParams.liftPoint  ?? F_ENTRY_FLICK.liftPoint,
+  );
+
+  // ── Exit crossbar: tapered ribbon from path4 ──────────────────
+  const exOff = resolveOffset('exit', { dx: 0, dy: 0 }, overrides, dpr);
+  const exParams = overrides.exit ?? F_EXIT;
+  const exCenter = sampleSegments(
+    F_EXIT_SEGS, [0, 1, 2], 14,
+    cx + exOff.dx, cy + exOff.dy, scale, F_REF_CENTER,
+  );
+  const exit = buildTaperedRibbon(
+    exCenter,
+    (exParams.startWidth ?? F_EXIT.startWidth) * scale,
+    exParams.taperPower ?? F_EXIT.taperPower,
+    exParams.liftPoint  ?? F_EXIT.liftPoint,
+  );
 
   return {
     bowls: [
@@ -2512,13 +2531,12 @@ function buildF(cx, cy, scale, dpr, overrides) {
         inner: inner,
         widthFn: fBarBowlWidth,
         densityFn: fBarBowlDensity,
-        extraFills: [
-      { points: fatBarPoly, pressure: 0.85 },
-      { points: hairline, pressure: 0.75 },
-    ],
       },
     ],
     fills: [
+      { points: fatBarPoly, pressure: 0.85 },
+      ...entryFlick.map(p => ({ points: p, pressure: 0.75 })),
+      ...exit.map(p => ({ points: p, pressure: 0.75 })),
     ],
   };
 }
@@ -3798,26 +3816,35 @@ function exportOutlinesB(overrides) {
 }
 
 function exportOutlinesF(overrides) {
-  const hlOff = resolveRefOffset('hairline', F_HAIRLINE_OFFSET, overrides);
-  const fbOff = resolveRefOffset('fatBar', F_FAT_BAR_OFFSET, overrides);
+  const bbOff = resolveRefOffset('barBowl', { dx: 0, dy: 0 }, overrides);
+  const fbOff = resolveRefOffset('fatBar',  { dx: 0, dy: 0 }, overrides);
 
-  const h = F_HAIRLINE;
-  const hairline = buildBar(
-    h.x1 + hlOff.dx, h.y1 + hlOff.dy,
-    h.x2 + hlOff.dx, h.y2 + hlOff.dy,
-    h.halfHeight,
-  );
+  // Shift an ellipse's center without touching a/b/tilt (ref-space offset).
+  const shift = (e, dx, dy) => ({ ...e, cx: e.cx + dx, cy: e.cy + dy });
 
-  const fatBar = buildBar(
-    119.46 + fbOff.dx, 138.92 + fbOff.dy,
-    22.36 + fbOff.dx, 282.93 + fbOff.dy,
-    F_FAT_BAR_HALF_WIDTH,
-  );
+  // Sample cubic bezier segments into a flat array of [x,y] points in ref space.
+  const sampleSegsRef = (segs, perSeg = 12) => {
+    const pts = [];
+    for (let s = 0; s < segs.length; s++) {
+      const [p0, p1, p2, p3] = segs[s];
+      const start = s === 0 ? 0 : 1;   // dedupe shared endpoints
+      for (let i = start; i <= perSeg; i++) {
+        const t = i / perSeg, u = 1 - t;
+        const x = u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0];
+        const y = u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1];
+        pts.push([x + fbOff.dx, y + fbOff.dy]);
+      }
+    }
+    return pts;
+  };
 
   return {
-    barBowl: { inner: sampleEllipse(F_BAR_BOWL.inner), outer: sampleEllipse(F_BAR_BOWL.outer) },
-    fatBar,
-    hairline,
+    barBowl: {
+      inner: sampleEllipse(shift(F_BAR_BOWL.inner, bbOff.dx, bbOff.dy)),
+      outer: sampleEllipse(shift(F_BAR_BOWL.outer, bbOff.dx, bbOff.dy)),
+    },
+    fatBar: sampleSegsRef(F_FAT_BAR_SEGS, 12),
+    // entryFlick + exit are tapered ribbons (not simple outlines); skip for now.
   };
 }
 
@@ -3983,7 +4010,7 @@ export const GLYPH_RULES = {
 
 export const GLYPH_JOIN_ANCHORS = {
   e: E_JOIN_ANCHORS,
-  f: F_JOIN_ANCHORS,
+  // f: F_JOIN_ANCHORS, // disabled while we debug f's vertical placement
   o: O_JOIN_ANCHORS,
   r: R_JOIN_ANCHORS,
 };
