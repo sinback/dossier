@@ -109,3 +109,23 @@ If you don't see Firefox in the snapshot, pause and ask the user to switch the F
 - Expect ~10-20 svg-unit error on ink-edge guesses (where a t's downstroke ends, where an o's bowl starts, etc.) when reading the raster directly.
 - When precision matters, use the hand-traced path data at `matlack/reference/context/<word>/NN_paths` instead. See `matlack/reference/context/workflow.md` for the full tracing workflow.
 - If no path data exists for the letter you need, **ask the user to trace it** before fine-tuning anchor coordinates. Do not fabricate pixel positions from the scan.
+
+### Angle terminology — use these glyphs to disambiguate
+
+The word "slant" has been overloaded. When discussing angles, write one of:
+
+- **⬭** (RAlt `n` `b`) — **nib angle**. 2D orientation of the broad-nib footprint on the page. Sets thick/thin distribution. Currently ~40° in `src/styles/README.md`.
+- **📐** (RAlt `p` `t`) — **pen-to-paper angle**. 3D tilt of the pen shaft out of the page plane. Affects ink flow physics, not 2D glyph shape.
+- **⟋** (RAlt `/` `/`) — **penmanship slant**. 2D lean of the letter itself within the page plane. Copperplate target ≈55° from horizontal; Matlack measured slightly different.
+
+All three live in the 40°–55° range numerically, which is why collapsing them is easy and dangerous. Never write "slant" unprefixed in design discussion — pick one of the three above.
+
+### "Simplest variant" ≠ "default variant"
+
+For letters that support `{entry: 'none', exit: 'none'}` (the isol form), **that is the simplest variant** — a bare bowl with no flicks. Earlier thinking treated flicked forms as the "default" and isol as the exception; that framing is wrong and has been a recurring source of agent confusion. Isol is the baseline; entry and exit flicks are additions.
+
+### Testing glyphs: Shapely-based topology
+
+Scriptable "this is wrong" signals live under `tests/matlack/`, mirroring the structure of `matlack/reference/` (i.e. `tests/matlack/lowercase/<letter>/` and `tests/matlack/context/<word>/`). Tests hit the live dev server's `/api/outlines` endpoint; `tests/matlack/conftest.py` bails with a friendly message if the server is down (no per-test skip markers).
+
+Topology checks come first (simple/closed rings, `outer.contains(inner)`, parametrized over supported variants). Shape-sanity checks (aspect ratio in ⟋-rotated bbox, ⟋-angle tolerance) come second. Flick-connectivity checks come after the outlines export grows entry/exit components. **Don't unit-test `buildO` internals** — anchor numbers change constantly, the math is trivial, and the tests don't catch the failures we actually care about.
