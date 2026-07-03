@@ -57,14 +57,25 @@ def variant_for(i, word):
 
 
 def fetch_letter(letter, entry, exit_):
-    """Fetch with variant params, falling back to the default form if the
-    letter rejects them (not every letter supports every variant)."""
+    """Fetch with variant params, degrading gracefully when the letter
+    doesn't support the combo. The entry side must survive degradation —
+    it carries the incoming join's anchor — so drop the exit request
+    first and only then fall back to the full default."""
     try:
         return fetch_render(letter, entry=entry, exit=exit_)
-    except Exception as e:
-        print(f"  note: {letter} entry={entry} exit={exit_} → default form ({e})",
-              file=sys.stderr)
-        return fetch_render(letter)
+    except Exception:
+        pass
+    if exit_ is not None:
+        try:
+            r = fetch_render(letter, entry=entry)
+            print(f"  note: {letter} exit={exit_} unsupported → letter-default exit",
+                  file=sys.stderr)
+            return r
+        except Exception:
+            pass
+    print(f"  note: {letter} entry={entry} exit={exit_} unsupported → default form",
+          file=sys.stderr)
+    return fetch_render(letter)
 
 
 def normalize_scale(render, geom):
