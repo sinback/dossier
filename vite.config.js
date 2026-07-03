@@ -172,6 +172,59 @@ const outlinePlugin = {
   },
 };
 
+// GET /api/render?letter=<x> — clean glyph render for agent-side analysis,
+// no canvas/browser involved. Optional params:
+//   &size=100            glyph scale (same meaning as renderGlyph)
+//   &entry=low&exit=high variant selection (letters that ignore variants ignore these)
+//   &overrides=<json>    component offset overrides, same format as renderGlyph
+//   &format=svg|json     svg (default) → standalone SVG; json → raw rings +
+//                        frame + rule lines for Shapely/PIL work
+const renderPlugin = {
+  name: 'dossier-render',
+  configureServer(server) {
+    server.middlewares.use('/api/render', async (req, res) => {
+      if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
+      const url = new URL(req.url, 'http://localhost');
+      const letter = url.searchParams.get('letter');
+      if (!letter) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing ?letter= parameter' }));
+        return;
+      }
+      const size = Number(url.searchParams.get('size') || 100);
+      const entry = url.searchParams.get('entry');
+      const exit = url.searchParams.get('exit');
+      const variant = (entry || exit)
+        ? { ...(entry ? { entry } : {}), ...(exit ? { exit } : {}) }
+        : undefined;
+      const overridesRaw = url.searchParams.get('overrides');
+      let overrides = {};
+      if (overridesRaw) {
+        try { overrides = JSON.parse(overridesRaw); }
+        catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid overrides JSON' }));
+          return;
+        }
+      }
+      try {
+        const mod = await server.ssrLoadModule('/src/styles/matlackSVGExport.js');
+        if (url.searchParams.get('format') === 'json') {
+          const render = mod.exportGlyphRender(letter, size, overrides, variant);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ letter, size, variant: variant ?? null, overrides, ...render }));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'image/svg+xml' });
+          res.end(mod.exportGlyphSVG(letter, size, overrides, variant));
+        }
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+  },
+};
+
 const reviewPlugin = {
   name: 'dossier-review',
   configureServer(server) {
@@ -355,7 +408,7 @@ const anchorsPlugin = {
 };
 
 export default defineConfig({
-  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin, outlinePlugin, reviewPlugin, openInGimpPlugin, contextsPlugin, anchorsPlugin],
+  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin, outlinePlugin, renderPlugin, reviewPlugin, openInGimpPlugin, contextsPlugin, anchorsPlugin],
   server: {
     port: 3000,
     open: true,
