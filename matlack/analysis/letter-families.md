@@ -117,8 +117,10 @@ Letters dominated by simple downstrokes with entry/exit flicks.
 
 ---
 
-## Not yet implemented: u, v, z
+## u, v, z
 
-- **u**: Expected to be straightforward — inverse of 'n' hump.
-- **v**: Single diagonal descent + ascent, similar to 'w' segment.
-- **z**: Horizontal strokes + diagonal, likely ribbon-based.
+All implemented — `buildGlyph` covers the full lowercase alphabet.
+
+- **u** — ✅ Done. Inverse of 'n' hump, as expected.
+- **v** — ✅ Done. Single diagonal descent + ascent.
+- **z** — ✅ Done. Ribbon-based with looped descender.
