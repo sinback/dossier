@@ -176,6 +176,57 @@ function buildTaperedRibbon(centerline, startWidth, taperPower, liftPoint = 1.0)
   return quads;
 }
 
+// ── Connector ribbon builder ──────────────────────────────────────────────────
+// Mid-word connector strokes (the glyph's half of an inter-letter join) are
+// continuous hairlines — the pen never lifts, so width holds constant through
+// the join band and fades only past fadeStart (which must sit at or beyond
+// the join anchor's arc-length fraction, so the stroke is full-width where
+// the neighbor overlaps it). Contrast buildTaperedRibbon, which models a true
+// pen lift ((1-t)^p decay from the body outward) and is for terminal flicks.
+//
+// Params:
+//   centerline:    array of {x, y}, ordered body → free end
+//   hairlineWidth: constant half-width (canvas px)
+//   fadeStart:     arc-length fraction where the fade to zero begins
+function buildConnectorRibbon(centerline, hairlineWidth, fadeStart = 0.85) {
+  const n = centerline.length;
+  if (n < 2) return [];
+
+  const arcLen = [0];
+  for (let i = 1; i < n; i++) {
+    const dx = centerline[i].x - centerline[i - 1].x;
+    const dy = centerline[i].y - centerline[i - 1].y;
+    arcLen.push(arcLen[i - 1] + Math.hypot(dx, dy));
+  }
+  const totalLen = arcLen[n - 1] || 1;
+
+  const tops = [];
+  const bots = [];
+  for (let i = 0; i < n; i++) {
+    const t = arcLen[i] / totalLen;
+    const hw = t <= fadeStart
+      ? hairlineWidth
+      : hairlineWidth * Math.pow(Math.max(0, 1 - (t - fadeStart) / (1 - fadeStart)), 1.7);
+
+    const prev = centerline[Math.max(0, i - 1)];
+    const next = centerline[Math.min(n - 1, i + 1)];
+    const tdx = next.x - prev.x, tdy = next.y - prev.y;
+    const tlen = Math.hypot(tdx, tdy) || 1;
+    const pnx = -tdy / tlen * hw, pny = tdx / tlen * hw;
+
+    tops.push({ x: centerline[i].x + pnx, y: centerline[i].y + pny });
+    bots.push({ x: centerline[i].x - pnx, y: centerline[i].y - pny });
+
+    if (hw <= 0) break;
+  }
+
+  const quads = [];
+  for (let i = 0; i < tops.length - 1; i++) {
+    quads.push([tops[i], tops[i + 1], bots[i + 1], bots[i]]);
+  }
+  return quads;
+}
+
 // ── Cubic bezier sampler ─────────────────────────────────────────────────────
 // Samples n+1 points along a cubic bezier curve defined by 4 control points.
 // Each control point is [x, y] in ref coords. Output is in canvas coords.
@@ -899,7 +950,7 @@ const E_JOIN_ANCHORS = {
     // o.exit and the high-join convention).
     high: { x: 2.99, y: 21.21 },
   },
-  exit:  { x: 42.06, y: 45.55 },
+  exit:  { x: 43.38, y: 45.55 },
 };
 
 const E_STRUCTURAL_ANCHORS = {
@@ -914,7 +965,10 @@ const E_LOOP_SEGS = [
   [[42.76,9.31],[41.17,8.09],[29.05,19.29],[29.84,19.84]],
   [[29.84,19.84],[28.14,20.43],[13.58,45.74],[18.59,46.23]],
   [[18.59,46.23],[16.34,53.24],[29.79,52.13],[30.51,49.90]],
-  [[30.51,49.90],[29.86,51.47],[53.56,40.27],[53.59,40.21]],
+  // Final (exit) segment: P2 steepened from the traced (53.56, 40.27) so
+  // the stroke leaves climbing at ~37° (the low-join band direction from
+  // to/01) instead of flattening out — the connector into the next letter.
+  [[30.51,49.90],[29.86,51.47],[48.8,43.8],[53.59,40.21]],
 ];
 
 // Entrance flick — default (e after @low_exit).
@@ -2143,8 +2197,9 @@ const O_RULE = { yTop: -57, yCenter: 3, yBottom: 63 };
 // or curs attachment accumulates baseline drift letter-by-letter.
 const O_JOIN_ANCHORS = {
   entry: {
-    // low: on the (extended) default entrance flick at 15% x-height.
-    low:  { x: 4.12, y: 54.0 },
+    // low: on the default entrance connector's straight 30° run, at 15%
+    // x-height.
+    low:  { x: 3.2, y: 54.0 },
     // high: ON the afterHigh entrance flick, at its closest approach to
     // the 71.6% high-join height (flick min-y is 20.87 = 69.3%; residual
     // drift vs convention -0.8 su, inside the 1.5 su tolerance). The old
@@ -2178,11 +2233,15 @@ const O_EXIT_SEGS = [
   // Bowl-top → mid-transition (ends at o.exit font-anchor)
   [[59.66,  3.40], [65.00,  4.50], [71.10, 25.87], [75.14, 24.53]],
   [[75.14, 24.53], [74.84, 25.24], [84.47, 22.68], [90.73, 20.06]],
-  // Past-anchor overlap tail (rest of 'or/01' path2 seg B + full seg C)
+  // Short past-anchor overlap tail (~6 su, the next piece of 'or/01'
+  // path2). The rest of that trace is the PAIR's transition, not o's —
+  // keeping it made o's tail overshoot the next letter's entrance
+  // (it was traced to reach r's body in one specific scan).
   [[90.73, 20.06], [93.88, 19.25], [96.18, 18.22], [96.43, 17.62]],
-  [[96.43, 17.62], [99.19, 19.51], [113.26, 4.23], [111.76, 3.17]],
 ];
-const O_EXIT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 0.9 };
+// Connector, not a lift: hairline holds through the anchor (at arc-length
+// fraction 0.873), fades over the tail.
+const O_EXIT = { hairline: 0.6, fadeStart: 0.87 };
 
 // ── 'o' bowl ellipses ────────────────────────────────────────────────────────
 // Automated fit via scipy Nelder-Mead crescent model (93.8% → 86.2% constrained).
@@ -2210,12 +2269,17 @@ const O_BOWL = {
 // downward (stays low) as the pen continues from the preceding letter's
 // y-bottom exit, then sweeps up to meet the top-left of the bowl at the
 // bowl's own tangent direction (≈ (+0.70, -0.71) at θ=-π/2).
-// Tip extended (4,55) → (-4,58) so the flick dips through the 15% x-height
-// low-join band with stroke to spare past the anchor at (4.12, 54).
+// Re-authored for the low-join band (diverges from the old traced handles,
+// per sinback 2026-07-03): a straight 30° climb through the 15% x-height
+// anchor zone — matching the incoming exit stroke's direction so the seam
+// reads as one steepening upstroke (to/01 seg B character) — then a G1
+// bend into the bowl approach (~46°, the bowl-top tangent).
 const O_ENTRANCE_DEFAULT_SEGS = [
-  [[-4, 58],[8, 57.5],[20.3, 29.5],[27.3, 22.4]],
+  [[-2.0, 57.0],[1.5, 55.0],[4.5, 53.2],[8.0, 51.2]],
+  [[8.0, 51.2],[12.3, 48.7],[21.7, 28.2],[27.3, 22.4]],
 ];
-const O_ENTRANCE_DEFAULT = { startWidth: 1.2, taperPower: 1.7, liftPoint: 1.0 };
+// Connector: anchor sits at arc-length fraction 0.88 measured body → tip.
+const O_ENTRANCE_DEFAULT = { hairline: 0.6, fadeStart: 0.88 };
 
 // Entrance flick — afterHigh variant (o after @high_exit = b/f/v/w, or after strong o-exit).
 // Enters at ~rule.y-center and arrives at the top-left of the bowl (~θ=-π/2 in
@@ -2223,7 +2287,9 @@ const O_ENTRANCE_DEFAULT = { startWidth: 1.2, taperPower: 1.7, liftPoint: 1.0 };
 const O_ENTRANCE_AFTERHIGH_SEGS = [
   [[4, 22],[12, 20],[20, 21],[27.3, 22.4]],
 ];
-const O_ENTRANCE_AFTERHIGH = { startWidth: 1.2, taperPower: 1.7, liftPoint: 1.0 };
+// Connector: anchor (13.67, 20.87) sits at ~0.6 of arc length body → tip,
+// so the fade must not start before that.
+const O_ENTRANCE_AFTERHIGH = { hairline: 0.6, fadeStart: 0.6 };
 
 // ── 'o' bowl width function ──────────────────────────────────────────────────
 // Very similar to 'a' — thickest on the bottom-left (pen slowest),
@@ -3755,20 +3821,26 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
 
   let entrFills = [];
   if (entrSegs) {
-    const entrCenter = sampleSegments(entrSegs, [0], 12, cx, cy, scale, O_REF_CENTER);
+    const entrCenter = sampleSegments(
+      entrSegs,
+      Array.from({ length: entrSegs.length }, (_, i) => i),
+      12, cx, cy, scale, O_REF_CENTER,
+    );
+    // Reversed → body-to-tip order, so the connector fade lands at the tip
+    // (the free end reaching toward the previous letter).
     const entrReversed = [...entrCenter].reverse();
-    const entrQuads = buildTaperedRibbon(
+    const entrQuads = buildConnectorRibbon(
       entrReversed,
-      entrParams.startWidth * scale,
-      entrParams.taperPower,
-      entrParams.liftPoint,
+      entrParams.hairline * scale,
+      entrParams.fadeStart,
     );
     entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
   }
 
-  // Exit flick when variant.exit === 'high'. Geometry is path2 from 'or/01'
-  // (o Exit → r Entry) sliced at the chosen font-anchor, transformed into
-  // o's glyph local frame. Taper goes thick→thin from bowl side to anchor.
+  // Exit connector when variant.exit === 'high'. Geometry is path2 from
+  // 'or/01' (o Exit → r Entry) up to the font-anchor plus a short fade
+  // tail, in o's glyph local frame. Hairline width — mid-word connectors
+  // are continuous strokes, not pen lifts.
   let exitFills = [];
   if (variant.exit === 'high') {
     const exitCenter = sampleSegments(
@@ -3776,11 +3848,10 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       Array.from({ length: O_EXIT_SEGS.length }, (_, i) => i),
       12, cx, cy, scale, O_REF_CENTER,
     );
-    const exitQuads = buildTaperedRibbon(
+    const exitQuads = buildConnectorRibbon(
       exitCenter,
-      O_EXIT.startWidth * scale,
-      O_EXIT.taperPower,
-      O_EXIT.liftPoint,
+      O_EXIT.hairline * scale,
+      O_EXIT.fadeStart,
     );
     exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
   }

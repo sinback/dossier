@@ -31,3 +31,10 @@ def test_oreo_seams_join_cleanly():
             f"seam {s['pair']}: baseline drift {s['drift']} su — an anchor "
             f"height is off its join-class convention"
         )
+        if s["join_class"] == "low":
+            # Low joins are collinear handoffs; r→e (sinback: "actually
+            # perfect") measures 0°. High joins are crossings — exempt.
+            assert s["kink"] is not None and s["kink"] < 15.0, (
+                f"seam {s['pair']}: kink {s['kink']}° — connector strokes "
+                f"should ride the same climb through the join band"
+            )

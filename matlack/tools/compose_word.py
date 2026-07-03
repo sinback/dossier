@@ -28,6 +28,7 @@ without variant support silently render their default form.
 """
 
 import argparse
+import math
 import sys
 from pathlib import Path
 
@@ -47,6 +48,31 @@ OVERLAP = (0, 0, 0)          # join overlap zones
 JOIN_DISC_R = 10             # join-disc radius, ref units (letter size=100)
 TARGET_XH = 60.0             # normalized x-height (su); build_font.py does the
                              # same rule-based per-glyph normalization
+
+
+def stroke_direction(geom, at, radius=6.0):
+    """Principal direction (degrees, mod 180) of a letter's ink near a
+    point, via PCA of the local outline. None if no ink in the disc."""
+    local = geom.intersection(Point(at).buffer(radius))
+    if local.is_empty:
+        return None
+    pts = [p for poly in _polygons(local) for p in poly.exterior.coords]
+    if len(pts) < 4:
+        return None
+    mx = sum(p[0] for p in pts) / len(pts)
+    my = sum(p[1] for p in pts) / len(pts)
+    sxx = sum((p[0] - mx) ** 2 for p in pts)
+    syy = sum((p[1] - my) ** 2 for p in pts)
+    sxy = sum((p[0] - mx) * (p[1] - my) for p in pts)
+    return math.degrees(0.5 * math.atan2(2 * sxy, sxx - syy)) % 180.0
+
+
+def kink_angle(a, b):
+    """Smallest angle between two undirected stroke directions."""
+    if a is None or b is None:
+        return None
+    d = abs(a - b) % 180.0
+    return min(d, 180.0 - d)
 
 
 def variant_for(i, word):
@@ -145,12 +171,21 @@ def compose(word):
             if render.get("rules") and prev["render"].get("rules"):
                 drift = (render["rules"]["yBottom"] + dy) - (
                     prev["render"]["rules"]["yBottom"] + prev["dy"])
+            # Kink: angle between the two strokes' local directions at the
+            # join. Low joins are collinear handoffs (both hairlines ride
+            # the same climb → small kink required); high joins are
+            # crossings (or/01: the exit tail ends where the next body
+            # stroke begins), so direction legitimately breaks there.
+            kink = kink_angle(stroke_direction(a, join_pt),
+                              stroke_direction(b, join_pt))
             seams.append({
                 "pair": word[i - 1] + letter,
                 "at": join_pt,
                 "overlap": overlap,
                 "components": n_components,
                 "drift": drift,
+                "kink": kink,
+                "join_class": entry,  # entry variant of the second letter
             })
 
         if i < len(word) - 1:
@@ -216,11 +251,16 @@ def main():
     print(f"wrote {out}")
     for s in seams:
         drift_ok = s["drift"] is None or abs(s["drift"]) < 1.5
-        verdict = "OK" if s["overlap"] > 0 and s["components"] == 1 and drift_ok else "BAD"
+        kink_ok = (s["join_class"] != "low" or s["kink"] is None
+                   or s["kink"] < 15.0)
+        verdict = ("OK" if s["overlap"] > 0 and s["components"] == 1
+                   and drift_ok and kink_ok else "BAD")
         drift = f"{s['drift']:+.1f}" if s["drift"] is not None else "?"
+        kink = f"{s['kink']:.0f}°" if s["kink"] is not None else "?"
         print(
             f"  seam {s['pair']}: overlap={s['overlap']:.1f} su² "
-            f"components-in-disc={s['components']} baseline-drift={drift} su [{verdict}]"
+            f"components-in-disc={s['components']} baseline-drift={drift} su "
+            f"kink={kink} ({s['join_class']}) [{verdict}]"
         )
 
 
