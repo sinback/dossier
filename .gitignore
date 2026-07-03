@@ -15,3 +15,4 @@ reviews/
 __pycache__/
 *.pyc
 .pytest_cache/
+matlack/renders/_scratch/
