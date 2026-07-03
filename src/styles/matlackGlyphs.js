@@ -150,7 +150,6 @@ function buildTaperedRibbon(centerline, startWidth, taperPower, liftPoint = 1.0)
     } else {
       hw = startWidth * Math.pow(1 - t / liftPoint, taperPower);
     }
-    if (hw < 0.3) break;
 
     const prev = centerline[Math.max(0, i - 1)];
     const next = centerline[Math.min(n - 1, i + 1)];
@@ -160,6 +159,13 @@ function buildTaperedRibbon(centerline, startWidth, taperPower, liftPoint = 1.0)
 
     tops.push({ x: centerline[i].x + pnx, y: centerline[i].y + pny });
     bots.push({ x: centerline[i].x - pnx, y: centerline[i].y - pny });
+
+    // Taper is complete — close the ribbon at its true zero-width point.
+    // (No sub-pixel width cutoff here: it truncated the flick's extent
+    // scale-dependently, which broke join overlap in exported geometry.
+    // Zero-width quads rasterize as nothing, so emitting the full taper
+    // costs nothing visually.)
+    if (hw <= 0) break;
   }
 
   // Build quads between consecutive pairs of offset points
@@ -880,14 +886,20 @@ const E_REF_CENTER = { x: 34.5, y: 32.0 };  // approximate center of the letter
 const E_RULE = { yTop: -34, yCenter: 9, yBottom: 52 };
 
 // Join anchors — curs attach points in e's local frame.
-//   entry: where both low and high entrance flicks terminate at the
-//          crossbar start.
-//   exit:  where the loop naturally ends (end of E_LOOP_SEGS), at the
-//          upper-right. Technically a low exit per the rules table; the
-//          loop currently ends partway between yCenter and yBottom.
+// Heights follow the join convention (see O_JOIN_ANCHORS): low at 15%
+// x-height, high at 68.5%. e's x-height is 43 (E_RULE), so low = y 45.5.
+//   entry.low:  on the extended default entrance flick.
+//   entry.high: on the extended afterHigh entrance flick.
+//   exit: ON the final loop segment at 15% — the loop continues past it
+//         to (53.59, 40.21), which is the overlap tail.
 const E_JOIN_ANCHORS = {
-  entry: { x: 21.33, y: 35.41 },
-  exit:  { x: 53.59, y: 40.21 },
+  entry: {
+    low:  { x: 0.98, y: 45.5 },
+    // high: ON the extended afterHigh flick at 71.6% x-height (matches
+    // o.exit and the high-join convention).
+    high: { x: 2.99, y: 21.21 },
+  },
+  exit:  { x: 42.06, y: 45.55 },
 };
 
 const E_STRUCTURAL_ANCHORS = {
@@ -906,19 +918,23 @@ const E_LOOP_SEGS = [
 ];
 
 // Entrance flick — default (e after @low_exit).
-// Straight line on the same trajectory the crossbar sets out on before it
-// starts pulling up into the loop. Slope ≈ -0.19 (matches crossbar tangent
-// around t=0.15). Lower-positioned than afterHigh's y=31 start, but can't
-// reach all the way to y-bottom without becoming absurdly long.
+// Dips from the crossbar start down through the 15% x-height low-join band
+// (anchor at (0.98, 45.5)), tip ending at y=48. The earlier straight-line
+// version stayed at crossbar height on the theory that reaching y-bottom
+// would be absurdly long — but the two-anchor model doesn't need that: the
+// preceding letter's exit stroke climbs to ~15% and hands off there (cf.
+// to/01 seg B, slope ≈ -0.77). End tangent still matches the crossbar's.
 const E_ENTRANCE_DEFAULT_SEGS = [
-  [[1.67, 39.15],[1.67, 39.15],[21.33, 35.41],[21.33, 35.41]],
+  [[-3, 48],[2, 45],[12, 37.8],[21.33, 35.41]],
 ];
 const E_ENTRANCE_DEFAULT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
 
 // Entrance flick — afterHigh variant (e after @high_exit = b/f/o/v/w).
-// Enters at ~rule.y-center and arrives at the crossbar start.
+// Enters from the high-join band (tip at ~78% x-height, up from the old
+// (4, 31) = 49% which no high exit could reach) and descends to the
+// crossbar start, arriving on the same tangent as before.
 const E_ENTRANCE_AFTERHIGH_SEGS = [
-  [[4, 31],[11, 30],[17, 32],[21.33, 35.41]],
+  [[0, 18.5],[6, 24],[14, 31],[21.33, 35.41]],
 ];
 const E_ENTRANCE_AFTERHIGH = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
 
@@ -1568,8 +1584,23 @@ const R_RULE = { yTop: -18, yCenter: 38, yBottom: 94 };
 //   exit:  curs-attach for the next letter. Placeholder value pending
 //          r-before-x scan data.
 const R_JOIN_ANCHORS = {
-  entry: { x: 28.18, y: 55.62 },
-  exit:  { x: 55.00, y: 90.00 },  // TODO: refine once we have r-after-x data
+  entry: {
+    // low: ON the (extended) default entry flick at the 15% x-height
+    // low-join convention height. The old (28.18, 55.62) mid-flick spot
+    // sat at 68.5% — fine against the flick, but drift-inconsistent with
+    // every low exit (they anchor at 15%).
+    low:  { x: -7.55, y: 85.6 },
+    // high: ON the afterHigh body stroke (seg 1, the descending swoop) —
+    // the afterHigh form has no entry flick; the preceding letter's exit
+    // tail crosses the swoop here (cf. or/01: path2 ends where path1
+    // starts). Height matched to o.exit (71.6% x-height).
+    high: { x: 50.82, y: 53.90 },
+  },
+  // At 15% x-height (join convention — see O_JOIN_ANCHORS), ON the afterHigh
+  // exit stroke (solved from R_EXIT_SEGS_AFTERHIGH at y=85.6) and within
+  // ~1 su of the default exit stroke's endpoint (74.98, 86.19), so one
+  // anchor serves both r forms. Replaces the old (55, 90) placeholder.
+  exit:  { x: 74.02, y: 85.6 },
 };
 
 // Structural anchors — stable, identifiable features on the letter's body,
@@ -1581,8 +1612,13 @@ const R_STRUCTURAL_ANCHORS = {
 };
 
 // Entrance flick
+// Tip extended from (18.10, 64.90) — the traced r/01 flick, which is the
+// word-INITIAL form and hangs at 52% x-height — down along the same line
+// through the 15% low-join band to 10% (y=88.4), so mid-word low entries
+// (e→r, r→r) can overlap. The added stretch is in the deep taper zone,
+// so it renders as a fading hairline, per the table's "weak" r entry.
 const R_ENTRANCE_SEGS = [
-  [[18.10,64.90],[18.10,64.90],[51.44,37.99],[51.44,37.99]],
+  [[-11.0,88.4],[-11.0,88.4],[51.44,37.99],[51.44,37.99]],
 ];
 const R_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
 
@@ -2099,10 +2135,25 @@ const O_RULE = { yTop: -57, yCenter: 3, yBottom: 63 };
 //   exit:  upper-right of the bowl at ~rule.y-center height. o.exit is
 //          "strong" (per the rules table) so this anchor governs how a
 //          following letter lines up.
+// Join-height convention (canonical, from the two human-picked anchors):
+//   low joins  at 15% of x-height above rule.y-bottom (sinback's to/01
+//   t.exit anchor: 4.4 su / 28 su x-height = 15.7%)
+//   high joins at 68.5% (r.entry.high, the most scan-tuned high anchor)
+// Every letter's anchors must hit these percentages in its own rule frame,
+// or curs attachment accumulates baseline drift letter-by-letter.
 const O_JOIN_ANCHORS = {
-  entry: { x: 27.3, y: 22.4 },
-  // Exit font-anchor in glyph local, derived from sinback's scan-space
-  // o.exit (46.22, 30.11) in 'or/01' via the structural alignment transform.
+  entry: {
+    // low: on the (extended) default entrance flick at 15% x-height.
+    low:  { x: 4.12, y: 54.0 },
+    // high: ON the afterHigh entrance flick, at its closest approach to
+    // the 71.6% high-join height (flick min-y is 20.87 = 69.3%; residual
+    // drift vs convention -0.8 su, inside the 1.5 su tolerance). The old
+    // (27.3, 22.4) was the flick's body-side terminus, not a join point.
+    high: { x: 13.67, y: 20.87 },
+  },
+  // Exit font-anchor from sinback's scan-space o.exit (46.22, 30.11) in
+  // 'or/01' via the structural alignment transform. 71.6% x-height — the
+  // high-join convention height (matched by r.entry.high).
   exit:  { x: 90.73, y: 20.06 },
 };
 
@@ -2159,8 +2210,10 @@ const O_BOWL = {
 // downward (stays low) as the pen continues from the preceding letter's
 // y-bottom exit, then sweeps up to meet the top-left of the bowl at the
 // bowl's own tangent direction (≈ (+0.70, -0.71) at θ=-π/2).
+// Tip extended (4,55) → (-4,58) so the flick dips through the 15% x-height
+// low-join band with stroke to spare past the anchor at (4.12, 54).
 const O_ENTRANCE_DEFAULT_SEGS = [
-  [[4, 55],[14, 55],[20.3, 29.5],[27.3, 22.4]],
+  [[-4, 58],[8, 57.5],[20.3, 29.5],[27.3, 22.4]],
 ];
 const O_ENTRANCE_DEFAULT = { startWidth: 1.2, taperPower: 1.7, liftPoint: 1.0 };
 
@@ -2338,7 +2391,11 @@ export function resolveVariant(letter, variant) {
   variant = { ...support.supported[0], ...(variant || {}) };
   if (variantMatches(variant, support.supported)) return variant;
   if (variantMatches(variant, support.notYet)) {
-    const fallback = support.supported[0];
+    // Prefer a supported variant with the same entry — the entry side
+    // carries the curs anchor for the incoming join, so degrading the
+    // exit must not silently move the entry anchor.
+    const fallback = support.supported.find(v => v.entry === variant.entry)
+      ?? support.supported[0];
     console.warn(
       `build${letter.toUpperCase()}: variant ${JSON.stringify(variant)} is ` +
       `valid per the rules table but geometry not yet implemented. ` +
