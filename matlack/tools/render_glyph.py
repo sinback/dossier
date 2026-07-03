@@ -57,8 +57,15 @@ def fetch_render(letter, entry=None, exit=None, overrides=None, size=100):
     if overrides:
         params["overrides"] = json.dumps(overrides)
     url = f"{DEV_SERVER}/api/render?{urllib.parse.urlencode(params)}"
-    with urllib.request.urlopen(url, timeout=5) as r:
-        data = json.load(r)
+    try:
+        with urllib.request.urlopen(url, timeout=5) as r:
+            data = json.load(r)
+    except urllib.error.HTTPError as e:
+        try:
+            msg = json.load(e).get("error", str(e))
+        except Exception:
+            msg = str(e)
+        raise RuntimeError(f"{letter}: {msg}") from None
     if "error" in data:
         raise RuntimeError(f"{letter}: {data['error']}")
     return data
@@ -126,6 +133,15 @@ def rasterize(render, geom=None, px=300, rules=False, supersample=4):
         r = 3 * supersample
         draw.line([(ax - r, ay), (ax + r, ay)], fill=ANCHOR_COLOR, width=supersample)
         draw.line([(ax, ay - r), (ax, ay + r)], fill=ANCHOR_COLOR, width=supersample)
+
+    if rules and render.get("joinAnchors"):
+        colors = {"entry": (40, 150, 60), "exit": (200, 60, 60)}
+        r = 3 * supersample
+        for name, pt in render["joinAnchors"].items():
+            x, y = tf(pt)
+            draw.ellipse([x - r, y - r, x + r, y + r],
+                         outline=colors.get(name, ANCHOR_COLOR),
+                         width=supersample)
 
     return img.resize((px, px), Image.LANCZOS)
 

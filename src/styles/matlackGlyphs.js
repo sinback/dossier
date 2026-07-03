@@ -2329,9 +2329,13 @@ function variantMatches(v, list) {
 
 // Returns the variant to actually build. Throws on 'never', warns + substitutes
 // on 'notYet'. Returns the input unchanged for 'supported'.
-function resolveVariant(letter, variant) {
+export function resolveVariant(letter, variant) {
   const support = VARIANT_SUPPORT[letter];
   if (!support) return variant;  // letter has no variant awareness yet
+  // Partial variants ({entry} with no {exit}, or vice versa) fill missing
+  // keys from the letter's default form. Invariant: supported[0] IS the
+  // default (same convention as VARIANT_EXPORTS in matlackSVGExport.js).
+  variant = { ...support.supported[0], ...(variant || {}) };
   if (variantMatches(variant, support.supported)) return variant;
   if (variantMatches(variant, support.notYet)) {
     const fallback = support.supported[0];

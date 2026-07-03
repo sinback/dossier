@@ -10,7 +10,7 @@
  */
 
 import { buildGlyph, GLYPH_RULES, GLYPH_REF_CENTERS,
-         GLYPH_JOIN_ANCHORS } from './matlackGlyphs.js';
+         GLYPH_JOIN_ANCHORS, resolveVariant } from './matlackGlyphs.js';
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
@@ -252,6 +252,12 @@ export function exportGlyphRender(glyph, size = 100, overrides = {}, variant) {
     };
   }
 
+  // Join anchors (variant-aware), mapped into the same frame as the rings.
+  const joinRaw = anchorsForVariant(glyph, variant, size);
+  const joinAnchors = joinRaw
+    ? Object.fromEntries(Object.entries(joinRaw).map(([k, p]) => [k, [p.x + cx, p.y + cy]]))
+    : null;
+
   return {
     frame: {
       minX: -margin / 2,
@@ -261,6 +267,7 @@ export function exportGlyphRender(glyph, size = 100, overrides = {}, variant) {
     },
     anchor: [cx, cy],
     rules,
+    joinAnchors,
     rings: geoRings(geo),
   };
 }
@@ -324,16 +331,30 @@ function anchorsForVariant(letter, variant, size) {
   const raw = GLYPH_JOIN_ANCHORS[letter];
   const ref = GLYPH_REF_CENTERS[letter];
   if (!raw || !ref) return null;
+  const v = resolveVariant(letter, variant) || {};
   const scale = size / 100;
   const toOutput = (pt) => ({
     x: (pt.x - ref.x) * scale,
     y: (pt.y - ref.y) * scale,
   });
-  const hasEntry = !variant || variant.entry !== 'none';
-  const hasExit  = !variant || variant.exit  !== 'none';
+  // Anchor spec is either a plain point (variant-independent) or a map
+  // keyed by the variant's entry/exit value ({low: pt, high: pt}) — an
+  // afterHigh entry arrives at y-center, so its anchor differs from the
+  // low form's.
+  const pick = (spec, key) => {
+    if (!spec) return null;
+    if (typeof spec.x === 'number') return spec;
+    return spec[key] || null;
+  };
   const anchors = {};
-  if (hasEntry && raw.entry) anchors.entry = toOutput(raw.entry);
-  if (hasExit  && raw.exit ) anchors.exit  = toOutput(raw.exit);
+  if (v.entry !== 'none') {
+    const pt = pick(raw.entry, v.entry || 'low');
+    if (pt) anchors.entry = toOutput(pt);
+  }
+  if (v.exit !== 'none') {
+    const pt = pick(raw.exit, v.exit || 'low');
+    if (pt) anchors.exit = toOutput(pt);
+  }
   return Object.keys(anchors).length ? anchors : null;
 }
 
