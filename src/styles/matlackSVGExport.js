@@ -91,9 +91,8 @@ function ptsToD(pts) {
   return d + ' Z';
 }
 
-// ── Bowl → SVG path d string (outer + effective inner, evenodd) ──────────────
-// Outer path CW + inner path CCW → evenodd punch-through.
-function bowlToD(bowl, segments = 64) {
+// ── Bowl → sampled ring point arrays (outer + effective inner) ───────────────
+function bowlRings(bowl, segments = 64) {
   const { outer, inner, widthFn } = bowl;
   const wFn = widthFn || (() => 1.0);
 
@@ -117,6 +116,13 @@ function bowlToD(bowl, segments = 64) {
     });
   }
 
+  return { outerPts, innerEffPts };
+}
+
+// ── Bowl → SVG path d string (outer + effective inner, evenodd) ──────────────
+// Outer path CW + inner path CCW → evenodd punch-through.
+function bowlToD(bowl, segments = 64) {
+  const { outerPts, innerEffPts } = bowlRings(bowl, segments);
   // outer CW (angle goes negative = CW in math) + inner reversed (CCW) = evenodd cutout
   return ptsToD(outerPts) + ' ' + ptsToD([...innerEffPts].reverse());
 }
@@ -152,14 +158,40 @@ export function geoPaths(geo) {
 }
 
 /**
+ * Low-level: extract raw ring coordinates from a geo object, in draw order.
+ * Returns [{kind: 'bowl', outer: [[x,y],...], inner: [[x,y],...]} |
+ *          {kind: 'fill', points: [[x,y],...]}, ...]
+ * Bowl entries are crescents: ink = outer minus inner. Fill entries are
+ * plain polygons. Coordinates are in the same frame as geoPaths output.
+ */
+export function geoRings(geo) {
+  const pairs = pts => pts.map(p => [p.x, p.y]);
+  const result = [];
+  for (const bowl of geo.bowls) {
+    const { outerPts, innerEffPts } = bowlRings(bowl);
+    result.push({ kind: 'bowl', outer: pairs(outerPts), inner: pairs(innerEffPts) });
+    for (const ef of (bowl.extraFills || [])) {
+      result.push({ kind: 'fill', points: pairs(ef.points) });
+    }
+    for (const of_ of (bowl.overlayFills || [])) {
+      result.push({ kind: 'fill', points: pairs(of_.points) });
+    }
+  }
+  for (const fill of geo.fills) {
+    result.push({ kind: 'fill', points: pairs(fill.points) });
+  }
+  return result;
+}
+
+/**
  * Export one glyph as an array of SVG <path> element strings.
  *
  * cx, cy: position of the glyph's REF_CENTER (anchor point) in the SVG viewport.
  * size:   glyph scale, same meaning as in renderGlyph (100 = reference size).
  * dpr:    device pixel ratio (1 for export).
  */
-export function exportGlyphPaths(glyph, cx, cy, size = 100, dpr = 1) {
-  const geo = buildGlyph(glyph, cx, cy, size, dpr);
+export function exportGlyphPaths(glyph, cx, cy, size = 100, dpr = 1, overrides = {}, variant) {
+  const geo = buildGlyph(glyph, cx, cy, size, dpr, overrides, variant);
   return geoPaths(geo).map(({ d, evenodd }) =>
     evenodd ? `<path fill-rule="evenodd" d="${d}" />` : `<path d="${d}" />`
   );
@@ -168,13 +200,13 @@ export function exportGlyphPaths(glyph, cx, cy, size = 100, dpr = 1) {
 /**
  * Export one glyph as a standalone SVG string (for visual inspection).
  */
-export function exportGlyphSVG(glyph, size = 100) {
+export function exportGlyphSVG(glyph, size = 100, overrides = {}, variant) {
   const margin = size * 0.5;
   const viewSize = size * 2;
   const cx = size;
   const cy = size;
 
-  const pathEls = exportGlyphPaths(glyph, cx, cy, size, 1);
+  const pathEls = exportGlyphPaths(glyph, cx, cy, size, 1, overrides, variant);
 
   return [
     `<?xml version="1.0" encoding="UTF-8"?>`,
@@ -186,6 +218,51 @@ export function exportGlyphSVG(glyph, size = 100) {
     `</g>`,
     `</svg>`,
   ].join('\n');
+}
+
+/**
+ * Export one glyph as raw geometry for external analysis/rasterization
+ * (Shapely, PIL, etc.). Same framing as exportGlyphSVG: REF_CENTER sits at
+ * (size, size), frame spans [-size/4, size*2.25] in both axes.
+ *
+ * Returns { frame: {minX, minY, width, height}, anchor: [cx, cy],
+ *           rules: {yTop, yCenter, yBottom, yBelow?} | null,
+ *           rings: geoRings(...) }
+ * Rule y-values are transformed into the same frame; null for letters
+ * without GLYPH_RULES data.
+ */
+export function exportGlyphRender(glyph, size = 100, overrides = {}, variant) {
+  const margin = size * 0.5;
+  const viewSize = size * 2;
+  const cx = size;
+  const cy = size;
+
+  const geo = buildGlyph(glyph, cx, cy, size, 1, overrides, variant);
+
+  const rule = GLYPH_RULES[glyph];
+  const refCenter = GLYPH_REF_CENTERS[glyph];
+  let rules = null;
+  if (rule && refCenter) {
+    const toY = ry => (ry - refCenter.y) * (size / 100) + cy;
+    rules = {
+      yTop: toY(rule.yTop),
+      yCenter: toY(rule.yCenter),
+      yBottom: toY(rule.yBottom),
+      ...(rule.yBelow != null ? { yBelow: toY(rule.yBelow) } : {}),
+    };
+  }
+
+  return {
+    frame: {
+      minX: -margin / 2,
+      minY: -margin / 2,
+      width: viewSize + margin,
+      height: viewSize + margin,
+    },
+    anchor: [cx, cy],
+    rules,
+    rings: geoRings(geo),
+  };
 }
 
 /**
