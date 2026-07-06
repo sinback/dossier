@@ -2242,7 +2242,7 @@ const O_STRUCTURAL_ANCHORS = {
 // authored BRIDGE segment on the bowl side — never by warping the band.
 // (The pre-hiatus version stretched path2's first ~2 scan-units across the
 // whole bowl→band span, because our o/03-fitted bowl is smaller than the
-// or/01 o bowl; that warp is why the two strokes couldn't coincide.)
+// or/01 o bowl; that warp is why the two strokes couldn't coarticulate.)
 const O_EXIT_SEGS = [
   // Bridge (authored): bowl top → trace start, riding the bowl's top curve.
   [[59.66,  3.40], [63.50,  4.40], [67.40,  5.40], [70.99,  6.55]],
@@ -3642,7 +3642,7 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
   // the join band (the trace is a hairline there — or/01 path2), brief fade
   // at the free tip. The old tip-to-zero lift taper left the band portion
   // thinner than the shared trace, so the neighbor's slice couldn't
-  // coincide with it.
+  // coarticulate with it.
   const entrReversed = [...entrCenter].reverse();
   const entrQuads = buildConnectorRibbon(
     entrReversed,
