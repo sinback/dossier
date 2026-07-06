@@ -10,7 +10,8 @@
  */
 
 import { buildGlyph, GLYPH_RULES, GLYPH_REF_CENTERS,
-         GLYPH_JOIN_ANCHORS, resolveVariant } from './matlackGlyphs.js';
+         GLYPH_JOIN_ANCHORS, resolveVariant,
+         joinTangentsForVariant } from './matlackGlyphs.js';
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
@@ -258,6 +259,11 @@ export function exportGlyphRender(glyph, size = 100, overrides = {}, variant) {
     ? Object.fromEntries(Object.entries(joinRaw).map(([k, p]) => [k, [p.x + cx, p.y + cy]]))
     : null;
 
+  // Direction of travel (degrees) at each join anchor, from the authored
+  // connector curve — see joinTangentsForVariant. Angles are frame-invariant
+  // under the uniform scale + translation used here, so no further mapping.
+  const joinTangents = joinTangentsForVariant(glyph, variant);
+
   return {
     frame: {
       minX: -margin / 2,
@@ -268,6 +274,7 @@ export function exportGlyphRender(glyph, size = 100, overrides = {}, variant) {
     anchor: [cx, cy],
     rules,
     joinAnchors,
+    joinTangents,
     rings: geoRings(geo),
   };
 }

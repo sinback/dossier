@@ -67,12 +67,29 @@ def stroke_direction(geom, at, radius=6.0):
     return math.degrees(0.5 * math.atan2(2 * sxy, sxx - syy)) % 180.0
 
 
-def kink_angle(a, b):
-    """Smallest angle between two undirected stroke directions."""
+def stroke_kink(a, b):
+    """Smallest angle between two undirected stroke directions (PCA over
+    rendered ink — see stroke_direction)."""
     if a is None or b is None:
         return None
     d = abs(a - b) % 180.0
     return min(d, 180.0 - d)
+
+
+def tangent_kink(a, b):
+    """Angle between two DIRECTED tangents (degrees, 0-180).
+
+    Unlike stroke_kink (PCA over a disc of rendered ink — no notion of
+    direction, so it folds mod 180), a and b here are directions of travel
+    from render['joinTangents'] (see joinTangentsForVariant in
+    matlackGlyphs.js): the previous letter's exit connector and the next
+    letter's entry connector both point downstream, so a clean join is a
+    SMALL angle, and a reversal/cusp is a large one (180°) rather than
+    folding back to look like a perfect join."""
+    if a is None or b is None:
+        return None
+    d = abs(a - b) % 360.0
+    return min(d, 360.0 - d)
 
 
 def variant_for(i, word):
@@ -192,13 +209,27 @@ def compose(word):
             if render.get("rules") and prev["render"].get("rules"):
                 drift = (render["rules"]["yBottom"] + dy) - (
                     prev["render"]["rules"]["yBottom"] + prev["dy"])
-            # Kink: angle between the two strokes' local directions at the
-            # join. Low joins are collinear handoffs (both hairlines ride
-            # the same climb → small kink required); high joins are
-            # crossings (or/01: the exit tail ends where the next body
-            # stroke begins), so direction legitimately breaks there.
-            kink = kink_angle(stroke_direction(a, join_pt),
-                              stroke_direction(b, join_pt))
+            # Stroke kink: angle between the two strokes' local directions
+            # at the join, via PCA over rendered ink near the anchor (see
+            # stroke_direction). Low joins are collinear handoffs (both
+            # hairlines ride the same climb → small kink required); high
+            # joins are exempted from the assertion — the disc this samples
+            # can pick up the next letter's body ink where the connector
+            # tail hands off, biasing the estimate even when the underlying
+            # connector curves are fine (see tangent_kink below for that).
+            s_kink = stroke_kink(stroke_direction(a, join_pt),
+                                 stroke_direction(b, join_pt))
+            # Tangent kink: same idea, but from the authored connector
+            # curves' actual direction of travel (render['joinTangents'])
+            # instead of a PCA estimate over rendered ink near the anchor —
+            # not exposed to the body-ink contamination risk above, so it's
+            # asserted across every join, not just low ones. See
+            # tangent_kink's docstring for why it doesn't fold at 180° the
+            # way stroke_kink does.
+            t_kink = tangent_kink(
+                (prev["render"].get("joinTangents") or {}).get("exit"),
+                (render.get("joinTangents") or {}).get("entry"),
+            )
             # Coarticulation: the two glyphs' connector strokes are
             # slices of ONE traced transition and must overlay
             # (reconstruct it), not merely cross or run offset.
@@ -211,7 +242,8 @@ def compose(word):
                 "overlap": overlap,
                 "components": n_components,
                 "drift": drift,
-                "kink": kink,
+                "stroke_kink": s_kink,
+                "tangent_kink": t_kink,
                 "coarticulation": coarticulation,
                 "join_class": entry,  # entry variant of the second letter
             })
@@ -279,8 +311,14 @@ def main():
     print(f"wrote {out}")
     for s in seams:
         drift_ok = s["drift"] is None or abs(s["drift"]) < 1.5
-        kink_ok = (s["join_class"] != "low" or s["kink"] is None
-                   or s["kink"] < 15.0)
+        stroke_kink_ok = (s["join_class"] != "low" or s["stroke_kink"] is None
+                          or s["stroke_kink"] < 15.0)
+        # Tangent kink is directed (see tangent_kink docstring), so it
+        # doesn't share stroke_kink's high-join body-ink contamination risk —
+        # it's gated across every join, not just low ones. Empirically, the
+        # band-true design keeps even high joins (o→r) near 0° here (~2°),
+        # since both sides slice the same shared trace.
+        t_kink_ok = s["tangent_kink"] is None or s["tangent_kink"] < 15.0
         # Coarticulation gates the verdict only as a sanity floor:
         # near-zero means the connectors run offset-parallel without
         # touching. The strict trace-reconstruction threshold (0.6+)
@@ -291,13 +329,14 @@ def main():
         # perfect.
         coin_ok = s["coarticulation"] > 0.05
         verdict = ("OK" if s["overlap"] > 0 and s["components"] == 1
-                   and drift_ok and kink_ok and coin_ok else "BAD")
+                   and drift_ok and stroke_kink_ok and t_kink_ok and coin_ok else "BAD")
         drift = f"{s['drift']:+.1f}" if s["drift"] is not None else "?"
-        kink = f"{s['kink']:.0f}°" if s["kink"] is not None else "?"
+        s_kink = f"{s['stroke_kink']:.0f}°" if s["stroke_kink"] is not None else "?"
+        t_kink = f"{s['tangent_kink']:.1f}°" if s["tangent_kink"] is not None else "?"
         print(
             f"  seam {s['pair']}: overlap={s['overlap']:.1f} su² "
             f"components-in-disc={s['components']} baseline-drift={drift} su "
-            f"kink={kink} coart={s['coarticulation']:.2f} "
+            f"stroke_kink={s_kink} tangent_kink={t_kink} coart={s['coarticulation']:.2f} "
             f"({s['join_class']}) [{verdict}]"
         )
 

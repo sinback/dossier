@@ -960,7 +960,11 @@ const E_JOIN_ANCHORS = {
     // o.exit and the high-join convention).
     high: { x: 2.99, y: 21.21 },
   },
-  exit:  { x: 43.38, y: 45.55 },
+  // exit: sinback's to/01 scan anchor (41.25, 71.64) mapped through the
+  // exit slice's placement transform (scale 1.536, see E_EXIT_SEGS).
+  // 15.6% x-height by rule consistency; also where the trimmed loop
+  // final segment ends (handoff point).
+  exit:  { x: 43.94, y: 45.30 },
 };
 
 const E_STRUCTURAL_ANCHORS = {
@@ -975,10 +979,12 @@ const E_LOOP_SEGS = [
   [[42.76,9.31],[41.17,8.09],[29.05,19.29],[29.84,19.84]],
   [[29.84,19.84],[28.14,20.43],[13.58,45.74],[18.59,46.23]],
   [[18.59,46.23],[16.34,53.24],[29.79,52.13],[30.51,49.90]],
-  // Final (exit) segment: P2 steepened from the traced (53.56, 40.27) so
-  // the stroke leaves climbing at ~37° (the low-join band direction from
-  // to/01) instead of flattening out — the connector into the next letter.
-  [[30.51,49.90],[29.86,51.47],[48.8,43.8],[53.59,40.21]],
+  // Final (exit) segment, trimmed at the exit anchor (43.94, 45.30):
+  // beyond that point the labeled exit CONNECTOR (E_EXIT_SEGS, a band-true
+  // slice of the to/01 trace) carries the stroke, so the loop ribbon stops
+  // where the connector takes over — no forked tail. (This supersedes the
+  // 2026-07-03 P2 steepening of the traced (53.56, 40.27) handle.)
+  [[30.51,49.90],[30.11,50.88],[37.3,48.27],[43.94,45.30]],
 ];
 
 // Entrance flick — default (e after @low_exit).
@@ -1001,6 +1007,21 @@ const E_ENTRANCE_AFTERHIGH_SEGS = [
   [[0, 18.5],[6, 24],[14, 31],[21.33, 35.41]],
 ];
 const E_ENTRANCE_AFTERHIGH = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
+
+// Exit connector — band-true slice of the canonical LOW-band trace
+// (to/01 path3 seg B, same curve as o's low entrance), rule-consistent
+// scale 43/28 = 1.536, pinned at sinback's scan anchor (41.25, 71.64) →
+// local (43.94, 45.30). Runs from just under the loop's lower-right
+// (the trace start) through the anchor, fading toward the next letter;
+// the loop's trimmed final segment hands off to it at the anchor.
+const E_EXIT_SEGS = [
+  // Trace slice (seg B, t ∈ [0, 0.566], de Casteljau sub-curve).
+  [[32.28, 51.06],[34.37, 52.43],[47.12, 42.32],[57.76, 33.26]],
+];
+// Anchor at arc-length fraction ~0.43 (body → tip); hairline holds a few
+// su past the anchor (fade window overlaps the partner slice's full-width
+// zone), then fades toward the next letter's entrance slice.
+const E_EXIT = { hairline: 0.65, fadeStart: 0.58 };
 
 // Width function for the loop. t = arc-length fraction [0, 1].
 // The loop goes: crossbar entry (thin) → top curve → left descent (thickening)
@@ -2208,9 +2229,10 @@ const O_RULE = { yTop: -57, yCenter: 3, yBottom: 63 };
 // or curs attachment accumulates baseline drift letter-by-letter.
 const O_JOIN_ANCHORS = {
   entry: {
-    // low: on the default entrance connector's straight 30° run, at 15%
-    // x-height.
-    low:  { x: 3.2, y: 54.0 },
+    // low: sinback's to/01 scan anchor (41.25, 71.64) mapped through the
+    // entrance slice's placement transform (scale 2.143, see
+    // O_ENTRANCE_DEFAULT_SEGS). 15.6% x-height by rule consistency.
+    low:  { x: -7.91, y: 53.66 },
     // high: ON the afterHigh entrance flick, at its closest approach to
     // the 71.6% high-join height (flick min-y is 20.87 = 69.3%; residual
     // drift vs convention -0.8 su, inside the 1.5 su tolerance). The old
@@ -2282,17 +2304,25 @@ const O_BOWL = {
 // downward (stays low) as the pen continues from the preceding letter's
 // y-bottom exit, then sweeps up to meet the top-left of the bowl at the
 // bowl's own tangent direction (≈ (+0.70, -0.71) at θ=-π/2).
-// Re-authored for the low-join band (diverges from the old traced handles,
-// per sinback 2026-07-03): a straight 30° climb through the 15% x-height
-// anchor zone — matching the incoming exit stroke's direction so the seam
-// reads as one steepening upstroke (to/01 seg B character) — then a G1
-// bend into the bowl approach (~46°, the bowl-top tangent).
+// Band-true slice of the canonical LOW-band trace: to/01 path3 seg B
+// ('t Exit Flick → o Entry'), rule-consistent scale 60/28 = 2.143, pinned
+// at sinback's scan anchor (41.25, 71.64) → local (-7.91, 53.66). The
+// slice runs from the trace (trimmed at local x = -24 to stay in frame)
+// up to bowl-attach height; the authored BRIDGE segment covers the last
+// ~6 su into the bowl attach point (27.3, 22.4), arriving ~46°. This is
+// the long, leftward entrance the scan shows — the pen climbs from near
+// baseline (left of the whole bowl) up to the bowl top-left.
 const O_ENTRANCE_DEFAULT_SEGS = [
-  [[-2.0, 57.0],[1.5, 55.0],[4.5, 53.2],[8.0, 51.2]],
-  [[8.0, 51.2],[12.3, 48.7],[21.7, 28.2],[27.3, 22.4]],
+  // Trace slice (seg B, t ∈ [0.011, 0.733], de Casteljau sub-curve).
+  [[-24.0, 61.79],[-19.58, 63.48],[8.54, 39.58],[23.3, 26.5]],
+  // Bridge (authored): slice end → bowl attach, continuing the ~42° climb.
+  [[23.3, 26.5],[24.6, 25.1],[26.0, 23.8],[27.3, 22.4]],
 ];
-// Connector: anchor sits at arc-length fraction 0.88 measured body → tip.
-const O_ENTRANCE_DEFAULT = { hairline: 0.6, fadeStart: 0.88 };
+// Connector: anchor sits at arc-length fraction ~0.71 measured body → tip;
+// width holds ~7 su past the anchor before fading over the tip stretch
+// (the previous letter's exit slice is full-width there — the two
+// crossfade along the SAME curve).
+const O_ENTRANCE_DEFAULT = { hairline: 0.6, fadeStart: 0.60 };
 
 // Entrance flick — afterHigh variant (o after @high_exit = b/f/v/w, or after strong o-exit).
 // Enters at ~rule.y-center and arrives at the top-left of the bowl (~θ=-π/2 in
@@ -2756,7 +2786,19 @@ function buildE(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
     12, cx, cy, scale, E_REF_CENTER
   );
   const loopQuads = buildRibbon(loopCenter, (t) => eLoopWidth(t, scale));
-  const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  const loopFills = loopQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'body' }));
+
+  // Exit connector (band-true slice of the to/01 trace; see E_EXIT_SEGS).
+  let exitFills = [];
+  if (variant.exit !== 'none') {
+    const exitCenter = sampleSegments(E_EXIT_SEGS, [0], 12, cx, cy, scale, E_REF_CENTER);
+    const exitQuads = buildConnectorRibbon(
+      exitCenter,
+      E_EXIT.hairline * scale,
+      E_EXIT.fadeStart,
+    );
+    exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'exit' }));
+  }
 
   // Entrance flick depends on variant.entry. 'none' → no entry stroke.
   let entrSegs = null, entrParams = null;
@@ -2780,7 +2822,7 @@ function buildE(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       entrParams.taperPower,
       entrParams.liftPoint,
     );
-    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
   }
 
   return {
@@ -2789,6 +2831,7 @@ function buildE(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
     fills: [
       ...loopFills,
       ...entrFills,
+      ...exitFills,
     ],
   };
 }
@@ -4164,6 +4207,102 @@ export const GLYPH_JOIN_ANCHORS = {
   o: O_JOIN_ANCHORS,
   r: R_JOIN_ANCHORS,
 };
+
+// ── Join tangents (direction of travel at a join anchor) ────────────────────
+// A second, more literal notion of "kink" than compose_word.py's PCA-over-
+// rendered-ink estimate: the actual tangent of the authored connector curve
+// at the anchor point. Anchors sit mid-curve (arc-length fraction ~0.4-0.7,
+// not at a segment's control points — see the O_EXIT_SEGS/E_EXIT_SEGS
+// comments), so this finds the closest sampled point and finite-differences
+// its neighbors rather than evaluating a cubic derivative analytically:
+// some connectors have degenerate control points (R_ENTRANCE_SEGS has
+// p0=p1 and p2=p3), which would make an analytic B'(t) blow up right at
+// the tip/body ends.
+//
+// Every entry/exit SEGS chain in this file is authored in downstream
+// pen-travel order (entry: tip → body attachment; exit: body → free tip),
+// so the returned angle already points "forward" along the writing
+// direction — no sign bookkeeping needed by callers.
+function tangentAtAnchor(segs, anchor, samplesPerSeg = 300) {
+  if (!segs || !anchor) return null;
+  const idxs = Array.from({ length: segs.length }, (_, i) => i);
+  const pts = sampleSegments(segs, idxs, samplesPerSeg, 0, 0, 1, { x: 0, y: 0 });
+  let bestI = 0, bestD = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const dx = pts[i].x - anchor.x, dy = pts[i].y - anchor.y;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) { bestD = d; bestI = i; }
+  }
+  const a = pts[Math.max(0, bestI - 1)];
+  const b = pts[Math.min(pts.length - 1, bestI + 1)];
+  const dx = b.x - a.x, dy = b.y - a.y;
+  if (dx === 0 && dy === 0) return null;
+  return Math.atan2(dy, dx) * 180 / Math.PI;
+}
+
+// Connector Bezier chains feeding each letter's join anchors, keyed the same
+// way buildE/buildO/buildR pick them internally (see those functions).
+// NOTE: kept in sync by hand — if a build function's entry/exit seg
+// selection changes, mirror the change here too. Returns the SEGS as
+// authored, before any per-call transform a build function applies to them
+// (e.g. buildO's overrides.defaultEntryRotation) — fine for compose_word.py
+// today (it passes no such override), but a future caller that does would
+// get a stale tangent out of joinTangentsForVariant below.
+function joinSegsForVariant(letter, variant) {
+  const v = resolveVariant(letter, variant) || {};
+  if (letter === 'o') {
+    return {
+      entry: v.entry === 'high' ? O_ENTRANCE_AFTERHIGH_SEGS
+           : v.entry === 'low'  ? O_ENTRANCE_DEFAULT_SEGS : null,
+      exit:  v.exit === 'high' ? O_EXIT_SEGS : null,
+    };
+  }
+  if (letter === 'e') {
+    return {
+      entry: v.entry === 'low'  ? E_ENTRANCE_DEFAULT_SEGS
+           : v.entry === 'high' ? E_ENTRANCE_AFTERHIGH_SEGS : null,
+      exit:  v.exit !== 'none' ? E_EXIT_SEGS : null,
+    };
+  }
+  if (letter === 'r') {
+    // r.afterHigh is a structurally different letterform (see R_STROKE_SEGS_
+    // AFTERHIGH's comment) — body AND exit shape change with variant.entry,
+    // not variant.exit. R_JOIN_ANCHORS.exit is a single point shared by both
+    // forms, but the curve it sits on differs.
+    const isAfterHigh = v.entry === 'high';
+    return {
+      entry: isAfterHigh ? R_ENTRANCE_AFTERHIGH_SEGS : R_ENTRANCE_SEGS,
+      exit:  isAfterHigh ? R_EXIT_SEGS_AFTERHIGH : R_EXIT_SEGS,
+    };
+  }
+  return { entry: null, exit: null };
+}
+
+// Direction of travel (degrees) at each of a glyph's join anchors, for the
+// tangent-based kink check in matlack/tools/compose_word.py. Mirrors
+// matlackSVGExport.js's anchorsForVariant point-picking, but resolves an
+// angle from the authored curve instead of a rendered-ink point.
+export function joinTangentsForVariant(letter, variant) {
+  const raw = GLYPH_JOIN_ANCHORS[letter];
+  if (!raw) return null;
+  const v = resolveVariant(letter, variant) || {};
+  const segs = joinSegsForVariant(letter, v);
+  const pick = (spec, key) => {
+    if (!spec) return null;
+    if (typeof spec.x === 'number') return spec;
+    return spec[key] || null;
+  };
+  const tangents = {};
+  if (v.entry !== 'none') {
+    const t = tangentAtAnchor(segs.entry, pick(raw.entry, v.entry || 'low'));
+    if (t !== null) tangents.entry = t;
+  }
+  if (v.exit !== 'none') {
+    const t = tangentAtAnchor(segs.exit, pick(raw.exit, v.exit || 'low'));
+    if (t !== null) tangents.exit = t;
+  }
+  return Object.keys(tangents).length ? tangents : null;
+}
 
 // Per-letter REF_CENTER exports — needed by callers that need to compute
 // where a glyph's local origin lands after applying a glyphToScanTransform.
