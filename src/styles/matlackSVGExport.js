@@ -171,14 +171,14 @@ export function geoRings(geo) {
     const { outerPts, innerEffPts } = bowlRings(bowl);
     result.push({ kind: 'bowl', outer: pairs(outerPts), inner: pairs(innerEffPts) });
     for (const ef of (bowl.extraFills || [])) {
-      result.push({ kind: 'fill', points: pairs(ef.points) });
+      result.push({ kind: 'fill', points: pairs(ef.points), label: ef.label ?? null });
     }
     for (const of_ of (bowl.overlayFills || [])) {
-      result.push({ kind: 'fill', points: pairs(of_.points) });
+      result.push({ kind: 'fill', points: pairs(of_.points), label: of_.label ?? null });
     }
   }
   for (const fill of geo.fills) {
-    result.push({ kind: 'fill', points: pairs(fill.points) });
+    result.push({ kind: 'fill', points: pairs(fill.points), label: fill.label ?? null });
   }
   return result;
 }

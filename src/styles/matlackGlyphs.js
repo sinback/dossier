@@ -188,7 +188,12 @@ function buildTaperedRibbon(centerline, startWidth, taperPower, liftPoint = 1.0)
 //   centerline:    array of {x, y}, ordered body → free end
 //   hairlineWidth: constant half-width (canvas px)
 //   fadeStart:     arc-length fraction where the fade to zero begins
-function buildConnectorRibbon(centerline, hairlineWidth, fadeStart = 0.85) {
+//   opts.bodyWidth: optional half-width at the body end; the profile blends
+//     bodyWidth → hairline over the first opts.blendEnd of arc length
+//     (default 0.4). Use when the connector thickens as it merges into the
+//     letter body (e.g. r's entrance) — the band portion stays hairline.
+function buildConnectorRibbon(centerline, hairlineWidth, fadeStart = 0.85, opts = {}) {
+  const { bodyWidth = null, blendEnd = 0.4 } = opts;
   const n = centerline.length;
   if (n < 2) return [];
 
@@ -204,9 +209,14 @@ function buildConnectorRibbon(centerline, hairlineWidth, fadeStart = 0.85) {
   const bots = [];
   for (let i = 0; i < n; i++) {
     const t = arcLen[i] / totalLen;
-    const hw = t <= fadeStart
-      ? hairlineWidth
-      : hairlineWidth * Math.pow(Math.max(0, 1 - (t - fadeStart) / (1 - fadeStart)), 1.7);
+    let hw;
+    if (bodyWidth !== null && t < blendEnd) {
+      hw = smoothStep(bodyWidth, hairlineWidth, t / blendEnd);
+    } else if (t <= fadeStart) {
+      hw = hairlineWidth;
+    } else {
+      hw = hairlineWidth * Math.pow(Math.max(0, 1 - (t - fadeStart) / (1 - fadeStart)), 1.7);
+    }
 
     const prev = centerline[Math.max(0, i - 1)];
     const next = centerline[Math.min(n - 1, i + 1)];
@@ -1644,11 +1654,13 @@ const R_JOIN_ANCHORS = {
     // sat at 68.5% — fine against the flick, but drift-inconsistent with
     // every low exit (they anchor at 15%).
     low:  { x: -7.55, y: 85.6 },
-    // high: ON the afterHigh body stroke (seg 1, the descending swoop) —
-    // the afterHigh form has no entry flick; the preceding letter's exit
-    // tail crosses the swoop here (cf. or/01: path2 ends where path1
-    // starts). Height matched to o.exit (71.6% x-height).
-    high: { x: 50.82, y: 53.90 },
+    // high: the SAME scan point as o.exit — sinback's (46.22, 30.11) on
+    // or/01 path2 — mapped through the transform that placed
+    // R_ENTRANCE_AFTERHIGH_SEGS (scale 2.17, end pinned to downstrokeTop,
+    // nudge included). Both glyphs anchoring the same trace point is what
+    // makes the curs overlay reconstruct the trace. Lands at 71.5%
+    // x-height, independently agreeing with o.exit's 71.6% convention.
+    high: { x: 32.76, y: 53.97 },
   },
   // At 15% x-height (join convention — see O_JOIN_ANCHORS), ON the afterHigh
   // exit stroke (solved from R_EXIT_SEGS_AFTERHIGH at y=85.6) and within
@@ -1674,7 +1686,6 @@ const R_STRUCTURAL_ANCHORS = {
 const R_ENTRANCE_SEGS = [
   [[-11.0,88.4],[-11.0,88.4],[51.44,37.99],[51.44,37.99]],
 ];
-const R_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
 
 // Entrance flick — afterHigh variant (r after b/f/o/v/w, or after strong o-exit).
 // Source: or/01 path2 ('o Exit → r Entry'), sliced at t≈0.45 on its 2nd
@@ -2220,28 +2231,30 @@ const O_STRUCTURAL_ANCHORS = {
   bowlTop:    { x: 59.66, y:  3.40 },
 };
 
-// Exit-flick Bezier segments in o's local frame.
-// Left end (59.66, 3.40) = bowlTop structural anchor; the pen departs the
-// bowl at its top, tangent to the bowl at rule.y-center.
-// Middle (90.73, 20.06) = sinback's font-anchor o.exit (from 'or/01').
-// The flick CONTINUES PAST the font-anchor — following the rest of path2
-// up toward where the pen would reach r's body. Those extra segments
-// provide overlap with the next letter's entry flick after curs attaches
-// the two anchors: both strokes cover the same transition region, so
-// visually they merge into one continuous pen gesture.
+// Exit-connector Bezier segments in o's local frame.
+//
+// Band-true slice rule: the portion of a connector inside the join band is
+// a rule-consistent-scale copy of the shared trace (or/01 path2), pinned at
+// sinback's scan anchor (46.22, 30.11) → local (90.73, 20.06), scale
+// 60/xh_scan = 2.325. The receiving glyph's slice (R_ENTRANCE_AFTERHIGH_SEGS)
+// is a same-scale copy of the same trace, so the curs overlay reconstructs
+// the trace exactly. Any adaptation to this glyph's own body happens in the
+// authored BRIDGE segment on the bowl side — never by warping the band.
+// (The pre-hiatus version stretched path2's first ~2 scan-units across the
+// whole bowl→band span, because our o/03-fitted bowl is smaller than the
+// or/01 o bowl; that warp is why the two strokes couldn't coincide.)
 const O_EXIT_SEGS = [
-  // Bowl-top → mid-transition (ends at o.exit font-anchor)
-  [[59.66,  3.40], [65.00,  4.50], [71.10, 25.87], [75.14, 24.53]],
-  [[75.14, 24.53], [74.84, 25.24], [84.47, 22.68], [90.73, 20.06]],
-  // Short past-anchor overlap tail (~6 su, the next piece of 'or/01'
-  // path2). The rest of that trace is the PAIR's transition, not o's —
-  // keeping it made o's tail overshoot the next letter's entrance
-  // (it was traced to reach r's body in one specific scan).
-  [[90.73, 20.06], [93.88, 19.25], [96.18, 18.22], [96.43, 17.62]],
+  // Bridge (authored): bowl top → trace start, riding the bowl's top curve.
+  [[59.66,  3.40], [63.50,  4.40], [67.40,  5.40], [70.99,  6.55]],
+  // Trace: path2 seg1 — the reversal dip leaving the bowl.
+  [[70.99,  6.55], [69.74,  6.97], [71.71, 25.69], [75.62, 24.38]],
+  // Trace: path2 seg2 — rises through the anchor toward r; ends ~5 su past
+  // the anchor (the fade tail).
+  [[75.62, 24.38], [75.22, 25.41], [95.54, 19.53], [96.24, 17.69]],
 ];
 // Connector, not a lift: hairline holds through the anchor (at arc-length
-// fraction 0.873), fades over the tail.
-const O_EXIT = { hairline: 0.6, fadeStart: 0.87 };
+// fraction 0.886), fades over the tail.
+const O_EXIT = { hairline: 0.6, fadeStart: 0.886 };
 
 // ── 'o' bowl ellipses ────────────────────────────────────────────────────────
 // Automated fit via scipy Nelder-Mead crescent model (93.8% → 86.2% constrained).
@@ -3617,7 +3630,7 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
     strokeSegs, strokeIdxs, 12, cx, cy, scale, R_REF_CENTER
   );
   const strokeQuads = buildRibbon(strokeCenter, (t) => rStrokeWidth(t, scale));
-  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'body' }));
 
   // Entrance flick (reversed taper).
   const entrSegs = isAfterHigh ? R_ENTRANCE_AFTERHIGH_SEGS : R_ENTRANCE_SEGS;
@@ -3625,14 +3638,19 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
   const entrCenter = sampleSegments(
     entrSegs, entrIdxs, 12, cx, cy, scale, R_REF_CENTER
   );
+  // Connector profile: fat where it merges into the body, hairline through
+  // the join band (the trace is a hairline there — or/01 path2), brief fade
+  // at the free tip. The old tip-to-zero lift taper left the band portion
+  // thinner than the shared trace, so the neighbor's slice couldn't
+  // coincide with it.
   const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
+  const entrQuads = buildConnectorRibbon(
     entrReversed,
-    3.5 * scale,
-    R_ENTRANCE.taperPower,
-    R_ENTRANCE.liftPoint,
+    0.65 * scale,
+    0.9,
+    { bodyWidth: 3.5 * scale, blendEnd: 0.4 },
   );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
 
   // Exit flick.
   const exitOff = resolveOffset('exitFlick', R_EXIT_OFFSET, overrides, dpr);
@@ -3647,7 +3665,7 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
     R_EXIT.taperPower,
     R_EXIT.liftPoint,
   );
-  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'exit' }));
 
   return {
     bowls: [
@@ -3834,7 +3852,7 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       entrParams.hairline * scale,
       entrParams.fadeStart,
     );
-    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
   }
 
   // Exit connector when variant.exit === 'high'. Geometry is path2 from
@@ -3853,7 +3871,7 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       O_EXIT.hairline * scale,
       O_EXIT.fadeStart,
     );
-    exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+    exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'exit' }));
   }
 
   return {

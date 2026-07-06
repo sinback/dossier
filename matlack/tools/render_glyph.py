@@ -95,6 +95,16 @@ def ink_geometry(render):
     return unary_union(parts)
 
 
+def component_geometry(render, label):
+    """Union of the fills tagged with a component label ('entrance', 'exit',
+    'body', …) by the glyph builders. Empty geometry if none match."""
+    parts = []
+    for ring in render["rings"]:
+        if ring.get("label") == label and len(ring.get("points", [])) >= 3:
+            parts.append(make_valid(Polygon(ring["points"])))
+    return unary_union(parts)
+
+
 def _polygons(geom):
     """Flatten any shapely geometry to a list of Polygons."""
     if geom.is_empty:

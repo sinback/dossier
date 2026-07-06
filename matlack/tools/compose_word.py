@@ -109,20 +109,39 @@ def normalize_scale(render, geom):
     TARGET_XH. Letters render at different physical scales for the same
     `size` (each was traced from a different-resolution crop); build_font.py
     normalizes via rule lines, so the composer must too or the seam metrics
-    lie. Letters without rules pass through unscaled."""
+    lie. Letters without rules pass through unscaled.
+
+    Returns (geom, scale). Note: render['rings'] stays unscaled — apply the
+    returned scale when deriving geometry from rings later."""
     rules = render.get("rules")
     if not rules:
-        return geom
+        return geom, 1.0
     s = TARGET_XH / (rules["yBottom"] - rules["yCenter"])
     if abs(s - 1.0) < 1e-9:
-        return geom
+        return geom, 1.0
     geom = affinity.scale(geom, xfact=s, yfact=s, origin=(0, 0))
     render["rules"] = {k: v * s for k, v in rules.items()}
     if render.get("joinAnchors"):
         render["joinAnchors"] = {
             k: [p[0] * s, p[1] * s] for k, p in render["joinAnchors"].items()
         }
-    return geom
+    return geom, s
+
+
+def coincidence_ratio(a, b, slack=2.5):
+    """How well two ink geometries overlay where they approach each other.
+
+    near_a = the part of `a` within `slack` of `b` (and vice versa); the
+    ratio is shared ink over the smaller near-region. 1.0 → wherever the
+    strokes come close, they actually ride on each other. Offset-parallel
+    strokes score ~0; shallow crossings score low. Connector pairs sliced
+    from one traced transition must score high (they reconstruct it)."""
+    near_a = a.intersection(b.buffer(slack))
+    near_b = b.intersection(a.buffer(slack))
+    denom = min(near_a.area, near_b.area)
+    if denom <= 0:
+        return 0.0
+    return a.intersection(b).area / denom
 
 
 def compose(word):
@@ -140,7 +159,7 @@ def compose(word):
     for i, letter in enumerate(word):
         entry, exit_ = variant_for(i, word)
         render = fetch_letter(letter, entry, exit_)
-        geom = normalize_scale(render, ink_geometry(render))
+        geom, letter_scale = normalize_scale(render, ink_geometry(render))
         anchors = render.get("joinAnchors") or {}
 
         if i > 0:
@@ -154,7 +173,7 @@ def compose(word):
 
         geom = affinity.translate(geom, dx, dy)
         placed.append({"letter": letter, "render": render, "geom": geom,
-                       "dx": dx, "dy": dy})
+                       "dx": dx, "dy": dy, "scale": letter_scale})
 
         if i > 0:
             join_pt = prev_exit
@@ -178,6 +197,11 @@ def compose(word):
             # stroke begins), so direction legitimately breaks there.
             kink = kink_angle(stroke_direction(a, join_pt),
                               stroke_direction(b, join_pt))
+            # Coincidence: the two glyphs' connector strokes are slices of
+            # ONE traced transition and must overlay (reconstruct it), not
+            # merely cross or run offset. Full-letter inks are fine here:
+            # the connectors are the only places neighbors come close.
+            coincidence = coincidence_ratio(a, b)
             seams.append({
                 "pair": word[i - 1] + letter,
                 "at": join_pt,
@@ -185,6 +209,7 @@ def compose(word):
                 "components": n_components,
                 "drift": drift,
                 "kink": kink,
+                "coincidence": coincidence,
                 "join_class": entry,  # entry variant of the second letter
             })
 
@@ -253,14 +278,23 @@ def main():
         drift_ok = s["drift"] is None or abs(s["drift"]) < 1.5
         kink_ok = (s["join_class"] != "low" or s["kink"] is None
                    or s["kink"] < 15.0)
+        # Coincidence gates the verdict only as a sanity floor: near-zero
+        # means the connectors run offset-parallel without touching. The
+        # strict trace-reconstruction threshold (0.6+) applies only to
+        # seams whose two slices come from one shared trace — enforced by
+        # pair-specific tests (e.g. tests/matlack/context/or/), not here:
+        # independently-authored connectors (r→e, sinback-approved) score
+        # ~0.25 while looking perfect.
+        coin_ok = s["coincidence"] > 0.05
         verdict = ("OK" if s["overlap"] > 0 and s["components"] == 1
-                   and drift_ok and kink_ok else "BAD")
+                   and drift_ok and kink_ok and coin_ok else "BAD")
         drift = f"{s['drift']:+.1f}" if s["drift"] is not None else "?"
         kink = f"{s['kink']:.0f}°" if s["kink"] is not None else "?"
         print(
             f"  seam {s['pair']}: overlap={s['overlap']:.1f} su² "
             f"components-in-disc={s['components']} baseline-drift={drift} su "
-            f"kink={kink} ({s['join_class']}) [{verdict}]"
+            f"kink={kink} coincidence={s['coincidence']:.2f} "
+            f"({s['join_class']}) [{verdict}]"
         )
 
 
