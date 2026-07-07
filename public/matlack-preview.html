@@ -4,11 +4,6 @@
   <meta charset="utf-8">
   <title>Matlack draft font preview</title>
   <style>
-    @font-face {
-      /* ?v=... cache-buster so each reload picks up the freshly-built font */
-      src: url('/fonts/matlack-draft.otf?v=19') format('opentype');
-      font-family: 'Matlack Draft';
-    }
     body {
       font-family: system-ui, sans-serif;
       background: #f5f3f0;
@@ -41,7 +36,22 @@
   </style>
 </head>
 <body>
+  <script>
+    // Timestamp cache-buster: every reload fetches the freshly-built font,
+    // no manual version bump needed. Rebuild with:
+    //   node scripts/export_glyphs.mjs && uv run python scripts/build_font.py \
+    //     matlack-glyphs.json matlack-draft.otf   (auto-copies to public/fonts/)
+    const face = new FontFace(
+      'Matlack Draft',
+      `url('/fonts/matlack-draft.otf?v=${Date.now()}') format('opentype')`
+    );
+    face.load().then(f => document.fonts.add(f))
+        .catch(e => document.body.prepend('FONT LOAD FAILED: ' + e));
+  </script>
   <h1>Matlack draft — live preview</h1>
+
+  <label>'oreo from' — the two close-study words (o/r/e/f/m joins)</label>
+  <div class="sample medium">oreo from</div>
 
   <label>editable sample — type here</label>
   <div class="sample" contenteditable spellcheck="false">to or for</div>

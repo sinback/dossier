@@ -33,6 +33,11 @@ const VARIANT_EXPORTS = {
     ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
     ['afterHigh', { entry: 'high', exit: 'low' }],    // after b/f/o/v/w
   ],
+  m: [
+    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
+    ['afterHigh', { entry: 'high', exit: 'low' }],    // after b/f/o/v/w
+    ['init',      { entry: 'none', exit: 'low' }],    // word-initial (traced flourish)
+  ],
 };
 
 // Returns a minimal calt+classes `.fea` snippet covering the variant glyphs
@@ -59,8 +64,13 @@ feature calt {
   ignore sub @all_letters o';
            sub            o' @all_letters by o.init;
 
+  # Word-initial m (not preceded by a letter, IS followed by one) → init.
+  ignore sub @all_letters m';
+           sub            m' @all_letters by m.init;
+
   # Contextual joins after @high_exit letters.
   sub @high_exit e' by e.afterHigh;
+  sub @high_exit m' by m.afterHigh;
   sub @high_exit o' by o.afterHigh;
   sub @high_exit r' by r.afterHigh;
 } calt;
