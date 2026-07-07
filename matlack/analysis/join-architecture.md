@@ -28,16 +28,56 @@ close studies (2026-07). "Coarticulation" is the handwriting-analysis term
   curs aligns anchor points and nothing else. Anchor x is the glyph's
   spacing choice.
 
+## Coordinate notation (used throughout)
+
+Every glyph has a local frame in "su" (its own trace's SVG units). Its
+rule lines live in that frame: `yBottom` (baseline) and `yCenter`
+(x-height top), so `xh = yBottom - yCenter` (y grows DOWNWARD — image
+coords — so "below the curve" means larger y). "xh 41, yBottom 137" means:
+this glyph's x-height spans local y 96..137. Frames differ in scale per
+letter; anything cross-letter (hairline width, band slices, seam metrics)
+must be made rule-consistent by scaling with xh — the composer and
+build_font.py both normalize to a common x-height via these rules.
+
 ## Canonical bands (pinned per sinback — do not generalize to bo/etc. yet)
 
 - **high** — or/01 path2 ('o Exit → r Entry'); scan anchor (46.22, 30.11);
   scan xh 25.81, baseline 48.56. Anchor sits at 71.6% of x-height.
 - **low** — to/01 path3 ('t Exit Flick → o Entry'); scan anchor
-  (41.25, 71.64) (sinback-picked, ~0.5 scan-su below the curve); scan
-  rules yCenter 48 / yBottom 76 (xh 28). Anchor sits at ~15.6% x-height.
+  (41.25, 71.64) (sinback-picked; it sits ~0.5 scan-su on the baseline
+  side of the traced curve — anchors may float slightly off-curve, and
+  band-true PAIRS inherit the offset consistently so it cancels).
+  Scan rules yCenter 48 / yBottom 76 (xh 28). Anchor at ~15.6% x-height.
 
-`matlack/tools/derive_band.py` emits paste-ready glyph-local seg arrays,
-the forced anchor, and arc fractions for any glyph frame.
+## Worked example — giving a letter a band-true connector
+
+How m got its afterHigh entrance (repeat this recipe for any new letter):
+
+1. Know the glyph frame: m's rules are `M_RULE = {yCenter: 37.6,
+   yBottom: 86.7}` (xh 49.1). If the letter has no GLYPH_RULES entry yet,
+   derive them from its trace/scan first and register them.
+2. Emit the slice:
+   `uv run python matlack/tools/derive_band.py high --xh 49.1
+   --ybottom 86.7 --anchor-x 62.55 [--skip-head 23] [--fade-len 6]`
+   — `anchor-x` is the spacing choice (here picked so the trace END lands
+   on the humps start; solve `anchor_x = body_pt.x - s*(trace_end_scan.x
+   - anchor_scan.x)`); anchor **y** is printed (forced by rule
+   consistency — never choose it).
+3. Paste the emitted seg arrays into matlackGlyphs.js as
+   `<X>_ENTRANCE_HIGH_SEGS` (or `_EXIT_…`); author a BRIDGE segment from
+   the slice's body-side end to the letter body if they don't meet
+   (G1-ish tangents; never warp the slice itself).
+4. Render with `buildConnectorRibbon(centerline, hairline*scale,
+   fadeStart)` — hairline = 0.65 × xh/60 (constant physical pen width);
+   fadeStart from the printed arc fractions, holding hairline a few su
+   PAST the anchor so the overlap band stays full-width. Label the fills
+   (`label: 'entrance'`/`'exit'`) so component tests can isolate them.
+5. Register: GLYPH_JOIN_ANCHORS (anchor from step 2), VARIANT_SUPPORT,
+   joinSegsForVariant (tangent metric), VARIANT_EXPORTS + calt (font).
+6. Test-first: pair test in `tests/matlack/context/<pair>/` asserting
+   component coarticulation > 0.6, then
+   `uv run python matlack/tools/compose_word.py <pair>` until green.
+   Check the alphabet sheet for regressions; commit atomically.
 
 ## Measurement (matlack/tools/compose_word.py)
 
@@ -55,22 +95,32 @@ uses a 0.05 offset-parallel sanity floor.
 Isolated-letter traces give word-EDGE forms, not mid-word connectors:
 - r/01's entrance hangs at 52% x-height → that's the word-initial form;
   the mid-word low entrance extends to the low band.
-- for/01 path1 is titled 'r Downstroke → r Exit (terminal)' → the current
-  R_EXIT_SEGS flourish is the word-final form; mid-word r needs a low-band
-  connector exit (r→o currently scores 0.01 — offset-parallel, open gap).
+- for/01 path1 is titled 'r Downstroke → r Exit (terminal)' → the
+  R_EXIT_SEGS flourish is the word-final form (kept for the future fina
+  variant); mid-word r exits via the band-true connector
+  (R_EXIT_BAND_SEGS; r→o scores 0.67).
 
-## "from" bring-up plan (scoped 2026-07-06)
+## "from" bring-up (completed 2026-07-07)
 
-- f→r: f.exit = or/01 band slice (xh 41, yBottom 137 → anchor y 107.7);
-  existing F_EXIT_SEGS (= traced for/01 path4) becomes bridge material from
-  the stem. Register f in GLYPH_JOIN_ANCHORS. r.entrance already
-  reconstructs the same band → coarticulates by construction.
-- r→o: mid-word r.exit = to/01 band slice (anchor ~(74, 85.3)) + bridge
-  from the bottom loop; keep current R_EXIT_SEGS for the future fina form.
-  o.entry.low is already band-true (e→o work).
-- o→m: m bring-up — M_RULE is trace-derived (no rule lines in the m/01
-  crop): yCenter ≈ hump tops ~42, yBottom ≈ valleys ~87. Register rules /
-  ref center / anchors; m.entrance.high = or/01 band slice + bridge to the
-  humps start; exit stays terminal (word-final in "from").
-- Tests: pair tests fr/, ro/, om/ + word battery; then the font-context
-  generalization check (export → build_font → shaped rendering).
+All landed; seams f→r 0.64, r→o 0.67, o→m 0.67, r→e 0.75 (see
+`matlack/renders/milestones/`):
+
+- f.exit = or/01 band slice bridged from the stem (traced for/01 path4
+  survives as the bridge's departure tangent); f registered for curs,
+  entry still word-initial-only.
+- r's mid-word exit = to/01 band slice (trace start pinned to the
+  afterHigh loop end; default body reaches it via a baseline bridge);
+  traced flourish exits kept for future fina forms. e's low entrance
+  followed (the hand-authored dip couldn't coarticulate with a band-true
+  partner — mixed pairs don't inherit the scan anchor's off-curve offset).
+- m brought up from nothing: trace-derived M_RULE (yCenter = humps-start
+  knob 37.6, yBottom = valleys 86.7), three entrance forms (init = the
+  traced m/01 flourish), band-true low/high entrances.
+- Font: m variants + calt; two FEA gotchas found via uharfbuzz — bare
+  ignore/sub groups merge into one poisoned lookup (wrap each group in an
+  explicit `lookup` block), and context classes must include substituted
+  variant glyphs (@high_exit needs o.init/o.afterHigh). Preview page:
+  /matlack-preview.html (FontFace + Date.now() cache-buster).
+
+Open gaps (measured): o→e 0.19 (e.entry.high not band-true), r→r
+tip-to-tip, f mid-word entry, m.exit not band-true.

@@ -9,8 +9,10 @@ from the 1823 Stone facsimile of the Declaration of Independence.
   Calligraphic variants (blackletter 'a' from the preamble, etc.) are separate.
 - `analysis/` — Observations derived from reference images. Each claim cites
   specific reference files. Treat observations as hypotheses until confirmed by rendering.
-- `renders/` — Our WebGL output, per-letter. Filenames include the git short hash
-  that produced them (e.g., `a_03_ea95434.png`).
+- `renders/` — Rendered output. `<letter>/` dirs hold early WebGL captures
+  (git short hash in the name, e.g. `a_03_ea95434.png`); `_scratch/` is
+  gitignored working output from render_glyph.py/compose_word.py;
+  `milestones/` holds checked-in proof images (see its README).
 
 ## Source image
 

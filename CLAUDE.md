@@ -22,10 +22,13 @@ Routes (all under the dev server):
 - `/crinkly`, `/inky` — paper-physics demos
 
 ### Python analysis (uv-managed; **use `uv run`, not bare `python`**)
-- `uv sync` — install deps from `pyproject.toml` (pillow, scipy, fonttools, ufo2ft, defcon; pytest+hypothesis in dev)
+- `uv sync` — install deps from `pyproject.toml` (pillow, scipy, fonttools, ufo2ft, defcon; pytest+hypothesis+shapely+uharfbuzz in dev)
 - `uv run pytest` — run the test suite (pytest + Hypothesis property tests; `testpaths = ["tests"]`)
 - `uv run pytest tests/path/to/test_x.py::test_name` — single test
 - `uv run python matlack/tools/fit_paths.py <svg_path_file> [--egg]` — fit ellipses/eggs to traced paths
+- `uv run python matlack/tools/render_glyph.py <letter> [--rules] [--alphabet]` — clean browser-free glyph PNGs + Shapely ink geometry (see `memory/project_render_pipeline.md`)
+- `uv run python matlack/tools/compose_word.py "oreo from"` — curs-preview word composition + per-seam metrics (overlap, drift, kink, coarticulation)
+- `uv run python matlack/tools/derive_band.py <high|low> --xh … --ybottom … --anchor-x …` — paste-ready band-true connector slices (see `matlack/analysis/join-architecture.md`)
 
 ### Font pipeline
 1. `node scripts/export_glyphs.mjs` (or the "export json" button in `/matlack`) → writes `matlack-glyphs.json`
@@ -135,14 +138,44 @@ All three live in the 40°–55° range numerically, which is why collapsing the
 
 For letters that support `{entry: 'none', exit: 'none'}` (the isol form), **that is the simplest variant** — a bare bowl with no flicks. Earlier thinking treated flicked forms as the "default" and isol as the exception; that framing is wrong and has been a recurring source of agent confusion. Isol is the baseline; entry and exit flicks are additions.
 
+### When a render "looks weird" — the decision path
+
+Your aesthetic sense is calibrated to modern handwriting, not Matlack's
+(it once flagged the correct 't' and 'k' as the worst letters). So when a
+render bothers you, don't trust the feeling — classify it:
+
+1. **Structural wrongness** (blobs, gaps, letters detached or piled up,
+   baseline steps): trust it, and reach for numbers — `compose_word.py`
+   seam metrics, the pair tests, `render_glyph.py --rules` with anchor
+   markers. These failures are always measurable; if you can see it but
+   can't measure it, add the missing metric (that's how kink and
+   coarticulation were born).
+2. **Aesthetic wrongness** (proportions, weight, "ugly"): do NOT act on
+   it. Check against traced reference data if precision matters, or queue
+   it for sinback's eye. Base glyphs are locked; letterform taste calls
+   are sinback's.
+3. **Unsure which**: render the same case at realistic font size (small)
+   — structural problems survive shrinking, taste reactions usually don't.
+
 ### Testing glyphs: Shapely-based topology
 
 Scriptable "this is wrong" signals live under `tests/matlack/`, mirroring the structure of `matlack/reference/` (i.e. `tests/matlack/lowercase/<letter>/` and `tests/matlack/context/<word>/`). Tests hit the live dev server's `/api/outlines` endpoint; `tests/matlack/conftest.py` bails with a friendly message if the server is down (no per-test skip markers).
 
 Topology checks come first (simple/closed rings, `outer.contains(inner)`, parametrized over supported variants). Shape-sanity checks (aspect ratio in ⟋-rotated bbox, ⟋-angle tolerance) come second. Flick-connectivity checks come after the outlines export grows entry/exit components. **Don't unit-test `buildO` internals** — anchor numbers change constantly, the math is trivial, and the tests don't catch the failures we actually care about.
 
-### Future item: make r→e's connector band-true
+### Joins are band-true (o/r/e/f/m); one route change awaits sinback's eye
 
-`R_EXIT_SEGS` (r's exit) and `E_ENTRANCE_DEFAULT_SEGS` (e's entry) are independently hand-authored per letter — unlike o↔r's high join (`O_EXIT_SEGS`/`R_ENTRANCE_AFTERHIGH_SEGS`) and the low band feeding e→o/t→o (`E_EXIT_SEGS`/`O_ENTRANCE_DEFAULT_SEGS`), which are both literal rescaled slices of one hand-traced scan curve (see "band-true slice" comments in `matlackGlyphs.js` and `matlack/tools/derive_band.py`). r→e currently measures as a clean join anyway (sinback: "actually perfect"; `tangent_kink` ≈ 0.4°) — it just isn't *band-true* the way the other two are, so its tangent continuity is a hand-tuned coincidence rather than a structural guarantee.
+All connectors among o, r, e, f, m are now band-true slices of the two
+canonical traces (high = or/01, low = to/01) — see
+`matlack/analysis/join-architecture.md` for the model, the worked example,
+and the measurement suite. r→e was converted per the old plan, option (b):
+metrics improved (coarticulation 0.25 → 0.75, tangent_kink 0.0°), but the
+connector's visible ROUTE changed (it now dips through the baseline band
+per to/01, vs the hand-tuned direct diagonal sinback once called
+"actually perfect"). Before/after pair is checked in at
+`matlack/renders/milestones/2026-07_oreo_BEFORE_r_band_swap.png` vs
+`2026-07_oreo_band_true.png` — if sinback dislikes the new route, revisit
+rather than argue from the metrics.
 
-Goal: make r→e band-true too, without regressing how it currently looks. This likely means either (a) finding/tracing a real r→e transition in a reference scan and deriving both sides from that shared trace via `derive_band.py`, or (b) establishing that r's exit and e's low entry can reuse the *existing* to/01 low-band trace (same convention already used for e→o and t→o) — but only if that doesn't visibly worsen the current hand-tuned r→e join. Don't force this by just swapping in the to/01 trace and calling it done if it looks worse; the whole point is band-true AND still perfect.
+Known non-band-true joins (measured, deferred): o→e (e.entry.high, coart
+0.19), r→r (tip-to-tip), f.entry (word-initial only), m.exit.

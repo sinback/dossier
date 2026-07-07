@@ -4316,7 +4316,6 @@ export const GLYPH_JOIN_ANCHORS = {
   e: E_JOIN_ANCHORS,
   f: F_JOIN_ANCHORS,
   m: M_JOIN_ANCHORS,
-  // f: F_JOIN_ANCHORS, // disabled while we debug f's vertical placement
   o: O_JOIN_ANCHORS,
   r: R_JOIN_ANCHORS,
 };
@@ -4375,6 +4374,14 @@ function joinSegsForVariant(letter, variant) {
       entry: v.entry === 'low'  ? E_ENTRANCE_DEFAULT_SEGS
            : v.entry === 'high' ? E_ENTRANCE_AFTERHIGH_SEGS : null,
       exit:  v.exit !== 'none' ? E_EXIT_SEGS : null,
+    };
+  }
+  if (letter === 'f') {
+    // f has no mid-word entry (word-initial only — see F_JOIN_ANCHORS);
+    // exit is the band-true connector.
+    return {
+      entry: null,
+      exit:  F_EXIT_SEGS,
     };
   }
   if (letter === 'm') {

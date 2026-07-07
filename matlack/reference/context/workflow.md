@@ -38,11 +38,13 @@ including its own lead-in and exit flicks, which **extend past the
 anchor points** — so the strokes overlap visually in a band around
 the anchor and provide the look of a continuous pen gesture.
 
-Consequences:
+Consequences (SUPERSEDED in part — see `matlack/analysis/join-architecture.md`,
+the band-true slice rule: for connectors sliced from one canonical trace,
+both glyphs' anchors ARE the same scan point through their own placement
+transforms, and anchor heights follow per-class conventions; "chosen by
+feel" survives only in the horizontal spacing choice):
 
-- The two anchors for a single pair (`t.exit` + `o.entry`) do NOT
-  have to sit at the same point along any shared reference curve.
-  Each glyph's anchor is chosen in its own design, by feel.
+- Each glyph's anchor x is chosen in its own design, by feel.
 - The rendered output matches the **style** of Matlack's hand, not
   any specific scan pixel-for-pixel. This is fine for a realistic-
   approximation project and is usually better than pixel-matching —
@@ -97,20 +99,20 @@ For each scan we want to learn from:
 
 ## Variant naming (for contextual alternates)
 
-Each letter build function accepts a `variant` argument:
+Each letter build function accepts a `variant` argument — an
+`{entry, exit}` object, values `'low' | 'high' | 'none'` (+ `'flourish'`
+for future sentence-end exits). `VARIANT_SUPPORT` in
+`src/styles/matlackGlyphs.js` is the ground truth for what each letter
+accepts (supported vs notYet); `resolveVariant` fills partial variants
+from the default (= `supported[0]`) and degrades notYet combos while
+preserving the entry side. The font-facing names (`.afterHigh`, `.init`,
+`.isol` glyph suffixes) map from these in `VARIANT_EXPORTS`
+(matlackSVGExport.js).
 
-- `default` — letter in the middle of a word, after a low-exit letter
-- `afterHigh` — letter after a high-exit letter (b, f, o, v, w); entry
-  approaches from rule.y-center instead of rule.y-bottom
-- `omit` / `init` — letter at word start; entry stroke omitted
-- `fina` — letter at word end; exit stroke omitted
-- `flourish` — exit elaborated (used before period for sentence-end)
-
-Current coverage: r, e, o have `default` / `afterHigh` / `omit`. Rest
-are implicit `default` and would need variants added case-by-case.
-
-See `src/styles/matlackGlyphs.js` for `buildE`/`buildO`/`buildR` as
-reference patterns.
+Coverage as of 2026-07: e, o, r, m have entry variants (o also init/isol);
+f is registered for curs but word-initial-only on the entry side (see
+F_JOIN_ANCHORS). Remaining letters are variant-blind and render their
+default form.
 
 ## Code gotchas (things that burned this session)
 

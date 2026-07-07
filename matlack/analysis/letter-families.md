@@ -4,6 +4,11 @@ How letters share construction patterns. Learning one letter informs others
 in the same family. Groupings here are based on shared sub-strokes and
 motor patterns, not just visual similarity.
 
+NOTE: "Done" below means the BASE letterform exists (locked as good-enough
+neutrals per sinback). Variant/join support is tracked separately —
+`VARIANT_SUPPORT` and `GLYPH_JOIN_ANCHORS` in matlackGlyphs.js are ground
+truth; the join model lives in analysis/join-architecture.md.
+
 ---
 
 ## Bowl family: a, b, c, d, e, g, o, q
