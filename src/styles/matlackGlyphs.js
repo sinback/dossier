@@ -634,19 +634,25 @@ const F_ENTRY_FLICK = {
   liftPoint: 1.0,
 };
 
-// ── 'f' exit crossbar ────────────────────────────────────────────────────────
-// All of path4 "f Exit → o Entry", used as one continuous tapered stroke
-// extending from f's stem (70.13, 104.10) out past where o's entry begins.
+// ── 'f' exit connector ───────────────────────────────────────────────────────
+// Band-true slice of or/01 path2 (the canonical HIGH band; derive_band.py
+// high --xh 41 --ybottom 137 --anchor-x 99.2 --skip-head 13.5 --fade-len 5),
+// bridged from f's stem. The old segs were the traced for/01 path4 ("f Exit
+// → o Entry") verbatim — pair-specific geometry that couldn't coarticulate
+// with band-true entrances; its departure handle survives in the bridge.
 const F_EXIT_SEGS = [
-  [[ 70.13, 104.10], [ 70.34, 108.89], [ 97.64, 107.03], [ 99.22, 103.05]],
-  [[ 99.22, 103.05], [100.63, 104.43], [108.50,  97.61], [108.65,  97.08]],
-  [[108.65,  97.08], [108.32,  95.01], [125.80,  86.98], [125.90,  87.58]],
+  // Bridge (authored): stem → band start, keeping path4's departure tangent.
+  [[ 70.13, 104.10], [ 70.34, 108.89], [ 82.50, 111.50], [ 88.87, 110.66]],
+  // Band-true slice; anchor (99.2, 107.69) at 71.5% x-height.
+  [[ 88.87, 110.66], [ 88.67, 111.33], [102.49, 107.33], [102.96, 106.07]],
+  [[102.96, 106.07], [103.07, 106.14], [103.20, 106.18], [103.36, 106.18]],
 ];
-const F_EXIT = {
-  startWidth: 1.8,   // medium thin
-  taperPower: 0.8,   // gentle taper toward o
-  liftPoint: 1.0,
-};
+// Connector: hairline through the band, fade over the ~4.6 su past-anchor
+// tail (anchor at arc fraction (21.2 + 10.8) / (21.2 + 15.4)).
+// Hairline is in glyph-local su, and f's frame is small (xh 41 vs the 60
+// normalization target) — the physical pen width is constant, so the local
+// value is scaled down accordingly (0.65 × 41/60).
+const F_EXIT = { hairline: 0.45, fadeStart: 0.874 };
 
 // ── 'f' rule lines ───────────────────────────────────────────────────────────
 // In for/01 frame. Tilted rule.y-center is Matlack's own irregularity; we
@@ -664,10 +670,16 @@ const F_STRUCTURAL_ANCHORS = {
   gestalt: { x: 70, y: 108 },
 };
 
-// Join anchors — first-pass; curs disabled for f while we build. TODO.
+// Join anchors. exit = the canonical high-band scan anchor (46.22, 30.11)
+// mapped through the F_EXIT_SEGS slice transform — same point every
+// band-true high connector pins, so f→r / f→o coarticulate by construction.
 const F_JOIN_ANCHORS = {
-  entry: { x: 44.60, y: 116.03 },  // path6 start (before entry flick)
-  exit:  { x: 99,    y: 103 },     // mid-path4; TODO: scan-tune
+  // entry: path6 start (before entry flick). Sits at 51% x-height — off the
+  // 15.6% low-join convention; fine while f is only used word-initially
+  // (no curs predecessor). TODO before mid-word f: extend the entry flick
+  // to the low band and move this onto it.
+  entry: { x: 44.60, y: 116.03 },
+  exit:  { x: 99.2,  y: 107.69 },
 };
 
 
@@ -2680,18 +2692,17 @@ function buildF(cx, cy, scale, dpr, overrides) {
     efParams.liftPoint  ?? F_ENTRY_FLICK.liftPoint,
   );
 
-  // ── Exit crossbar: tapered ribbon from path4 ──────────────────
+  // ── Exit connector: band-true hairline (see F_EXIT_SEGS) ──────
   const exOff = resolveOffset('exit', { dx: 0, dy: 0 }, overrides, dpr);
   const exParams = overrides.exit ?? F_EXIT;
   const exCenter = sampleSegments(
     F_EXIT_SEGS, [0, 1, 2], 14,
     cx + exOff.dx, cy + exOff.dy, scale, F_REF_CENTER,
   );
-  const exit = buildTaperedRibbon(
+  const exit = buildConnectorRibbon(
     exCenter,
-    (exParams.startWidth ?? F_EXIT.startWidth) * scale,
-    exParams.taperPower ?? F_EXIT.taperPower,
-    exParams.liftPoint  ?? F_EXIT.liftPoint,
+    (exParams.hairline ?? F_EXIT.hairline) * scale,
+    exParams.fadeStart ?? F_EXIT.fadeStart,
   );
 
   return {
@@ -2704,9 +2715,9 @@ function buildF(cx, cy, scale, dpr, overrides) {
       },
     ],
     fills: [
-      { points: fatBarPoly, pressure: 0.85 },
-      ...entryFlick.map(p => ({ points: p, pressure: 0.75 })),
-      ...exit.map(p => ({ points: p, pressure: 0.75 })),
+      { points: fatBarPoly, pressure: 0.85, label: 'body' },
+      ...entryFlick.map(p => ({ points: p, pressure: 0.75, label: 'entrance' })),
+      ...exit.map(p => ({ points: p, pressure: 0.75, label: 'exit' })),
     ],
   };
 }
@@ -4203,6 +4214,7 @@ export const GLYPH_RULES = {
 
 export const GLYPH_JOIN_ANCHORS = {
   e: E_JOIN_ANCHORS,
+  f: F_JOIN_ANCHORS,
   // f: F_JOIN_ANCHORS, // disabled while we debug f's vertical placement
   o: O_JOIN_ANCHORS,
   r: R_JOIN_ANCHORS,
