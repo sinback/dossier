@@ -163,6 +163,41 @@ def coarticulation_ratio(a, b, slack=2.5):
     return a.intersection(b).area / denom
 
 
+WORD_GAP = 0.75 * TARGET_XH  # inter-word space, normalized su
+
+
+def compose_text(text):
+    """compose() for multi-word text: words are composed independently,
+    then placed left-to-right with WORD_GAP between them, baselines aligned
+    via each word's first letter's rule lines. Seams exist within words
+    only."""
+    all_placed, all_seams = [], []
+    x_cursor = None
+    base_y = None
+    for w in text.split():
+        placed, seams = compose(w)
+        rules0 = placed[0]["render"].get("rules")
+        word_base = rules0["yBottom"] if rules0 else 0.0
+        minx = min(p["geom"].bounds[0] for p in placed)
+        maxx = max(p["geom"].bounds[2] for p in placed)
+        if x_cursor is None:
+            ddx = ddy = 0.0
+            base_y = word_base
+        else:
+            ddx = x_cursor + WORD_GAP - minx
+            ddy = base_y - word_base
+        for p in placed:
+            p["geom"] = affinity.translate(p["geom"], ddx, ddy)
+            p["dx"] += ddx
+            p["dy"] += ddy
+        for s in seams:
+            s["at"] = (s["at"][0] + ddx, s["at"][1] + ddy)
+        x_cursor = maxx + ddx
+        all_placed += placed
+        all_seams += seams
+    return all_placed, all_seams
+
+
 def compose(word):
     """Chain letters by join anchors.
 
@@ -300,15 +335,15 @@ def rasterize_word(placed, seams, px_per_unit=3, rules=False, mono=False,
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    ap.add_argument("word", help="letters to chain (e.g. 'or')")
+    ap.add_argument("word", help="letters to chain (e.g. 'or'); spaces split words")
     ap.add_argument("--px-per-unit", type=float, default=3, help="raster scale (default 3)")
     ap.add_argument("--rules", action="store_true", help="draw first letter's rule lines")
     ap.add_argument("--mono", action="store_true", help="single ink color, no join coding")
     ap.add_argument("-o", "--out", help="output path (default matlack/renders/_scratch/)")
     args = ap.parse_args()
 
-    placed, seams = compose(args.word)
-    out = args.out or SCRATCH_DIR / f"word_{args.word}.png"
+    placed, seams = compose_text(args.word)
+    out = args.out or SCRATCH_DIR / f"word_{args.word.replace(' ', '_')}.png"
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
     rasterize_word(placed, seams, args.px_per_unit, args.rules, args.mono).save(out)
     print(f"wrote {out}")
