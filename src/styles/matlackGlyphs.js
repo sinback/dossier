@@ -967,7 +967,7 @@ const E_RULE = { yTop: -34, yCenter: 9, yBottom: 52 };
 //         to (53.59, 40.21), which is the overlap tail.
 const E_JOIN_ANCHORS = {
   entry: {
-    low:  { x: 0.98, y: 45.5 },
+    low:  { x: 0.98, y: 45.3 },
     // high: ON the extended afterHigh flick at 71.6% x-height (matches
     // o.exit and the high-join convention).
     high: { x: 2.99, y: 21.21 },
@@ -1002,14 +1002,21 @@ const E_LOOP_SEGS = [
 // Entrance flick — default (e after @low_exit).
 // Dips from the crossbar start down through the 15% x-height low-join band
 // (anchor at (0.98, 45.5)), tip ending at y=48. The earlier straight-line
-// version stayed at crossbar height on the theory that reaching y-bottom
-// would be absurdly long — but the two-anchor model doesn't need that: the
-// preceding letter's exit stroke climbs to ~15% and hands off there (cf.
-// to/01 seg B, slope ≈ -0.77). End tangent still matches the crossbar's.
+// Band-true slice of to/01 path3 (the canonical LOW band; derive_band.py
+// low --xh 43 --ybottom 52 --anchor-x 0.98 --skip-head 12.1 --fade-len 6),
+// bridged to the crossbar start. Replaces the hand-authored dip: with r's
+// exit now band-true, only a slice of the same trace can coarticulate
+// (the dip rode ~1.5 su parallel to it — coart 0.03).
 const E_ENTRANCE_DEFAULT_SEGS = [
-  [[-3, 48],[2, 45],[12, 37.8],[21.33, 35.41]],
+  // Band-true slice; anchor (0.98, 45.3) at 15.6% x-height.
+  [[-10.68, 51.06],[-9.30, 51.97],[-3.30, 47.88],[3.68, 42.40]],
+  // Bridge (authored): band → crossbar start, easing 38° → crossbar tangent.
+  [[3.68, 42.40],[8.20, 39.60],[14.50, 37.20],[21.33, 35.41]],
 ];
-const E_ENTRANCE_DEFAULT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
+// Connector, body→tip render order: holds hairline through the anchor
+// (at ~0.63 of arc from the body side), fades over the outer tip.
+// Hairline rule-consistent: 0.65 × 43/60.
+const E_ENTRANCE_DEFAULT = { hairline: 0.47, fadeStart: 0.75 };
 
 // Entrance flick — afterHigh variant (e after @high_exit = b/f/o/v/w).
 // Enters from the high-join band (tip at ~78% x-height, up from the old
@@ -1018,7 +1025,9 @@ const E_ENTRANCE_DEFAULT = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
 const E_ENTRANCE_AFTERHIGH_SEGS = [
   [[0, 18.5],[6, 24],[14, 31],[21.33, 35.41]],
 ];
-const E_ENTRANCE_AFTERHIGH = { startWidth: 1.5, taperPower: 1.7, liftPoint: 1.0 };
+// Authored (not yet band-true — o→e still scores low; future work mirrors
+// the low-entry slice using the HIGH band).
+const E_ENTRANCE_AFTERHIGH = { hairline: 0.47, fadeStart: 0.8 };
 
 // Exit connector — band-true slice of the canonical LOW-band trace
 // (to/01 path3 seg B, same curve as o's low entrance), rule-consistent
@@ -1695,11 +1704,9 @@ const R_JOIN_ANCHORS = {
     // x-height, independently agreeing with o.exit's 71.6% convention.
     high: { x: 32.76, y: 53.97 },
   },
-  // At 15% x-height (join convention — see O_JOIN_ANCHORS), ON the afterHigh
-  // exit stroke (solved from R_EXIT_SEGS_AFTERHIGH at y=85.6) and within
-  // ~1 su of the default exit stroke's endpoint (74.98, 86.19), so one
-  // anchor serves both r forms. Replaces the old (55, 90) placeholder.
-  exit:  { x: 74.02, y: 85.6 },
+  // The canonical low scan point (41.25, 71.64) through the exit
+  // connector's slice transform (see R_EXIT_BAND_SEGS) — 15.6% x-height.
+  exit:  { x: 87.09, y: 85.28 },
 };
 
 // Structural anchors — stable, identifiable features on the letter's body,
@@ -1762,13 +1769,35 @@ function rStrokeWidth(t, scale) {
   return smoothStep(3.0, 1.5, (t - 0.80) / 0.20) * scale;
 }
 
-// Exit flick
+// Exit flick — traced from isolated r/01, i.e. the WORD-FINAL form (for/01
+// path1 'r Downstroke → r Exit (terminal)' confirms terminal r exits are a
+// distinct flourish). Kept for the future fina variant; mid-word exits use
+// the band-true connector below.
 const R_EXIT_SEGS = [
   [[37.56,94.79],[36.90,95.64],[50.31,96.17],[51.21,95.00]],
   [[51.21,95.00],[51.21,95.00],[74.98,86.19],[74.98,86.19]],
 ];
 const R_EXIT = { startWidth: 2.5, taperPower: 1.7, liftPoint: 0.85 };
 const R_EXIT_OFFSET = { dx: 0, dy: 0 };
+
+// Mid-word exit connector — band-true slice of to/01 path3 (the canonical
+// LOW band; derive_band.py low --xh 56 --ybottom 94 --anchor-x 87.09
+// --fade-len 6). anchor-x was chosen so the trace START lands on the
+// afterHigh body's bottom-loop end (56.31, 94.58) — zero bridge for that
+// form; the default body reaches the trace via a baseline bridge (the
+// trace's own opening character is a baseline crawl, so the bridge just
+// extends it). Anchor (87.09, 85.28) = the canonical low scan point
+// (41.25, 71.64) through this slice's transform, 15.6% x-height.
+const R_EXIT_BAND_SEGS = [
+  [[56.31, 93.90], [55.77, 94.38], [70.53, 94.02], [71.91, 92.78]],
+  [[71.91, 92.78], [73.57, 93.87], [80.42, 89.38], [88.66, 83.02]],
+];
+const R_EXIT_BRIDGE_DEFAULT = [
+  [[36.97, 93.99], [43.40, 95.80], [50.20, 95.30], [56.31, 93.90]],
+];
+// hairline rule-consistent (0.65 × 56/60); fadeStart: anchor at 33.0 su of
+// the 35.5 su slice, plus the 19.8 su bridge for the default form.
+const R_EXIT_CONN = { hairline: 0.61, fadeStartAfterHigh: 0.929, fadeStartDefault: 0.955 };
 
 // ── afterHigh variant body + exit ────────────────────────────────────────────
 // In Copperplate literature the flat-topped r is a structurally different
@@ -2825,13 +2854,16 @@ function buildE(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
 
   let entrFills = [];
   if (entrSegs) {
-    const entrCenter = sampleSegments(entrSegs, [0], 12, cx, cy, scale, E_REF_CENTER);
+    const entrCenter = sampleSegments(
+      entrSegs,
+      Array.from({ length: entrSegs.length }, (_, i) => i),
+      12, cx, cy, scale, E_REF_CENTER,
+    );
     const entrReversed = [...entrCenter].reverse();
-    const entrQuads = buildTaperedRibbon(
+    const entrQuads = buildConnectorRibbon(
       entrReversed,
-      entrParams.startWidth * scale,
-      entrParams.taperPower,
-      entrParams.liftPoint,
+      entrParams.hairline * scale,
+      entrParams.fadeStart,
     );
     entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
   }
@@ -3676,7 +3708,6 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
   // structurally different letterform, not just a different entry flick.
   const isAfterHigh = variant.entry === 'high';
   const strokeSegs = isAfterHigh ? R_STROKE_SEGS_AFTERHIGH : R_STROKE_SEGS;
-  const exitSegs   = isAfterHigh ? R_EXIT_SEGS_AFTERHIGH   : R_EXIT_SEGS;
 
   // Swoop + downstroke as one ribbon.
   const strokeIdxs = Array.from({ length: strokeSegs.length }, (_, i) => i);
@@ -3706,18 +3737,22 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
   );
   const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
 
-  // Exit flick.
+  // Exit connector — band-true slice (see R_EXIT_BAND_SEGS). The traced
+  // flourish forms (R_EXIT_SEGS / R_EXIT_SEGS_AFTERHIGH) are word-final;
+  // they'll return as the fina variant.
   const exitOff = resolveOffset('exitFlick', R_EXIT_OFFSET, overrides, dpr);
-  const exitIdxs = Array.from({ length: exitSegs.length }, (_, i) => i);
+  const exitConnSegs = isAfterHigh
+    ? R_EXIT_BAND_SEGS
+    : [...R_EXIT_BRIDGE_DEFAULT, ...R_EXIT_BAND_SEGS];
+  const exitIdxs = Array.from({ length: exitConnSegs.length }, (_, i) => i);
   const exitCenter = sampleSegments(
-    exitSegs, exitIdxs, 12,
+    exitConnSegs, exitIdxs, 12,
     cx + exitOff.dx, cy + exitOff.dy, scale, R_REF_CENTER
   );
-  const exitQuads = buildTaperedRibbon(
+  const exitQuads = buildConnectorRibbon(
     exitCenter,
-    R_EXIT.startWidth * scale,
-    R_EXIT.taperPower,
-    R_EXIT.liftPoint,
+    R_EXIT_CONN.hairline * scale,
+    isAfterHigh ? R_EXIT_CONN.fadeStartAfterHigh : R_EXIT_CONN.fadeStartDefault,
   );
   const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'exit' }));
 
@@ -4284,7 +4319,8 @@ function joinSegsForVariant(letter, variant) {
     const isAfterHigh = v.entry === 'high';
     return {
       entry: isAfterHigh ? R_ENTRANCE_AFTERHIGH_SEGS : R_ENTRANCE_SEGS,
-      exit:  isAfterHigh ? R_EXIT_SEGS_AFTERHIGH : R_EXIT_SEGS,
+      exit:  isAfterHigh ? R_EXIT_BAND_SEGS
+           : [...R_EXIT_BRIDGE_DEFAULT, ...R_EXIT_BAND_SEGS],
     };
   }
   return { entry: null, exit: null };
