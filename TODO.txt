@@ -1,0 +1,2 @@
+feat/paper: const table = STROKE_TABLE[char] ?? STROKE_TABLE[upper]; this fallback behavior is not necessary anymore
+feat/paper: sometimes the DELETE API clears the letters but leaves a white "shadow"??? refresh clears the paper for real. smells bad, should debug

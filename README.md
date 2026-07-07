@@ -1,10 +1,10 @@
 # Dossier
 
-A browser-based tool for tracking characters, factions, and locations — useful for worldbuilding, game development ideation, and tabletop RPG play.
+This project started as a browser-based tool for tracking characters, factions, and locations — useful for worldbuilding, game development ideation, and tabletop RPG play.
 
-Now with a WIP and arguably somewhat over-engineered text rendering tool inspired by Thomas Matlack's penmanship on the Declaration of Independence.
+It became a WIP text-rendering and font-generation tool inspired by Thomas Matlack's penmanship on the Decllaration of Independence.
 
-## Features (main project)
+## Features (main project — not the current focus)
 
 - Three entry types: People, Factions, Locations
 - Tag system (role, faction, mood, trait, location, relationship) for organizing entries
@@ -13,9 +13,20 @@ Now with a WIP and arguably somewhat over-engineered text rendering tool inspire
 - Export to JSON for backups
 - All data persists in localStorage
 
-## Features (experimental)
+## Features (experimental — not the current focus)
 - Paper physics and handwriting kinematics simulation
+
+## Features (the current focus)
 - Tools for analyzing penmanship and synthesizing letters evocative of them
+- Tools for easing human-in-the-loop tweaks ("reviews") for synthesized letters
+- Early-stage font generation scripts, using the synthesized letters as starting points
+
+## Human-authored reference materials
+- handwriting_manuals/ are detailed instructions written for humans on how to write (either in general, modern-day script, or in Copperplate, which is Matlack's hand and hte main area of focus currently). Don't read these unless you're told — they take a lot more effort than the user has credits for for you to just peruse them willy-nilly. They can tell you specific pages to focus on if it's ever relevant.
+- papers/ are papers written about the kinematics of handwriting. You are allowed to read them.
+
+## Rules for research
+- You can do web searches about handwriting (shapes, aesthetics, kinematics, etc). Don't try to use HTML summaries — those are known to not be very useful for research. You can wget pdf versions yourself, or ask the user to help download them if that fails.
 
 ## Running locally
 
@@ -24,9 +35,9 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000` to play with the paper physics sim tools, or `http://localhost:3000/matlack` if you're developing letter synthesis.
+Then open `http://localhost:3000` to play with the paper physics sim tools (not our focus), or `http://localhost:3000/matlack` if you're developing letter synthesis (our focus).
 
-### Review grid
+### Review grid (human-in-the-loop tool, not our focus)
 
 `http://localhost:3000/review?letter=f`
 
@@ -89,7 +100,7 @@ curl 'http://localhost:3000/api/outlines?letter=f&overrides={"fatBar":{"dx":12,"
 
 Bowl components return `{ inner: [[x,y],...], outer: [[x,y],...] }`. Polygon components (fatBar, hairline, downstroke) return `[[x,y],...]`.
 
-## Python analysis tools
+## Python analysis tools (important)
 
 The `matlack/tools/` directory contains analysis scripts for handwriting and glyph development.
 
@@ -127,41 +138,3 @@ React 19, Vite, WebGL2.
 ## Documentation
 
 - [Ink & Paper Rendering System](src/styles/README.md) — stroke kinematics, nib geometry, WebGL ink simulation, and all the motor neuroscience math behind the handwriting animation.
-
-## If this ever makes money
-
-Check `NPM_FUND_NOTES.txt` and throw a few bucks at the open source projects that made it possible.
-
-Also throw a few bucks at the Unicode Consortium, whose dedication to clear definition of semantic meaning across societies helps keep this projects intended use of AI clear.
-
-## If you have feelings about AI
-This section is for transparency about how AI has been used in this project and how its use may evolve over time.
-
-A significant portion of this project was developed with assistance from AI tools (primarily Claude, including Opus 4.6, with some contributions from Codex). These tools were used to accelerate classical computer vision workflows, particularly shape extraction and processing of human-generated annotations created by the original author (sinback). This processing is central to the project's letter generation capabilities.
-
-All training data used for letter generation is intended to come from *public-domain documents* (for example, the United States Declaration of Independence). AI-assisted image processing may also be used to generate or refine Unicode-defined glyphs (e.g. ☆, 👀, ♡, ☌, ⧖).
-
-At present, no AI models are shipped with this project, but they might be in the future to add realism and variation to rendering of Unicode-defined glyphs. If that occurs, the project aims to clearly document:
-- the model's purpose
-- the nature of its training data
-- relevant technical details.
-
-This project does *not* intend to use:
-- non-public-domain training data
-- copyrighted artistic datasets
-- stylistic training based on identifiable living artists.
-
-Claude was also used to help generate many of Dossier's "Imaginative Mode" note-taking prompts. Future iterations may include locally shipped language models to expand prompt diversity, with an emphasis on transparency and user awareness.
-
-Much of the project's internal documentation, including notes on handwriting analysis and tooling to accelerate it, was also generated by AI tools. If anything is unclear or misleading, please open an issue; human clarification, corrections, and contributions to this project are welcome!
-
-This section was written by a human (sinback), with light support from AI on tone and clarity.
-
-*In plain terms*: AI has been used as a develoopment tool, including to process public-domain, human-annotated data. AI wrote some of the documentation. Any future use of embedded models will be documented clearly so users can make informed decisions.
-
-If you fork, extend, or use this project, please avoid attributing your changes to the original author (sinback) when they meaningfully diverge from the approaches described above, especially if you are introducing broader generative AI functionality.
-
-## Legal and ethical note
-This project is not intended for deceptive or fraudulent use.
-
-In particular, please do not use its handwriting synthesis capabilities to create forged or misleading content (such as fake signatures or watermarks).
