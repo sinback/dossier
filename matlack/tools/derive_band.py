@@ -65,6 +65,37 @@ def bez(p0, p1, p2, p3, t):
     )
 
 
+def split_bezier(seg, t):
+    """de Casteljau: split a cubic at t → (head, tail), both cubics."""
+    (p0, p1, p2, p3) = seg
+    lerp = lambda a, b, u: (a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u)
+    a = lerp(p0, p1, t); b = lerp(p1, p2, t); c = lerp(p2, p3, t)
+    d = lerp(a, b, t); e = lerp(b, c, t)
+    f = lerp(d, e, t)
+    return [p0, a, d, f], [f, e, c, p3]
+
+
+def cut_chain(segs, arc_from, arc_to):
+    """Slice a bezier chain by arc-length positions [arc_from, arc_to]."""
+    out = []
+    acc = 0.0
+    for seg in segs:
+        L = seg_len(seg)
+        s0, s1 = acc, acc + L
+        acc = s1
+        if s1 <= arc_from or s0 >= arc_to:
+            continue
+        piece = seg
+        # trim head (approximate arc→t linearly within the segment)
+        if s0 < arc_from:
+            piece = split_bezier(piece, (arc_from - s0) / L)[1]
+            s0 = arc_from
+        if s1 > arc_to:
+            piece = split_bezier(piece, (arc_to - s0) / (s1 - s0))[0]
+        out.append(piece)
+    return out
+
+
 def seg_len(seg, n=300):
     pts = [bez(*seg, i / n) for i in range(n + 1)]
     return sum(math.dist(pts[i], pts[i + 1]) for i in range(n))
@@ -77,8 +108,11 @@ def main():
     ap.add_argument("--ybottom", type=float, required=True, help="glyph rule.yBottom (local su)")
     ap.add_argument("--anchor-x", type=float, required=True,
                     help="glyph-local anchor x (spacing choice)")
-    ap.add_argument("--span", default=None,
-                    help="a,b arc-length sub-range of the trace to emit (default full)")
+    ap.add_argument("--skip-head", type=float, default=0.0,
+                    help="drop this many LOCAL su of arc from the trace start")
+    ap.add_argument("--fade-len", type=float, default=None,
+                    help="trim the trace this many LOCAL su past the anchor "
+                         "(the connector's fade tail)")
     args = ap.parse_args()
 
     band = BANDS[args.band]
@@ -96,40 +130,49 @@ def main():
     height_pct = (args.ybottom - ay) / args.xh * 100
     print(f"// anchor height: {height_pct:.1f}% of x-height above baseline")
 
-    segs = band["segs"]
-    if args.span:
-        lo, hi = (float(v) for v in args.span.split(","))
-        print(f"// NOTE: --span slicing not implemented for sub-segment cuts; "
-              f"emit full and trim segments manually (requested {lo},{hi})")
+    local_segs = [[T(p) for p in seg] for seg in band["segs"]]
 
-    lens = [seg_len([T(p) for p in seg]) for seg in segs]
-    total = sum(lens)
-    print("[")
-    for seg in segs:
-        pts = ", ".join(f"[{x}, {y}]" for x, y in (T(p) for p in seg))
-        print(f"  [{pts}],")
-    print("]")
-    # arc fraction of the anchor along the emitted curve
+    # anchor arc position along the full local trace
     acc = 0.0
-    frac = None
-    for seg, L in zip(segs, lens):
-        tseg = [T(p) for p in seg]
-        best = min(
-            (math.dist(bez(*tseg, i / 400), (args.anchor_x, ay)), i / 400)
+    anchor_arc = None
+    best = (float("inf"), 0)
+    for seg in local_segs:
+        b = min(
+            (math.dist(bez(*seg, i / 400), (args.anchor_x, ay)), i / 400)
             for i in range(401)
         )
         # sinback's anchors can sit slightly OFF the curve (to/01's is ~0.5
         # scan-su below it) — use a loose gate and report the distance.
-        if best[0] < 2.5:
-            sub = [bez(*tseg, i / 300 * best[1]) for i in range(301)]
-            partial = sum(math.dist(sub[i], sub[i + 1]) for i in range(300))
-            frac = (acc + partial) / total
+        if b[0] < 2.5:
+            best = b
+            sub = [bez(*seg, i / 300 * b[1]) for i in range(301)]
+            anchor_arc = acc + sum(math.dist(sub[i], sub[i + 1]) for i in range(300))
             break
-        acc += L
-    print(f"// seg lengths: {[round(v, 1) for v in lens]}  total {total:.1f}")
-    if frac is not None:
-        print(f"// anchor at arc-length fraction {frac:.3f} of the emitted curve "
-              f"(distance to curve {best[0]:.2f} su)")
+        acc += seg_len(seg)
+
+    total_full = sum(seg_len(s) for s in local_segs)
+    arc_to = total_full
+    if args.fade_len is not None:
+        if anchor_arc is None:
+            raise SystemExit("--fade-len needs the anchor on the curve (check anchor-x)")
+        arc_to = min(total_full, anchor_arc + args.fade_len)
+    emitted = cut_chain(local_segs, args.skip_head, arc_to)
+
+    rnd = lambda v: round(v, 2)
+    print("[")
+    for seg in emitted:
+        pts = ", ".join(f"[{rnd(x)}, {rnd(y)}]" for x, y in seg)
+        print(f"  [{pts}],")
+    print("]")
+    lens = [seg_len(s) for s in emitted]
+    total = sum(lens)
+    print(f"// emitted seg lengths: {[round(v, 1) for v in lens]}  total {total:.1f}")
+    if anchor_arc is not None:
+        a = anchor_arc - args.skip_head
+        print(f"// anchor at {a:.1f} su along the emitted curve "
+              f"(fraction {a / total:.3f}; distance to curve {best[0]:.2f} su)")
+        print(f"// with a bridge of length B before it: fadeStart = "
+              f"(B + {a:.1f}) / (B + {total:.1f})")
     else:
         print("// anchor is >2.5 su from the emitted curve (check anchor-x)")
 
