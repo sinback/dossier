@@ -163,19 +163,26 @@ Scriptable "this is wrong" signals live under `tests/matlack/`, mirroring the st
 
 Topology checks come first (simple/closed rings, `outer.contains(inner)`, parametrized over supported variants). Shape-sanity checks (aspect ratio in ⟋-rotated bbox, ⟋-angle tolerance) come second. Flick-connectivity checks come after the outlines export grows entry/exit components. **Don't unit-test `buildO` internals** — anchor numbers change constantly, the math is trivial, and the tests don't catch the failures we actually care about.
 
-### Joins are band-true (o/r/e/f/m); one route change awaits sinback's eye
+### Current target: "lorem ipsum" — plan in matlack/analysis/lorem-ipsum-plan.md
 
-All connectors among o, r, e, f, m are now band-true slices of the two
+sinback approved oreo (perfect, incl. the r→e band-true route) and "from"
+(good enough — do NOT revisit its residual gaps). The next words are
+"lorem ipsum": only l, i, p, s, u need bring-up, every new join is
+low-band, and the plan doc gives per-letter checklists, ordering
+(l → u → i → p → s), traps, and guardrails. Follow it rather than
+re-deriving; the Fable-5 session that wrote it has moved to an advisory
+role.
+
+### Joins are band-true (o/r/e/f/m); the r→e route change was APPROVED
+
+All connectors among o, r, e, f, m are band-true slices of the two
 canonical traces (high = or/01, low = to/01) — see
 `matlack/analysis/join-architecture.md` for the model, the worked example,
-and the measurement suite. r→e was converted per the old plan, option (b):
-metrics improved (coarticulation 0.25 → 0.75, tangent_kink 0.0°), but the
-connector's visible ROUTE changed (it now dips through the baseline band
-per to/01, vs the hand-tuned direct diagonal sinback once called
-"actually perfect"). Before/after pair is checked in at
-`matlack/renders/milestones/2026-07_oreo_BEFORE_r_band_swap.png` vs
-`2026-07_oreo_band_true.png` — if sinback dislikes the new route, revisit
-rather than argue from the metrics.
+and the measurement suite. r→e was converted per the old plan, option (b),
+and sinback reviewed the route change and called it **perfect** — treat
+o↔r and r→e as frozen reference seams (before/after pair preserved in
+`matlack/renders/milestones/`).
 
-Known non-band-true joins (measured, deferred): o→e (e.entry.high, coart
-0.19), r→r (tip-to-tip), f.entry (word-initial only), m.exit.
+Known non-band-true joins (measured, DEPRIORITIZED by sinback — don't
+revisit unprompted): o→e (e.entry.high, coart 0.19), r→r (tip-to-tip),
+f.entry (word-initial only), m.exit.
