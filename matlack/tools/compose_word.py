@@ -199,8 +199,11 @@ def compose(word):
             disc = Point(join_pt).buffer(JOIN_DISC_R)
             a, b = placed[-2]["geom"], geom
             overlap = a.intersection(b).area
-            local = unary_union([a.intersection(disc), b.intersection(disc)])
-            n_components = len(_polygons(local))
+            # 1 = the two letters' inks touch within the join disc. (An
+            # island count over the union misfires when a letter's own body
+            # stroke passes near the anchor, e.g. m's first hump downstroke.)
+            n_components = 1 if a.intersection(disc).intersects(
+                b.intersection(disc)) else 2
             # Baseline drift: after anchor alignment, this letter's yBottom
             # rule vs the previous letter's. curs only aligns anchor points;
             # consistent anchor heights (relative to rules) keep this at 0.
