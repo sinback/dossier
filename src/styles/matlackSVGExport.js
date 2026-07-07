@@ -43,36 +43,50 @@ const VARIANT_EXPORTS = {
 // Returns a minimal calt+classes `.fea` snippet covering the variant glyphs
 // above. Written into the UFO features.fea by the Python side.
 function generateFeatures() {
-  const highExit   = 'b f o v w';
+  // calt lookups run in order, and earlier lookups SUBSTITUTE glyphs —
+  // context classes must therefore include the variant glyphs too, or a
+  // word-initial o.init stops counting as a high exit for the letter
+  // after it (r stayed plain and curs cascaded it 283 units up).
+  const highExit   = 'b f o v w o.init o.afterHigh';
   const allLowers  = 'a b c d e f g h i j k l m n o p q r s t u v w x y z';
   return `
 @high_exit   = [${highExit}];
 @all_letters = [${allLowers}];
 
 feature calt {
+  # Each rule group lives in its OWN lookup: consecutive ignore/sub
+  # statements in a bare feature block merge into one chaining lookup,
+  # where each group's ignores poison the other groups' substitutions
+  # (o.isol's "followed by letter" ignore killed o.init; m.init's
+  # "preceded by letter" ignore killed m.afterHigh — HarfBuzz then curs-
+  # attached wrong-variant anchors and letters cascaded vertically).
+
   # Standalone o (neither preceded nor followed by a letter) → isol form.
-  # Both ignore-subs guard the substitution; it fires only when neither
-  # context matches, i.e. the o is truly alone.
-  ignore sub @all_letters o';
-  ignore sub              o' @all_letters;
-           sub            o' by o.isol;
+  lookup calt_o_isol {
+    ignore sub @all_letters o';
+    ignore sub              o' @all_letters;
+             sub            o' by o.isol;
+  } calt_o_isol;
 
   # Word-initial o (not preceded by a letter, IS followed by one) → init.
-  # The ignore inverts the preceding-letter context; the lookahead
-  # @all_letters in the sub restricts to the "followed by letter" case —
-  # which rules out the standalone case already handled above.
-  ignore sub @all_letters o';
-           sub            o' @all_letters by o.init;
+  lookup calt_o_init {
+    ignore sub @all_letters o';
+             sub            o' @all_letters by o.init;
+  } calt_o_init;
 
   # Word-initial m (not preceded by a letter, IS followed by one) → init.
-  ignore sub @all_letters m';
-           sub            m' @all_letters by m.init;
+  lookup calt_m_init {
+    ignore sub @all_letters m';
+             sub            m' @all_letters by m.init;
+  } calt_m_init;
 
   # Contextual joins after @high_exit letters.
-  sub @high_exit e' by e.afterHigh;
-  sub @high_exit m' by m.afterHigh;
-  sub @high_exit o' by o.afterHigh;
-  sub @high_exit r' by r.afterHigh;
+  lookup calt_after_high {
+    sub @high_exit e' by e.afterHigh;
+    sub @high_exit m' by m.afterHigh;
+    sub @high_exit o' by o.afterHigh;
+    sub @high_exit r' by r.afterHigh;
+  } calt_after_high;
 } calt;
 `.trim() + '\n';
 }
