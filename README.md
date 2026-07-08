@@ -117,8 +117,8 @@ uv sync
 Then run analysis scripts from the repo root:
 
 ```bash
-python3 matlack/tools/fit_paths.py <svg_path_file>
-python3 matlack/tools/fit_paths.py <svg_path_file> --egg  # also fit egg curves
+uv run python matlack/tools/fit_paths.py <svg_path_file>
+uv run python matlack/tools/fit_paths.py <svg_path_file> --egg  # also fit egg curves
 ```
 
 ### Development

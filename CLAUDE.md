@@ -37,6 +37,7 @@ Routes (all under the dev server):
 ### Dev-server API (used by `snap.sh` and tools; see `vite.config.js`)
 - `POST /api/draw` / `DELETE /api/draw` / `GET /api/draw/stream` (SSE) — broadcast draw commands to `PaperCanvasPanel`; schema in `src/api/schema.js`
 - `GET /api/outlines?letter=<x>&overrides=<json>` — component outlines for geometric analysis (Shapely, etc.)
+- `GET /api/render?letter=<x>&format=json` — clean browser-free glyph render; backs `matlack/tools/render_glyph.py`
 - `POST /api/review` — saves review-grid JSON (gitignored `reviews/`)
 - `POST /api/sync` — overwrites `dossier-state.json`
 - `GET/POST /api/anchors`, `GET /api/contexts` — anchor-labeling for reference-scan tracing
