@@ -1,0 +1,420 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Matlack joins — rules table &amp; registration</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f3f0;
+      color: #233;
+      padding: 2em 3em;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    a { color: #4a6; }
+    nav { font-size: 12px; font-family: monospace; color: #777; margin-bottom: 1.5em; }
+    nav a { margin-right: 1em; }
+    h1 { font-size: 18px; font-weight: 600; margin-bottom: 0.2em; }
+    h2 { font-size: 13px; font-weight: 600; margin: 1.8em 0 0.6em; text-transform: uppercase; letter-spacing: 0.05em; color: #556; }
+    label, .cap { font-size: 12px; color: #777; font-family: monospace; }
+
+    .meta { font-size: 12px; color: #777; font-family: monospace; margin-bottom: 1.2em; }
+
+    .card {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    table.joins {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+      font-size: 13px;
+    }
+    table.joins th, table.joins td {
+      padding: 0.45em 0.6em;
+      text-align: left;
+      border-bottom: 1px solid #e7e5e1;
+      vertical-align: middle;
+    }
+    table.joins th {
+      font-family: monospace;
+      font-size: 11px;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      background: #faf9f7;
+      position: sticky;
+      top: 0;
+    }
+    table.joins tr:last-child td { border-bottom: none; }
+    table.joins td.letter-cell { font-size: 18px; font-weight: 600; }
+    table.joins tr.row-green  td:first-child { border-left: 5px solid #4a8a52; }
+    table.joins tr.row-amber  td:first-child { border-left: 5px solid #c8952f; }
+    table.joins tr.row-gray   td:first-child { border-left: 5px solid #ccc; }
+    table.joins td:first-child { padding-left: 0.9em; }
+
+    .dim { color: #aaa; font-style: italic; }
+    .glyph-thumb { height: 48px; display: block; background: #fff; }
+
+    .badge {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 10px;
+      font-weight: 700;
+      width: 1.3em;
+      height: 1.3em;
+      line-height: 1.3em;
+      text-align: center;
+      border-radius: 3px;
+      background: #eee;
+      color: #556;
+      border: 1px solid #ccc;
+      cursor: help;
+      margin-left: 0.15em;
+    }
+    .badge.entry { background: #eef4ff; border-color: #b9d0f0; color: #345; }
+    .badge.exit  { background: #fff4e8; border-color: #f0d0a0; color: #654; }
+
+    .rule-value { font-family: monospace; font-size: 12px; }
+    .live-yes { color: #2a7a35; font-weight: 600; }
+    .live-blank { color: #ccc; }
+    .variant-count { font-family: monospace; font-size: 12px; }
+
+    .legend-lists { display: flex; gap: 2em; flex-wrap: wrap; margin-bottom: 1em; }
+    .legend-lists ul { margin: 0.3em 0 0 0; padding-left: 1.1em; font-size: 13px; }
+    .legend-lists h3 { font-size: 12px; margin: 0 0 0.2em; color: #556; }
+    .legend-lists code {
+      display: inline-block; min-width: 1.1em; text-align: center;
+      background: #eee; border: 1px solid #ccc; border-radius: 3px; padding: 0 0.2em; margin-right: 0.3em;
+    }
+
+    pre.notes, pre.raw {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 1em 1.2em;
+      font-size: 12.5px;
+      line-height: 1.5;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    pre.raw { max-height: 60vh; overflow-y: auto; }
+
+    details summary {
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 12px;
+      color: #556;
+      margin: 0.3em 0 0.6em;
+    }
+
+    .error {
+      background: #fbe0e0;
+      border: 1px solid #e0a0a0;
+      border-radius: 4px;
+      padding: 0.8em 1em;
+      color: #833;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/matlack-preview.html">matlack-preview.html (font preview)</a>
+    <a href="/matlack-bigrams.html">matlack-bigrams.html (bigram dashboard)</a>
+  </nav>
+  <h1>Matlack joins &mdash; rules table &amp; registration</h1>
+  <div class="meta" id="meta">loading&hellip;</div>
+
+  <div id="app">
+    <p class="cap">loading /api/join-data&hellip;</p>
+  </div>
+
+  <script>
+    // ---------------------------------------------------------------------
+    // Legend text (hardcoded per task spec; stable annotation meanings)
+    // ---------------------------------------------------------------------
+    const ENTRY_LEGEND = {
+      '!': 'prepending: stroke is omitted if this letter is beginning a word',
+      '.': 'prepending: stroke is kept if this letter is beginning a word',
+      '~': 'prepending: stroke is kept but nerfed if this letter is beginning a word (nerfed y-bottom entry typically starts halfway between y-bottom and y-center)',
+      '?': 'prepending: no data on beginning-of-word behavior',
+      '-': "appending: stroke's entry is \"weaker\" than preceding letter's exit-y",
+    };
+    const EXIT_LEGEND = {
+      '+': "appending: stroke's exit is \"stronger\" than next letter's entry-y",
+      '!': 'appending: stroke is omitted if this letter is ending a word',
+      '.': 'appending: stroke is kept if this letter is ending a word',
+      '~': 'appending: stroke is sometimes flourished if ending a sentence or line; otherwise kept same',
+      '?': 'appending: no data on end-of-word behavior',
+    };
+    const ANNOT_CHARS = ['!', '.', '~', '?', '+', '-'];
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function stripAnnotations(cell) {
+      let s = cell;
+      const prefix = [];
+      const suffix = [];
+      while (s.length && ANNOT_CHARS.includes(s[0])) {
+        prefix.push(s[0]);
+        s = s.slice(1);
+      }
+      while (s.length && ANNOT_CHARS.includes(s[s.length - 1])) {
+        suffix.unshift(s[s.length - 1]);
+        s = s.slice(0, -1);
+      }
+      return { value: s.trim(), prefix, suffix };
+    }
+
+    // Parses the box-drawing table text into { rows, notes }.
+    // rows: [{ letter, yTop, yCenter, yBottom, entry:{value,prefix,suffix}, exit:{value,prefix,suffix} }]
+    function parseTable(raw) {
+      const lines = raw.split('\n');
+      let inNotes = false;
+      const notesLines = [];
+      const rows = [];
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('NOTES/specific evidence')) {
+          inNotes = true;
+        }
+        if (inNotes) {
+          notesLines.push(line);
+          continue;
+        }
+        if (!trimmed.startsWith('│')) continue; // │
+        const rawCells = trimmed.split('│').map(c => c.trim());
+        // split on │ of a line like "│ a │ b │ c │" yields ['', a, b, c, ''] — drop the outer empties
+        const cells = rawCells.slice(1, -1);
+        if (cells.length < 6) continue;
+        if (cells[0] === 'letter') continue; // header row
+        const [letter, yTop, yCenter, yBottom, entryRaw, exitRaw] = cells;
+        if (!/^[a-z]$/.test(letter)) continue;
+        rows.push({
+          letter,
+          yTop,
+          yCenter,
+          yBottom,
+          entry: stripAnnotations(entryRaw),
+          exit: stripAnnotations(exitRaw),
+        });
+      }
+      const notes = notesLines.join('\n').trim();
+      return { rows, notes };
+    }
+
+    function ruleCell(value) {
+      if (value === 'undefined') return `<span class="rule-value dim">undefined</span>`;
+      return `<span class="rule-value">${escapeHtml(value)}</span>`;
+    }
+
+    function badgesFor(chars, cls, legend) {
+      return chars
+        .map(c => `<span class="badge ${cls}" title="${escapeHtml(legend[c] || 'unknown annotation')}">${escapeHtml(c)}</span>`)
+        .join('');
+    }
+
+    function entryExitCell(annotated, cls, legend) {
+      const valHtml = annotated.value === 'undefined'
+        ? `<span class="rule-value dim">undefined</span>`
+        : `<span class="rule-value">${escapeHtml(annotated.value)}</span>`;
+      const pre = badgesFor(annotated.prefix, cls, legend);
+      const suf = badgesFor(annotated.suffix, cls, legend);
+      return `${pre}${pre ? ' ' : ''}${valHtml}${suf ? ' ' : ''}${suf}`;
+    }
+
+    // -- live-data helpers ---------------------------------------------
+
+    function isPlainPoint(v) {
+      return v && typeof v.x === 'number';
+    }
+
+    function entryAnchorSummary(letter, joinAnchors) {
+      const j = joinAnchors && joinAnchors[letter];
+      if (!j || j.entry == null) return '';
+      if (isPlainPoint(j.entry)) return 'word-initial only';
+      const variants = Object.keys(j.entry);
+      return variants.join(', ');
+    }
+
+    function hasVariantEntry(letter, joinAnchors) {
+      const j = joinAnchors && joinAnchors[letter];
+      return !!(j && j.entry && !isPlainPoint(j.entry));
+    }
+
+    function hasExit(letter, joinAnchors) {
+      const j = joinAnchors && joinAnchors[letter];
+      return !!(j && j.exit && isPlainPoint(j.exit));
+    }
+
+    function hasAnyJoinAnchor(letter, joinAnchors) {
+      const j = joinAnchors && joinAnchors[letter];
+      return !!(j && (j.entry != null || j.exit != null));
+    }
+
+    function rulesSummary(letter, rules) {
+      const r = rules && rules[letter];
+      if (!r) return '';
+      const parts = [];
+      if (r.yCenter != null) parts.push('yC=' + r.yCenter);
+      if (r.yBottom != null) parts.push('yB=' + r.yBottom);
+      return '✓ ' + parts.join(' ');
+    }
+
+    function variantSummary(letter, variantSupport) {
+      const v = variantSupport && variantSupport[letter];
+      if (!v) return '';
+      const supN = (v.supported || []).length;
+      const notN = (v.notYet || []).length;
+      return `${supN} / ${notN}`;
+    }
+
+    function rowColorClass(letter, joinAnchors) {
+      const entryOk = hasVariantEntry(letter, joinAnchors);
+      const exitOk = hasExit(letter, joinAnchors);
+      if (entryOk && exitOk) return 'row-green';
+      if (hasAnyJoinAnchor(letter, joinAnchors)) return 'row-amber';
+      return 'row-gray';
+    }
+
+    async function main() {
+      const app = document.getElementById('app');
+      const meta = document.getElementById('meta');
+      let data;
+      try {
+        const res = await fetch('/api/join-data');
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+        data = await res.json();
+      } catch (err) {
+        meta.textContent = '';
+        app.innerHTML = `<div class="error">Failed to load /api/join-data:\n${escapeHtml(err.message || String(err))}</div>`;
+        return;
+      }
+
+      const { table, live } = data;
+      const rules = (live && live.rules) || {};
+      const joinAnchors = (live && live.joinAnchors) || {};
+      const variantSupport = (live && live.variantSupport) || {};
+
+      meta.textContent = `source: ${table.path}  ·  last modified: ${table.mtime}`;
+
+      let parsed;
+      try {
+        parsed = parseTable(table.raw);
+      } catch (err) {
+        app.innerHTML = `<div class="error">Failed to parse table.raw:\n${escapeHtml(err.message || String(err))}</div>`;
+        return;
+      }
+
+      const { rows, notes } = parsed;
+
+      const theadHtml = `
+        <thead>
+          <tr>
+            <th>glyph</th>
+            <th>letter</th>
+            <th>y-top</th>
+            <th>y-center</th>
+            <th>y-bottom</th>
+            <th>entry-y</th>
+            <th>exit-y</th>
+            <th>rules</th>
+            <th>entry anchors</th>
+            <th>exit anchor</th>
+            <th>variants</th>
+          </tr>
+        </thead>
+      `;
+
+      const bodyRows = rows.map(r => {
+        const letter = r.letter;
+        const cls = rowColorClass(letter, joinAnchors);
+        const rulesText = rulesSummary(letter, rules);
+        const entryAnchorText = entryAnchorSummary(letter, joinAnchors);
+        const exitOk = hasExit(letter, joinAnchors);
+        const variantText = variantSummary(letter, variantSupport);
+
+        return `
+          <tr class="${cls}">
+            <td><img class="glyph-thumb" loading="lazy" src="/api/render?letter=${letter}" alt="glyph ${letter}"></td>
+            <td class="letter-cell">${letter}</td>
+            <td>${ruleCell(r.yTop)}</td>
+            <td>${ruleCell(r.yCenter)}</td>
+            <td>${ruleCell(r.yBottom)}</td>
+            <td>${entryExitCell(r.entry, 'entry', ENTRY_LEGEND)}</td>
+            <td>${entryExitCell(r.exit, 'exit', EXIT_LEGEND)}</td>
+            <td>${rulesText ? `<span class="live-yes">${escapeHtml(rulesText)}</span>` : '<span class="live-blank">&mdash;</span>'}</td>
+            <td>${entryAnchorText ? escapeHtml(entryAnchorText) : '<span class="live-blank">&mdash;</span>'}</td>
+            <td>${exitOk ? '<span class="live-yes">&#10003;</span>' : '<span class="live-blank">&mdash;</span>'}</td>
+            <td class="variant-count">${variantText || '<span class="live-blank">&mdash;</span>'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const legendHtml = `
+        <h2>Annotation legend</h2>
+        <div class="legend-lists card" style="padding:1em 1.4em;">
+          <div>
+            <h3>entry-y prefixes / suffixes</h3>
+            <ul>
+              ${Object.entries(ENTRY_LEGEND).map(([c, desc]) => `<li><code>${escapeHtml(c)}</code>${escapeHtml(desc)}</li>`).join('')}
+            </ul>
+          </div>
+          <div>
+            <h3>exit-y suffixes</h3>
+            <ul>
+              ${Object.entries(EXIT_LEGEND).map(([c, desc]) => `<li><code>${escapeHtml(c)}</code>${escapeHtml(desc)}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+        <p class="cap">Row color: <span style="color:#4a8a52">green</span> = joinAnchors has variant-keyed entry (low/high) AND a registered exit &mdash; fully mid-word ready.
+        <span style="color:#c8952f">amber</span> = some joinAnchors registered but not both sides variant-ready (e.g. 'f' is word-initial-only entry).
+        <span style="color:#999">gray</span> = unregistered in the live renderer.</p>
+      `;
+
+      const notesHtml = `
+        <h2>Notes / specific evidence on annotations</h2>
+        <pre class="notes">${escapeHtml(notes)}</pre>
+      `;
+
+      const rawHtml = `
+        <details>
+          <summary>raw lowercase_rules_table.txt (ground truth)</summary>
+          <pre class="raw">${escapeHtml(table.raw)}</pre>
+        </details>
+      `;
+
+      app.innerHTML = `
+        <div style="overflow-x:auto;">
+          <table class="joins">
+            ${theadHtml}
+            <tbody>${bodyRows}</tbody>
+          </table>
+        </div>
+        ${legendHtml}
+        ${notesHtml}
+        ${rawHtml}
+      `;
+    }
+
+    main();
+  </script>
+</body>
+</html>
