@@ -43,6 +43,7 @@ Routes (all under the dev server):
 - `GET/POST /api/anchors`, `GET /api/contexts` — anchor-labeling for reference-scan tracing
 - `POST /api/open` — open a project-relative file in GIMP
 - `GET/POST/DELETE /api/telemetry` — stroke-telemetry inspection
+- `GET /api/join-data` — `lowercase_rules_table.txt` (raw, read fresh per request) + live `GLYPH_RULES`/`GLYPH_JOIN_ANCHORS`/`VARIANT_SUPPORT`; backs the sinback-facing review pages `/matlack-joins.html` (rules table + registration status) and `/matlack-bigrams.html` (frequency-ranked bigram join-coverage dashboard)
 
 **The review/anchors/open endpoints are local-dev only — no auth, no rate limiting. Do not productionize.**
 

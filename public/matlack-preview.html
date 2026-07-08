@@ -57,7 +57,12 @@
     face.load().then(f => document.fonts.add(f))
         .catch(e => document.body.prepend('FONT LOAD FAILED: ' + e));
   </script>
-  <h1>Matlack draft — live preview</h1>
+  <h1>Matlack draft — live preview
+    <span style="font-weight:400; font-size:12px; font-family:monospace; margin-left:1em;">
+      <a href="/matlack-joins.html">joins table</a> ·
+      <a href="/matlack-bigrams.html">bigram dashboard</a>
+    </span>
+  </h1>
 
   <label>'oreo from' — the two close-study words (o/r/e/f/m joins) — editable</label>
   <div class="sample medium" contenteditable="plaintext-only" spellcheck="false">oreo from</div>

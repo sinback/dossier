@@ -1,0 +1,284 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Matlack bigrams — join coverage dashboard</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f3f0;
+      color: #233;
+      padding: 2em 3em;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    a { color: #4a6; }
+    nav { font-size: 12px; font-family: monospace; color: #777; margin-bottom: 1.5em; }
+    nav a { margin-right: 1em; }
+    h1 { font-size: 18px; font-weight: 600; margin-bottom: 0.2em; }
+    h2 { font-size: 13px; font-weight: 600; margin: 1.5em 0 0.6em; text-transform: uppercase; letter-spacing: 0.05em; color: #556; }
+    .cap { font-size: 12px; color: #777; font-family: monospace; }
+
+    /* curs isn't on by default for Latin in HarfBuzz — explicitly enable. */
+    .matlack { font-family: 'Matlack Draft', serif; font-feature-settings: 'curs' 1, 'calt' 1; }
+    .matlack.features-off { font-feature-settings: 'calt' 0, 'curs' 0; }
+
+    .workbench {
+      font-size: 72px;
+      line-height: 1.35;
+      background: white;
+      padding: 0.3em 0.5em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 0.5em 0 1em;
+      min-height: 1.2em;
+      outline: none;
+      cursor: text;
+      box-shadow: inset 0 0 0 2px #cfe3d0;
+      overflow-wrap: anywhere;
+    }
+    .workbench:focus { box-shadow: inset 0 0 0 2px #6aa06d; }
+
+    .controls { display: flex; gap: 1.5em; align-items: center; flex-wrap: wrap; margin-bottom: 0.5em; }
+    .controls label { font-size: 12px; color: #777; font-family: monospace; display: flex; align-items: center; gap: 0.4em; }
+    input[type=range] { vertical-align: middle; }
+
+    #summary { font-size: 14px; margin: 0.5em 0 1em; }
+    #summary b { font-weight: 600; }
+    .notice { background: #fbe0e0; border: 1px solid #e0a0a0; border-radius: 4px; padding: 0.6em 0.9em; font-size: 13px; color: #833; margin: 0.5em 0; }
+
+    .filters { display: flex; gap: 0.5em; flex-wrap: wrap; margin: 0.5em 0 1em; }
+    .filters button {
+      font-family: monospace; font-size: 12px; padding: 0.4em 0.8em;
+      border: 1px solid #ccc; border-radius: 4px; background: white; color: #233; cursor: pointer;
+    }
+    .filters button.active { background: #233; color: white; border-color: #233; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.7em; }
+    .card {
+      background: white; border: 1px solid #ccc; border-left-width: 5px; border-radius: 4px;
+      padding: 0.5em 0.6em 0.6em; cursor: pointer; text-align: center; position: relative;
+      transition: box-shadow 0.1s;
+    }
+    .card:hover { box-shadow: 0 1px 5px rgba(0,0,0,0.15); }
+    .card .glyph { font-size: 56px; line-height: 1.1; min-height: 1.1em; }
+    .card .meta { font-family: monospace; font-size: 11px; color: #777; margin-top: 0.2em; }
+    .card .dot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; }
+
+    .st-ready    { border-left-color: #4a9d52; }
+    .st-ready    .dot { background: #4a9d52; }
+    .st-partial  { border-left-color: #d9a441; }
+    .st-partial  .dot { background: #d9a441; }
+    .st-unregistered { border-left-color: #bbb; }
+    .st-unregistered .dot { background: #bbb; }
+    .st-unknown  { border-left-color: #99b; }
+    .st-unknown  .dot { background: #99b; }
+
+    .chips { display: flex; gap: 0.5em; flex-wrap: wrap; }
+    .chip {
+      font-family: 'Matlack Draft', serif; font-feature-settings: 'curs' 1, 'calt' 1;
+      font-size: 30px; background: white; border: 1px solid #ccc; border-radius: 4px;
+      padding: 0.15em 0.5em; cursor: pointer;
+    }
+    .chip:hover { box-shadow: 0 1px 5px rgba(0,0,0,0.15); }
+  </style>
+</head>
+<body>
+  <script>
+    // Timestamp cache-buster: every reload fetches the freshly-built font.
+    const face = new FontFace(
+      'Matlack Draft',
+      `url('/fonts/matlack-draft.otf?v=${Date.now()}') format('opentype')`
+    );
+    face.load().then(f => document.fonts.add(f))
+        .catch(e => document.body.prepend('FONT LOAD FAILED: ' + e));
+  </script>
+
+  <nav>
+    <a href="/matlack-preview.html">&larr; live preview</a>
+    <a href="/matlack-joins.html">rules-table dashboard</a>
+  </nav>
+
+  <h1>Matlack bigrams — join coverage dashboard</h1>
+  <p class="cap">Which letter-pair joins render in the draft font, ranked by English bigram frequency (Norvig/Google Books, approx. %).</p>
+
+  <h2>Workbench</h2>
+  <div class="controls">
+    <label><input type="checkbox" id="featToggle"> calt/curs OFF (raw glyphs)</label>
+    <label>size <input type="range" id="sizeSlider" min="24" max="120" value="72"> <span id="sizeVal">72</span>px</label>
+  </div>
+  <div class="workbench matlack" id="workbench" contenteditable="plaintext-only" spellcheck="false">lorem ipsum</div>
+  <p class="cap">Click any card or chip to load it here. Shift-click a card to append the bigram + a space.</p>
+
+  <div id="notice"></div>
+  <div id="summary" class="cap">Loading join data…</div>
+
+  <h2>Bigrams</h2>
+  <div class="filters" id="filters"></div>
+  <div class="grid" id="grid"></div>
+
+  <h2>Target words</h2>
+  <div class="chips" id="chips"></div>
+
+  <script>
+    // --- Embedded bigram list: Norvig/Google Books, approx. % of all bigrams ---
+    const BIGRAMS = [
+      ['th',3.56],['he',3.07],['in',2.43],['er',2.05],['an',1.99],['re',1.85],['on',1.76],
+      ['at',1.49],['en',1.45],['nd',1.35],['ti',1.34],['es',1.34],['or',1.28],['te',1.20],
+      ['of',1.17],['ed',1.17],['is',1.13],['it',1.12],['al',1.09],['ar',1.07],['st',1.05],
+      ['to',1.05],['nt',1.04],['ng',0.95],['se',0.93],['ha',0.93],['as',0.87],['ou',0.87],
+      ['io',0.83],['le',0.83],['ve',0.83],['co',0.79],['me',0.79],['de',0.76],['hi',0.76],
+      ['ri',0.73],['ro',0.73],['ic',0.70],['ne',0.69],['ea',0.69],['ra',0.69],['ce',0.65],
+      ['li',0.62],['ch',0.60],['ll',0.58],['be',0.58],['ma',0.57],['si',0.55],['om',0.55],
+      ['ur',0.54]
+    ];
+    const TARGET_WORDS = ['oreo','from','lorem','ipsum','lorem ipsum','to or for'];
+
+    let joinAnchors = null;   // null = unknown (fetch failed)
+
+    // A variant-keyed entry map has NO numeric .x at top level.
+    function isVariantEntry(entry) {
+      return entry && typeof entry === 'object' && typeof entry.x !== 'number';
+    }
+    // x contributes exit; ready iff registered and has exit.
+    function exitReady(letter) {
+      if (!joinAnchors) return null;
+      const a = joinAnchors[letter];
+      return !!(a && a.exit);
+    }
+    // y contributes entry; ready iff registered and entry is a variant-keyed map.
+    function entryReady(letter) {
+      if (!joinAnchors) return null;
+      const a = joinAnchors[letter];
+      return !!(a && isVariantEntry(a.entry));
+    }
+    // Status for bigram "xy".
+    function bigramStatus(bg) {
+      if (!joinAnchors) return { status: 'unknown', title: 'join data unavailable' };
+      const x = bg[0], y = bg[1];
+      const ex = exitReady(x), en = entryReady(y);
+      let status;
+      if (ex && en) status = 'ready';
+      else if (ex || en) status = 'partial';
+      else status = 'unregistered';
+      // Build explanatory tooltip about the missing side(s).
+      const parts = [];
+      parts.push(ex ? `${x}: exit anchor OK` : `${x}: no exit anchor`);
+      if (en) parts.push(`${y}: entry anchors OK`);
+      else if (joinAnchors[y] && joinAnchors[y].entry && !isVariantEntry(joinAnchors[y].entry))
+        parts.push(`${y}: entry is word-initial only (no mid-word entry)`);
+      else parts.push(`${y}: no entry anchors`);
+      return { status, title: parts.join('; ') };
+    }
+
+    // --- Rendering ---
+    const grid = document.getElementById('grid');
+    const summary = document.getElementById('summary');
+    const filtersEl = document.getElementById('filters');
+    const workbench = document.getElementById('workbench');
+    let activeFilter = 'all';
+
+    function setWorkbench(text) {
+      workbench.textContent = text;   // textContent = no HTML injection
+      workbench.focus();
+    }
+    function appendWorkbench(text) {
+      workbench.textContent = workbench.textContent + text + ' ';
+      workbench.focus();
+    }
+
+    function render() {
+      // Compute statuses.
+      const rows = BIGRAMS.map(([bg, freq]) => ({ bg, freq, ...bigramStatus(bg) }));
+      const counts = { all: rows.length, ready: 0, partial: 0, unregistered: 0, unknown: 0 };
+      rows.forEach(r => counts[r.status]++);
+
+      // Summary (coverage by frequency mass).
+      const total = rows.reduce((s, r) => s + r.freq, 0);
+      const readyMass = rows.filter(r => r.status === 'ready').reduce((s, r) => s + r.freq, 0);
+      const partialMass = rows.filter(r => r.status === 'partial').reduce((s, r) => s + r.freq, 0);
+      if (!joinAnchors) {
+        summary.innerHTML = `Join data unavailable — statuses shown as <b>unknown</b>.`;
+      } else {
+        const pct = m => (m / total * 100).toFixed(1);
+        summary.innerHTML =
+          `<b>${counts.ready}</b> of ${rows.length} bigrams ready, covering ` +
+          `<b>${pct(readyMass)}%</b> of listed bigram mass ` +
+          `(ready+partial: <b>${pct(readyMass + partialMass)}%</b>).`;
+      }
+
+      // Filter buttons.
+      const order = ['all','ready','partial','unregistered'];
+      if (!joinAnchors) order.push('unknown');
+      filtersEl.innerHTML = '';
+      order.forEach(f => {
+        const b = document.createElement('button');
+        b.textContent = `${f} (${counts[f] || 0})`;
+        if (f === activeFilter) b.className = 'active';
+        b.onclick = () => { activeFilter = f; render(); };
+        filtersEl.appendChild(b);
+      });
+
+      // Grid.
+      grid.innerHTML = '';
+      rows.filter(r => activeFilter === 'all' || r.status === activeFilter).forEach(r => {
+        const card = document.createElement('div');
+        card.className = `card st-${r.status}`;
+        card.title = r.title;
+
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        card.appendChild(dot);
+
+        const glyph = document.createElement('div');
+        glyph.className = 'glyph matlack';
+        glyph.textContent = r.bg;
+        card.appendChild(glyph);
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = `${r.bg} · ${r.freq.toFixed(2)}%`;
+        card.appendChild(meta);
+
+        card.onclick = (e) => e.shiftKey ? appendWorkbench(r.bg) : setWorkbench(r.bg);
+        grid.appendChild(card);
+      });
+    }
+
+    // Target-word chips.
+    const chipsEl = document.getElementById('chips');
+    TARGET_WORDS.forEach(w => {
+      const c = document.createElement('div');
+      c.className = 'chip';
+      c.textContent = w;
+      c.title = `load "${w}" into the workbench`;
+      c.onclick = () => setWorkbench(w);
+      chipsEl.appendChild(c);
+    });
+
+    // Controls.
+    const feat = document.getElementById('featToggle');
+    feat.onchange = () => workbench.classList.toggle('features-off', feat.checked);
+    const slider = document.getElementById('sizeSlider');
+    const sizeVal = document.getElementById('sizeVal');
+    slider.oninput = () => { workbench.style.fontSize = slider.value + 'px'; sizeVal.textContent = slider.value; };
+
+    // Fetch join data, then render (degrade gracefully on failure).
+    fetch('/api/join-data')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(data => {
+        joinAnchors = (data && data.live && data.live.joinAnchors) || {};
+        render();
+      })
+      .catch(err => {
+        joinAnchors = null;
+        document.getElementById('notice').innerHTML =
+          `<div class="notice">Could not load /api/join-data (${String(err)}). ` +
+          `Grid shown with statuses marked <b>unknown</b>.</div>`;
+        render();
+      });
+
+    render();   // initial paint (before fetch resolves)
+  </script>
+</body>
+</html>
