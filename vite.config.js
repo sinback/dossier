@@ -343,6 +343,37 @@ const contextsPlugin = {
   },
 };
 
+// GET /api/join-data — sinback's entry/exit class table
+// (lowercase_rules_table.txt, read fresh per request so edits show on reload)
+// + live join-registration state from matlackGlyphs.js. Backs the
+// /matlack-joins.html and /matlack-bigrams.html review pages.
+const joinDataPlugin = {
+  name: 'dossier-join-data',
+  configureServer(server) {
+    server.middlewares.use('/api/join-data', async (req, res) => {
+      if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
+      try {
+        const tablePath = path.resolve(__dirname, 'lowercase_rules_table.txt');
+        const raw = fs.readFileSync(tablePath, 'utf8');
+        const mtime = fs.statSync(tablePath).mtime.toISOString();
+        const mod = await server.ssrLoadModule('/src/styles/matlackGlyphs.js');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          table: { path: 'lowercase_rules_table.txt', mtime, raw },
+          live: {
+            rules: mod.GLYPH_RULES,
+            joinAnchors: mod.GLYPH_JOIN_ANCHORS,
+            variantSupport: mod.VARIANT_SUPPORT,
+          },
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+  },
+};
+
 // GET  /api/anchors?path=... — read anchors JSON for a context PNG.
 // POST /api/anchors          — {path, label, x, y} — upsert into NN_anchors.json.
 const anchorsPlugin = {
@@ -408,7 +439,7 @@ const anchorsPlugin = {
 };
 
 export default defineConfig({
-  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin, outlinePlugin, renderPlugin, reviewPlugin, openInGimpPlugin, contextsPlugin, anchorsPlugin],
+  plugins: [react(), syncPlugin, drawPlugin, telemetryPlugin, outlinePlugin, renderPlugin, reviewPlugin, openInGimpPlugin, contextsPlugin, anchorsPlugin, joinDataPlugin],
   server: {
     port: 3000,
     open: true,

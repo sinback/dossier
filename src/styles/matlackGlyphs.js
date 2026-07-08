@@ -2526,7 +2526,7 @@ function renderFromGeo(renderer, geo) {
 // Add entries as letters gain variants. Not all letters need a support entry
 // yet; missing letters treat their variant arg as "ignored" for compatibility.
 // ═════════════════════════════════════════════════════════════════════════════
-const VARIANT_SUPPORT = {
+export const VARIANT_SUPPORT = {
   e: {
     supported: [
       { entry: 'low',  exit: 'low' },
