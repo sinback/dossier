@@ -1,2 +1,13 @@
 feat/paper: const table = STROKE_TABLE[char] ?? STROKE_TABLE[upper]; this fallback behavior is not necessary anymore
 feat/paper: sometimes the DELETE API clears the letters but leaves a white "shadow"??? refresh clears the paper for real. smells bad, should debug
+
+NOTE FROM JULY FABLE THINKING BLOCK:
+  The exit-low variant mirrors the entrance design—the fat bar's bottom edge releases into a tapered ribbon that starts thick (matching the bar's width) and thins to a hairline, connecting to the hairline element that follows. The key structural difference is that the entrance ribbon is authored in reverse (tip to body, then flipped), while the exit is authored in forward order (body to tip) without needing reversal. The path segment A near the baseline is where this tapered ribbon begins its transition away from the downstroke. The exit ribbon's thick end matches the fat bar's width and overlaps its foot at the baseline, tapering to hairline as it transitions into the connector segment — a mirror of the entrance. Checking the coordinates: the fat bar runs from top-right to bottom-left, so the ribbon attaches at the p1 endpoint (the southwest baseline foot), confirming the geometry.
+
+  That's silly; we shouldn't have this "reversed" concept even if my traces were drawn in the right direction. Worth checking out at some point
+
+feat/matlack: entrance-flick ribbons are authored tip->body and then .reverse()d before
+  buildTaperedRibbon (see buildT entrQuads; other builders too), while exit ribbons are
+  authored body->tip forward. Code smell (see note above): pick ONE authoring-direction
+  convention for connector centerlines, normalize all builders + SEGS data to it, and
+  kill the .reverse() calls. Cleanup for later — don't bundle into letter bring-up work.
