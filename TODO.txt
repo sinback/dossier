@@ -6,6 +6,19 @@ NOTE FROM JULY FABLE THINKING BLOCK:
 
   That's silly; we shouldn't have this "reversed" concept even if my traces were drawn in the right direction. Worth checking out at some point
 
+feat/matlack: AESTHETIC (approved direction from sinback, 2026-07-10): the join gestalt
+  is correct for all greenlighted bigrams/word contexts, but stroke->hairline transitions
+  need some type of EASEMENT applied between the fat strokes and the connector hairlines
+  to flesh the gestalt skeleton out perfectly. Take this up after the bigram bring-up
+  skill is dialed in. (Candidate surface: buildConnectorRibbon's bodyWidth/blendEnd blend
+  vs. something smoother — but the mechanism is undecided; ask sinback what "easement"
+  should look like on a concrete render before building.)
+
+feat/matlack: 't' crossbar is a *weird*, highly contextual project (crossbar spans vary
+  per word — see to/01 crossbar crossing the whole word vs t/01's stub). When crossbar
+  work starts, use Shapely tests as the source of truth for intersection/placement
+  questions, NOT visual reads of renders.
+
 feat/matlack: entrance-flick ribbons are authored tip->body and then .reverse()d before
   buildTaperedRibbon (see buildT entrQuads; other builders too), while exit ribbons are
   authored body->tip forward. Code smell (see note above): pick ONE authoring-direction
