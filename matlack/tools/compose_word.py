@@ -290,7 +290,8 @@ def compose(word):
             if "exit" not in anchors:
                 raise SystemExit(
                     f"'{letter}' has no exit join anchor — can't chain into "
-                    f"'{word[i + 1]}'. Letters with anchors: e, f, o, r."
+                    f"'{word[i + 1]}'. See GLYPH_JOIN_ANCHORS in "
+                    f"matlackGlyphs.js for the registered letters."
                 )
             prev_exit = (anchors["exit"][0] + dx, anchors["exit"][1] + dy)
 

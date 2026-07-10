@@ -943,6 +943,62 @@ const T_ENTRANCE = {
   liftPoint: 1.0,     // tapers over full length (reversed — see render)
 };
 
+// Rule lines in t/01's local frame. No rule lines are visible in the crop,
+// so these are derived from two anatomy anchors validated across the three
+// traced "to" contexts: (1) the fat-bar foot lands on the baseline
+// (to/01 foot 75.71 vs rule 76; to/05 183.2 vs 181), and (2) the
+// crossbar×bar crossing sits at/just above the x-height line (to/01
+// crossing 47.0 vs yCenter 48 at xh 28; to/05 within ~0.1 xh). t/01's
+// crossing is (49.5, 80.7), foot (23.96, 122.92) → xh ≈ 40.2 (±2 su).
+// yTop from the tops-reach-~90%-of-yTop convention (bar top y 6.08).
+// NOTE: this Type-1 (isolated) t is ~2.8 xh tall vs ~1.78 xh for the t's
+// in the "to" contexts — sinback's word-context t types differ in
+// ascender height while the crossbar stays pinned near x-height.
+const T_RULE = { yTop: -7, yCenter: 82.7, yBottom: 122.9 };
+
+// Mid-word low entrance: the traced entrance (T_ENTRANCE_SEGS) starts at
+// (6.77, 98.97) — a 56%-x-height hang, i.e. the word-INITIAL form (same
+// lesson as r/01). For mid-word entries, extend the tip down along the
+// same line through the low-join band to 10% x-height (y 118.9), so a
+// preceding letter's low exit can overlap. Same recipe as R_ENTRANCE_SEGS.
+const T_ENTRANCE_LOW_SEGS = [
+  [[-16.24, 118.88], [-16.24, 118.88], [72.61, 41.99], [72.61, 41.99]],
+];
+
+// Mid-word exit connector — band-true slice of to/01 path3 (the canonical
+// LOW band; derive_band.py low --xh 40.2 --ybottom 122.9 --anchor-x 47.0
+// --fade-len 6). anchor-x was chosen so the trace START (24.9, 122.83)
+// lands inside the fat bar's foot ink (bar centerline x ≈ 24.5 at the
+// foot, half-width 5.5) — zero bridge: the connector emerges from the
+// bar's own footprint, mirroring how the entrance hairline terminates on
+// the bar. This also preserves Matlack's own t→o spacing through the
+// slice transform. Anchor (47.0, 116.64) = the canonical low scan point
+// (41.25, 71.64) through this slice's transform, 15.6% x-height.
+const T_EXIT_BAND_SEGS = [
+  [[24.9, 122.83], [24.52, 123.17], [35.11, 122.91], [36.1, 122.02]],
+  [[36.1, 122.02], [37.42, 122.89], [43.25, 118.88], [49.96, 113.59]],
+];
+// hairline rule-consistent (0.65 × 40.2/60); fadeStart holds full width
+// ~1 su PAST the anchor (23.7 su of the 27.8 su slice), fading only over
+// the last ~3 su — same profile as R_EXIT_CONN (0.955), which keeps the
+// overlap band full-width so the neighbor's slice can coarticulate.
+// (fadeStart at the anchor scored coart 0.58; a longer faded tail
+// [--fade-len 10] scored 0.48 — thin-on-thin ink overlaps poorly.)
+const T_EXIT_CONN = { hairline: 0.44, fadeStart: 0.89 };
+
+// Join anchors — curs attach points in t's local frame.
+const T_JOIN_ANCHORS = {
+  entry: {
+    // On the extended entrance line at the low-join convention height
+    // (15.6% x-height above baseline), where a preceding letter's low
+    // exit overlaps. No afterHigh entry yet (t after b/f/o/v/w is a
+    // notYet variant).
+    low: { x: -13.64, y: 116.63 },
+  },
+  // The canonical low scan point through T_EXIT_BAND_SEGS's transform.
+  exit: { x: 47.0, y: 116.64 },
+};
+
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'e'
 // Source: hand-traced on e/01 from high-res 1823 facsimile (69×64, 1x).
@@ -2573,6 +2629,23 @@ export const VARIANT_SUPPORT = {
       { entry: 'high', exit: 'flourish' },
     ],
   },
+  t: {
+    supported: [
+      { entry: 'low',  exit: 'low' },       // mid-word default
+      { entry: 'none', exit: 'low' },       // word-initial ("to", "the")
+      { entry: 'none', exit: 'none' },      // isol — the traced Type-1 base
+      { entry: 'low',  exit: 'none' },      // bare word-final fallback
+    ],
+    notYet: [
+      // Table: t exit is rule.y-bottom~ (kept word-finally, sometimes
+      // flourished) — like m, the mid-word low connector doubles as the
+      // kept word-final stroke, so no separate fina geometry yet.
+      { entry: 'high', exit: 'low' },       // after b/f/o/v/w — no afterHigh entry traced
+      { entry: 'high', exit: 'none' },
+      { entry: 'low',  exit: 'flourish' },
+      { entry: 'none', exit: 'flourish' },
+    ],
+  },
 };
 
 function variantMatches(v, list) {
@@ -2650,7 +2723,7 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
     case 's':
       return buildS(cx, cy, scale, dpr, overrides)
     case 't':
-      return buildT(cx, cy, scale, dpr, overrides)
+      return buildT(cx, cy, scale, dpr, overrides, variant)
     case 'u':
       return buildU(cx, cy, scale, dpr, overrides)
     case 'v':
@@ -3038,7 +3111,9 @@ function buildQ(cx, cy, scale, dpr, overrides) {
  * Components: entrance hairline (tapered ribbon), fat bar, crossbar hairline.
  * No bowl — pure vertical family.
  */
-function buildT(cx, cy, scale, dpr, overrides) {
+function buildT(cx, cy, scale, dpr, overrides, variant = undefined) {
+  variant = resolveVariant('t', variant);
+
   // ── Fat bar (main downstroke) ───────────────────────────────────
   const fbOff = resolveOffset('fatBar', T_FAT_BAR_OFFSET, overrides, dpr);
   const hw = T_FAT_BAR_HALF_WIDTH * scale;
@@ -3074,27 +3149,67 @@ function buildT(cx, cy, scale, dpr, overrides) {
     { x: cbl.x - cbnx, y: cbl.y - cbny },
   ];
 
-  // ── Entrance hairline (tapered ribbon, reversed — thick at fat bar end) ──
-  const entrCenter = sampleSegments(
-    T_ENTRANCE_SEGS, [0], 12, cx, cy, scale, T_REF_CENTER
-  );
-  // Reverse so taper goes from thick (at fat bar) to thin (at entry point)
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed,
-    T_FAT_BAR_HALF_WIDTH * scale,  // start thick, matching the fat bar
-    T_ENTRANCE.taperPower,
-    T_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  // ── Entrance ─────────────────────────────────────────────────────
+  // entry 'none' (word-initial/isol): the traced hang form — a tapered
+  // ribbon, thick at the fat bar, lifting to nothing at the tip.
+  // entry 'low' (mid-word): the same line extended down through the low
+  // join band (T_ENTRANCE_LOW_SEGS), rendered as a connector hairline so
+  // the preceding letter's low exit can coarticulate with it.
+  let entrFills;
+  if (variant.entry === 'low') {
+    const entrCenter = sampleSegments(
+      T_ENTRANCE_LOW_SEGS, [0], 12, cx, cy, scale, T_REF_CENTER
+    );
+    const entrReversed = [...entrCenter].reverse();
+    const entrQuads = buildConnectorRibbon(
+      entrReversed,
+      T_EXIT_CONN.hairline * scale,
+      0.9,
+      { bodyWidth: T_FAT_BAR_HALF_WIDTH * scale, blendEnd: 0.25 },
+    );
+    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
+  } else {
+    const entrCenter = sampleSegments(
+      T_ENTRANCE_SEGS, [0], 12, cx, cy, scale, T_REF_CENTER
+    );
+    // Reverse so taper goes from thick (at fat bar) to thin (at entry point)
+    const entrReversed = [...entrCenter].reverse();
+    const entrQuads = buildTaperedRibbon(
+      entrReversed,
+      T_FAT_BAR_HALF_WIDTH * scale,  // start thick, matching the fat bar
+      T_ENTRANCE.taperPower,
+      T_ENTRANCE.liftPoint,
+    );
+    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
+  }
+
+  // ── Exit connector (band-true slice; see T_EXIT_BAND_SEGS) ───────
+  // The slice's start sits inside the fat bar's foot ink, so there is no
+  // bridge — the hairline emerges from the bar the way the entrance
+  // terminates on it.
+  let exitFills = [];
+  if (variant.exit === 'low') {
+    const exitCenter = sampleSegments(
+      T_EXIT_BAND_SEGS,
+      Array.from({ length: T_EXIT_BAND_SEGS.length }, (_, i) => i),
+      12, cx, cy, scale, T_REF_CENTER
+    );
+    const exitQuads = buildConnectorRibbon(
+      exitCenter,
+      T_EXIT_CONN.hairline * scale,
+      T_EXIT_CONN.fadeStart,
+    );
+    exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'exit' }));
+  }
 
   return {
     bowls: [
     ],
     fills: [
-      { points: fatBar, pressure: 0.85 },
-    { points: crossbar, pressure: 0.70 },
+      { points: fatBar, pressure: 0.85, label: 'body' },
+    { points: crossbar, pressure: 0.70, label: 'body' },
     ...entrFills,
+    ...exitFills,
     ],
   };
 }
@@ -4310,6 +4425,7 @@ export const GLYPH_RULES = {
   m: M_RULE,
   o: O_RULE,
   r: R_RULE,
+  t: T_RULE,
 };
 
 export const GLYPH_JOIN_ANCHORS = {
@@ -4318,6 +4434,7 @@ export const GLYPH_JOIN_ANCHORS = {
   m: M_JOIN_ANCHORS,
   o: O_JOIN_ANCHORS,
   r: R_JOIN_ANCHORS,
+  t: T_JOIN_ANCHORS,
 };
 
 // ── Join tangents (direction of travel at a join anchor) ────────────────────
@@ -4403,6 +4520,12 @@ function joinSegsForVariant(letter, variant) {
            : [...R_EXIT_BRIDGE_DEFAULT, ...R_EXIT_BAND_SEGS],
     };
   }
+  if (letter === 't') {
+    return {
+      entry: v.entry === 'low' ? T_ENTRANCE_LOW_SEGS : T_ENTRANCE_SEGS,
+      exit:  v.exit === 'low'  ? T_EXIT_BAND_SEGS : null,
+    };
+  }
   return { entry: null, exit: null };
 }
 
@@ -4442,6 +4565,7 @@ export const GLYPH_REF_CENTERS = {
   m: M_REF_CENTER,
   o: O_REF_CENTER,
   r: R_REF_CENTER,
+  t: T_REF_CENTER,
 };
 
 // Structural anchors — stable features on the letter body (downstroke top,
