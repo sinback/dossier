@@ -1289,6 +1289,77 @@ function hStrokeWidth(t, scale) {
   return 0.7 * scale;
 }
 
+// Rule lines in h's RENDERED frame — i.e. trace coords with
+// H_STROKE_OFFSET (+4, -4) folded in, since the stroke (feet, hump) is
+// what defines the rules and it renders shifted. In trace coords:
+// yCenter from the hump-start knob (61.13, 105.06 — same anatomy anchor
+// M_RULE used), agreeing with the arch max (~104.5); yBottom weighted
+// toward the hump's baseline crawl (y ≈ 155–156) with the downstroke
+// foot overshooting to ~159 (0.05 xh, like to/05's t foot). xh 51.5.
+// yTop from the tops-reach-~90% convention (bar-bowl ink, unshifted,
+// tops out at y ≈ 8); ascender ≈ 2.8 xh — consistent with f and the
+// isolated t.
+const H_RULE = { yTop: -8, yCenter: 101, yBottom: 152.5 };
+
+// Mid-word low entrance — band-true slice of to/01 path3 (derive_band.py
+// low --xh 51.5 --ybottom 152.5 --anchor-x -0.71 --skip-head 12.1
+// --fade-len 6; the entrance renders unshifted, so render-frame rules),
+// bridged onto the traced entrance line. A first attempt extended the
+// traced hang as a straight line (the r recipe) — it crossed t's
+// band-true exit at a shallow angle instead of riding it (t→h coart
+// 0.07), the same mixed-pair failure e's dip had; only a slice of the
+// same trace can coarticulate with a band-true partner. The slice end
+// (1.25, 142.0) lands ~2 su off the traced entrance line, so the bridge
+// just eases the band tangent (−38°) onto the line's (−32.5°) and the
+// traced entrance carries on to the downstroke junction (56.28, 108.23).
+// The traced hang form (H_ENTRANCE_SEGS) remains the word-initial entry.
+const H_ENTRANCE_LOW_SEGS = [
+  // Band-true slice; anchor (-0.71, 144.48) at 15.6% x-height.
+  [[-16.23, 151.89], [-15.44, 151.74], [-14.88, 151.57], [-14.67, 151.38]],
+  [[-14.67, 151.38], [-13.11, 152.41], [-6.56, 148.06], [1.25, 142.0]],
+  // Bridge (authored): band → traced entrance line.
+  [[1.25, 142.0], [4.02, 139.86], [8.22, 138.79], [11.17, 136.91]],
+  // The traced entrance, word-initial start point → junction.
+  [[11.17, 136.91], [11.17, 136.91], [56.28, 108.23], [56.28, 108.23]],
+];
+// Connector, body→tip render order: holds hairline through the anchor
+// (anchor sits at ~0.79 of arc from the body side), fades over the tip.
+const H_ENTRANCE_LOW = { hairline: 0.56, fadeStart: 0.83 };
+
+// Mid-word exit connector — band-true slice of to/01 path3 (the canonical
+// LOW band; derive_band.py low --xh 51.5 --ybottom 156.5 --anchor-x 118.59
+// --fade-len 6). anchor-x was chosen so the trace START lands on the
+// hump's baseline valley (90.28, 155.90) — where H_STROKE_SEGS' last
+// segment (the traced h→next tail from the "hi/hu" scan) begins. That
+// traced tail rises at ~36° while the canonical band crawls the baseline
+// first (13 su apart mid-band), so exit-low variants TRUNCATE the tail
+// and use this slice instead — the tail stays in exit:'none' forms as
+// the kept word-final stroke (table: h exit rule.y-bottom.). Anchor
+// (118.59, 148.48) = the canonical low scan point through this slice's
+// transform, 15.6% x-height.
+const H_EXIT_BAND_SEGS = [
+  [[90.28, 156.41], [89.79, 156.85], [103.36, 156.52], [104.63, 155.38]],
+  [[104.63, 155.38], [106.19, 156.41], [112.74, 152.06], [120.55, 146.0]],
+];
+// hairline rule-consistent (0.65 × 51.5/60); fadeStart holds full width
+// ~1 su past the anchor (30.4 su of the 33.3 su slice) — the profile
+// that put t→o over the 0.6 coarticulation bar.
+const H_EXIT_CONN = { hairline: 0.56, fadeStart: 0.943 };
+
+// Join anchors — curs attach points in h's RENDERED frame (see H_RULE's
+// comment: the exit rides the stroke, so H_STROKE_OFFSET is folded into
+// its anchor; the entrance renders unshifted).
+const H_JOIN_ANCHORS = {
+  entry: {
+    // On the extended entrance line at the low-join convention height
+    // (15.6% x-height above the rendered baseline). No afterHigh entry yet.
+    low: { x: -0.71, y: 144.47 },
+  },
+  // The canonical low scan point through H_EXIT_BAND_SEGS's transform,
+  // plus H_STROKE_OFFSET: (118.59, 148.48) + (4, -4). 15.6% x-height.
+  exit: { x: 122.59, y: 144.48 },
+};
+
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'i'
 // Source: hand-traced on i/01 from high-res 1823 facsimile (121×137, 1x).
@@ -2629,6 +2700,20 @@ export const VARIANT_SUPPORT = {
       { entry: 'high', exit: 'flourish' },
     ],
   },
+  h: {
+    supported: [
+      { entry: 'low',  exit: 'low' },       // mid-word default
+      { entry: 'none', exit: 'low' },       // word-initial ("the" mid-word h is low-low; this is "hi...")
+      { entry: 'none', exit: 'none' },      // isol — traced base incl. the h→next tail
+      { entry: 'low',  exit: 'none' },      // word-final after low exit (tail kept per table)
+    ],
+    notYet: [
+      { entry: 'high', exit: 'low' },       // after b/f/o/v/w — no afterHigh entry traced
+      { entry: 'high', exit: 'none' },
+      { entry: 'low',  exit: 'flourish' },
+      { entry: 'none', exit: 'flourish' },
+    ],
+  },
   t: {
     supported: [
       { entry: 'low',  exit: 'low' },       // mid-word default
@@ -2699,7 +2784,7 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
     case 'g':
       return buildG(cx, cy, scale, dpr, overrides)
     case 'h':
-      return buildH(cx, cy, scale, dpr, overrides)
+      return buildH(cx, cy, scale, dpr, overrides, variant)
     case 'i':
       return buildI(cx, cy, scale, dpr, overrides)
     case 'j':
@@ -3222,32 +3307,97 @@ function buildT(cx, cy, scale, dpr, overrides, variant = undefined) {
  * Render a Matlack-style lowercase 'h'.
  * Components: entrance flick + bar-bowl + combined downstroke/hump ribbon.
  */
-function buildH(cx, cy, scale, dpr, overrides) {
+function buildH(cx, cy, scale, dpr, overrides, variant = undefined) {
+  variant = resolveVariant('h', variant);
+
   // ── Bar-bowl (tall stem) ──────────────────────────────────────
   const inner = scaleEllipse(H_BAR_BOWL.inner, cx, cy, scale, H_REF_CENTER);
   const outer = scaleEllipse(H_BAR_BOWL.outer, cx, cy, scale, H_REF_CENTER);
 
   // ── Combined downstroke + hump (one continuous variable-width ribbon) ──
+  // H_STROKE_SEGS' last segment is the traced h→next tail from the
+  // "hi/hu" scan. exit:'low' variants truncate it (the band-true
+  // connector below replaces it — see H_EXIT_BAND_SEGS' comment);
+  // exit:'none' keeps it as the word-final/isol stroke. When truncating,
+  // remap the width function's arc fraction so the profile stays pinned
+  // to the same geometry instead of compressing into the shorter path.
   const strokeOff = resolveOffset('stroke', H_STROKE_OFFSET, overrides, dpr);
+  const truncate = variant.exit === 'low';
+  const fullIdxs = [0, 1, 2, 3, 4, 5, 6, 7];
+  const strokeIdxs = truncate ? [0, 1, 2, 3, 4, 5, 6] : fullIdxs;
   const strokeCenter = sampleSegments(
-    H_STROKE_SEGS, [0, 1, 2, 3, 4, 5, 6, 7], 12,
+    H_STROKE_SEGS, strokeIdxs, 12,
     cx + strokeOff.dx, cy + strokeOff.dy, scale, H_REF_CENTER
   );
-  const strokeQuads = buildRibbon(strokeCenter, (t) => hStrokeWidth(t, scale));
-  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  const polyLen = (pts) => {
+    let L = 0;
+    for (let i = 1; i < pts.length; i++) {
+      L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    }
+    return L;
+  };
+  let widthFrac = 1.0;
+  if (truncate) {
+    const fullCenter = sampleSegments(
+      H_STROKE_SEGS, fullIdxs, 12,
+      cx + strokeOff.dx, cy + strokeOff.dy, scale, H_REF_CENTER
+    );
+    widthFrac = polyLen(strokeCenter) / polyLen(fullCenter);
+  }
+  const strokeQuads = buildRibbon(strokeCenter, (t) => hStrokeWidth(t * widthFrac, scale));
+  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'body' }));
 
-  // ── Entrance flick (reversed tapered ribbon) ──────────────────
-  const entrCenter = sampleSegments(
-    H_ENTRANCE_SEGS, [0], 12, cx, cy, scale, H_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed,
-    5.0 * scale,  // match downstroke width at junction
-    H_ENTRANCE.taperPower,
-    H_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
+  // ── Entrance ─────────────────────────────────────────────────
+  // entry 'none' (word-initial/isol): the traced hang form — tapered
+  // ribbon, thick at the downstroke junction.
+  // entry 'low' (mid-word): the same line extended down through the low
+  // join band (H_ENTRANCE_LOW_SEGS), rendered as a connector hairline.
+  let entrFills;
+  if (variant.entry === 'low') {
+    const entrCenter = sampleSegments(
+      H_ENTRANCE_LOW_SEGS,
+      Array.from({ length: H_ENTRANCE_LOW_SEGS.length }, (_, i) => i),
+      12, cx, cy, scale, H_REF_CENTER
+    );
+    const entrReversed = [...entrCenter].reverse();
+    const entrQuads = buildConnectorRibbon(
+      entrReversed,
+      H_ENTRANCE_LOW.hairline * scale,
+      H_ENTRANCE_LOW.fadeStart,
+      { bodyWidth: 5.0 * scale, blendEnd: 0.25 },
+    );
+    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
+  } else {
+    const entrCenter = sampleSegments(
+      H_ENTRANCE_SEGS, [0], 12, cx, cy, scale, H_REF_CENTER
+    );
+    const entrReversed = [...entrCenter].reverse();
+    const entrQuads = buildTaperedRibbon(
+      entrReversed,
+      5.0 * scale,  // match downstroke width at junction
+      H_ENTRANCE.taperPower,
+      H_ENTRANCE.liftPoint,
+    );
+    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
+  }
+
+  // ── Exit connector (band-true slice; see H_EXIT_BAND_SEGS) ───
+  // Sampled WITH the stroke offset so the slice start meets the rendered
+  // hump valley (the segs are derived in trace coords).
+  let exitFills = [];
+  if (variant.exit === 'low') {
+    const exitCenter = sampleSegments(
+      H_EXIT_BAND_SEGS,
+      Array.from({ length: H_EXIT_BAND_SEGS.length }, (_, i) => i),
+      12, cx + strokeOff.dx, cy + strokeOff.dy, scale, H_REF_CENTER
+    );
+    const exitQuads = buildConnectorRibbon(
+      exitCenter,
+      H_EXIT_CONN.hairline * scale,
+      H_EXIT_CONN.fadeStart,
+    );
+    exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'exit' }));
+  }
 
   return {
     bowls: [
@@ -3259,6 +3409,7 @@ function buildH(cx, cy, scale, dpr, overrides) {
         overlayFills: [
       ...strokeFills,
       ...entrFills,
+      ...exitFills,
     ],
       },
     ],
@@ -4422,6 +4573,7 @@ export const ELLIPSE_DATA = {
 export const GLYPH_RULES = {
   e: E_RULE,
   f: F_RULE,
+  h: H_RULE,
   m: M_RULE,
   o: O_RULE,
   r: R_RULE,
@@ -4431,6 +4583,7 @@ export const GLYPH_RULES = {
 export const GLYPH_JOIN_ANCHORS = {
   e: E_JOIN_ANCHORS,
   f: F_JOIN_ANCHORS,
+  h: H_JOIN_ANCHORS,
   m: M_JOIN_ANCHORS,
   o: O_JOIN_ANCHORS,
   r: R_JOIN_ANCHORS,
@@ -4526,6 +4679,14 @@ function joinSegsForVariant(letter, variant) {
       exit:  v.exit === 'low'  ? T_EXIT_BAND_SEGS : null,
     };
   }
+  if (letter === 'h') {
+    // NOTE: H_EXIT_BAND_SEGS are trace-frame; the render applies
+    // H_STROKE_OFFSET. Fine for tangents (translation-invariant).
+    return {
+      entry: v.entry === 'low' ? H_ENTRANCE_LOW_SEGS : H_ENTRANCE_SEGS,
+      exit:  v.exit === 'low'  ? H_EXIT_BAND_SEGS : null,
+    };
+  }
   return { entry: null, exit: null };
 }
 
@@ -4562,6 +4723,7 @@ export function joinTangentsForVariant(letter, variant) {
 export const GLYPH_REF_CENTERS = {
   e: E_REF_CENTER,
   f: F_REF_CENTER,
+  h: H_REF_CENTER,
   m: M_REF_CENTER,
   o: O_REF_CENTER,
   r: R_REF_CENTER,
