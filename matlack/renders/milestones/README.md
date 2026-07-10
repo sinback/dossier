@@ -22,3 +22,10 @@ except where noted.
 - `2026-07_oreo_from_font_shaped.png` — the same text shaped by the
   BUILT FONT through HarfBuzz (uharfbuzz; same engine as Firefox) —
   the font-context generalization check. Matches the geometry composer.
+- `2026-07_the_geometry.png` — "the" via the geometry composer after the
+  t/h bring-up (t→h coart 0.70 kink 0°, h→e 0.76, drift 0). t's exit and
+  h's entry/exit are all band-true slices of to/01; h's traced h→next
+  tail survives only in exit:'none' word-final/isol forms.
+- `2026-07_to_the_font_shaped.png` — "to the" shaped by the built font
+  (curs+calt): t.init/h/e and t.init/o variant picks, dy=0, each word one
+  connected ink component.

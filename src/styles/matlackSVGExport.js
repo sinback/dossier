@@ -38,6 +38,19 @@ const VARIANT_EXPORTS = {
     ['afterHigh', { entry: 'high', exit: 'low' }],    // after b/f/o/v/w
     ['init',      { entry: 'none', exit: 'low' }],    // word-initial (traced flourish)
   ],
+  t: [
+    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
+    ['init',      { entry: 'none', exit: 'low' }],    // word-initial ("to", "the")
+    ['isol',      { entry: 'none', exit: 'none' }],   // standalone — the traced base
+    // No fina: like m, the low exit connector doubles as the kept
+    // word-final stroke (table: rule.y-bottom~).
+  ],
+  h: [
+    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
+    ['init',      { entry: 'none', exit: 'low' }],    // word-initial
+    ['isol',      { entry: 'none', exit: 'none' }],   // standalone — traced base incl. tail
+    ['fina',      { entry: 'low',  exit: 'none' }],   // word-final: keeps the traced tail
+  ],
 };
 
 // Returns a minimal calt+classes `.fea` snippet covering the variant glyphs
@@ -46,46 +59,98 @@ function generateFeatures() {
   // calt lookups run in order, and earlier lookups SUBSTITUTE glyphs —
   // context classes must therefore include the variant glyphs too, or a
   // word-initial o.init stops counting as a high exit for the letter
-  // after it (r stayed plain and curs cascaded it 283 units up).
-  const highExit   = 'b f o v w o.init o.afterHigh';
-  const allLowers  = 'a b c d e f g h i j k l m n o p q r s t u v w x y z';
+  // after it (r stayed plain and curs cascaded it 283 units up). Same
+  // rule for @all_letters: an already-substituted o.init must still
+  // count as "a letter precedes" in the init/isol/fina ignores, so both
+  // classes are generated from VARIANT_EXPORTS instead of hand-listed.
+  const variantNames = [];
+  for (const [l, variants] of Object.entries(VARIANT_EXPORTS)) {
+    for (const [suffix] of variants) {
+      if (suffix) variantNames.push(`${l}.${suffix}`);
+    }
+  }
+  const highExitBases = ['b', 'f', 'o', 'v', 'w'];
+  const highExit = [
+    ...highExitBases,
+    ...variantNames.filter(n => highExitBases.includes(n.split('.')[0])),
+  ].join(' ');
+  const allLowers = [...ALPHABET, ...variantNames].join(' ');
+
+  // init/isol/fina lookups per variant-aware letter that exports them.
+  // Each group lives in its OWN lookup: consecutive ignore/sub
+  // statements in a bare feature block merge into one chaining lookup,
+  // where each group's ignores poison the other groups' substitutions
+  // (o.isol's "followed by letter" ignore killed o.init; m.init's
+  // "preceded by letter" ignore killed m.afterHigh — HarfBuzz then curs-
+  // attached wrong-variant anchors and letters cascaded vertically).
+  const wordEdgeLookups = [];
+  for (const [l, variants] of Object.entries(VARIANT_EXPORTS)) {
+    const has = suffix => variants.some(([s]) => s === suffix);
+    if (has('isol')) {
+      wordEdgeLookups.push(`
+  # Standalone ${l} (neither preceded nor followed by a letter) → isol.
+  lookup calt_${l}_isol {
+    ignore sub @all_letters ${l}';
+    ignore sub              ${l}' @all_letters;
+             sub            ${l}' by ${l}.isol;
+  } calt_${l}_isol;`);
+    }
+    if (has('init')) {
+      wordEdgeLookups.push(`
+  # Word-initial ${l} (not preceded by a letter, IS followed by one) → init.
+  lookup calt_${l}_init {
+    ignore sub @all_letters ${l}';
+             sub            ${l}' @all_letters by ${l}.init;
+  } calt_${l}_init;`);
+    }
+    if (has('fina')) {
+      wordEdgeLookups.push(`
+  # Word-final ${l} (preceded by a letter, NOT followed by one) → fina.
+  lookup calt_${l}_fina {
+    ignore sub ${l}' @all_letters;
+             sub @all_letters ${l}' by ${l}.fina;
+  } calt_${l}_fina;`);
+    }
+  }
+
+  const afterHighSubs = Object.entries(VARIANT_EXPORTS)
+    .filter(([, variants]) => variants.some(([s]) => s === 'afterHigh'))
+    .map(([l]) => `    sub @high_exit ${l}' by ${l}.afterHigh;`)
+    .join('\n');
+
+  // Letters with a low-entry default but NO afterHigh geometry yet (t, h):
+  // after a high exit, curs would attach the high exit anchor to the low
+  // entry anchor and shove the letter ~280 units up (and cascade). Guard:
+  // substitute the entry-none init form — the curs chain breaks into an
+  // honest gap instead, and the letter still joins forward. Same idea for
+  // an already-substituted fina after a high exit (e.g. word-final h in
+  // "oh") → isol. Replace these guards with real afterHigh variants when
+  // that geometry gets traced.
+  const afterHighGuards = Object.entries(VARIANT_EXPORTS)
+    .filter(([, variants]) => !variants.some(([s]) => s === 'afterHigh'))
+    .flatMap(([l, variants]) => {
+      const has = suffix => variants.some(([s]) => s === suffix);
+      const subs = [];
+      if (has('init')) subs.push(`    sub @high_exit ${l}' by ${l}.init;`);
+      if (has('fina') && has('isol')) {
+        subs.push(`    sub @high_exit ${l}.fina' by ${l}.isol;`);
+      }
+      return subs;
+    })
+    .join('\n');
+
   return `
 @high_exit   = [${highExit}];
 @all_letters = [${allLowers}];
 
 feature calt {
-  # Each rule group lives in its OWN lookup: consecutive ignore/sub
-  # statements in a bare feature block merge into one chaining lookup,
-  # where each group's ignores poison the other groups' substitutions
-  # (o.isol's "followed by letter" ignore killed o.init; m.init's
-  # "preceded by letter" ignore killed m.afterHigh — HarfBuzz then curs-
-  # attached wrong-variant anchors and letters cascaded vertically).
+${wordEdgeLookups.join('\n')}
 
-  # Standalone o (neither preceded nor followed by a letter) → isol form.
-  lookup calt_o_isol {
-    ignore sub @all_letters o';
-    ignore sub              o' @all_letters;
-             sub            o' by o.isol;
-  } calt_o_isol;
-
-  # Word-initial o (not preceded by a letter, IS followed by one) → init.
-  lookup calt_o_init {
-    ignore sub @all_letters o';
-             sub            o' @all_letters by o.init;
-  } calt_o_init;
-
-  # Word-initial m (not preceded by a letter, IS followed by one) → init.
-  lookup calt_m_init {
-    ignore sub @all_letters m';
-             sub            m' @all_letters by m.init;
-  } calt_m_init;
-
-  # Contextual joins after @high_exit letters.
+  # Contextual joins after @high_exit letters (plus entry-none guards for
+  # letters whose afterHigh geometry doesn't exist yet).
   lookup calt_after_high {
-    sub @high_exit e' by e.afterHigh;
-    sub @high_exit m' by m.afterHigh;
-    sub @high_exit o' by o.afterHigh;
-    sub @high_exit r' by r.afterHigh;
+${afterHighSubs}
+${afterHighGuards}
   } calt_after_high;
 } calt;
 `.trim() + '\n';

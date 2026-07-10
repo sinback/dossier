@@ -1248,17 +1248,26 @@ const H_STROKE_SEGS = [
   // so the fat ribbon covers the bar-bowl's vanishing bottom tip.
   // Original base: (61.13, 105.06). Bar-bowl tilt ~-51°, so "up" is
   // (+15*cos(51°), -15*sin(51°)) ≈ (+9.4, -11.7)
-  [[70.5,93.3],[70.5,93.3],[27.22,157.87],[27.22,157.87]],
+  //
+  // NOTE: the review-round-1 offset (dx 4, dy -4, candidate 3) is BAKED
+  // into these coordinates (trace coords + (4, -4)) and H_STROKE_OFFSET
+  // is now zero. resolveOffset scales by dpr but NOT by size/100, so a
+  // live offset meant "4 su" at render size 100 (where GLYPH_RULES,
+  // anchors, and compose_word.py live) but only "2 su" at font-export
+  // size 200 — the font's h stroke landed ~2 su off its anchors and
+  // split the h→e seam. Baking freezes the size-100 interpretation at
+  // every size.
+  [[74.5,89.3],[74.5,89.3],[31.22,153.87],[31.22,153.87]],
   // Hump portion (curves up and around)
-  [[28.35,159.16],[28.35,159.16],[53.74,126.56],[53.74,126.56]],
-  [[53.74,126.56],[50.34,124.13],[85.90,103.12],[91.49,107.12]],
-  [[91.49,107.12],[92.43,107.07],[98.96,126.12],[93.05,126.39]],
-  [[93.05,126.39],[92.91,125.29],[76.75,140.38],[77.17,143.91]],
-  [[77.17,143.91],[74.65,144.13],[72.38,155.43],[77.49,154.98]],
-  [[77.49,154.98],[77.11,154.79],[89.99,155.75],[90.28,155.90]],
-  [[90.28,155.90],[92.57,154.82],[121.51,132.24],[120.73,133.48]],
+  [[32.35,155.16],[32.35,155.16],[57.74,122.56],[57.74,122.56]],
+  [[57.74,122.56],[54.34,120.13],[89.90,99.12],[95.49,103.12]],
+  [[95.49,103.12],[96.43,103.07],[102.96,122.12],[97.05,122.39]],
+  [[97.05,122.39],[96.91,121.29],[80.75,136.38],[81.17,139.91]],
+  [[81.17,139.91],[78.65,140.13],[76.38,151.43],[81.49,150.98]],
+  [[81.49,150.98],[81.11,150.79],[93.99,151.75],[94.28,151.90]],
+  [[94.28,151.90],[96.57,150.82],[125.51,128.24],[124.73,129.48]],
 ];
-const H_STROKE_OFFSET = { dx: 4, dy: -4 };  // review round 1, candidate 3
+const H_STROKE_OFFSET = { dx: 0, dy: 0 };  // baked into H_STROKE_SEGS above
 
 // Combined downstroke+hump width function. t = arc-length fraction.
 // The downstroke is roughly the first ~20% of the path (straight fat bar),
@@ -1337,14 +1346,22 @@ const H_ENTRANCE_LOW = { hairline: 0.56, fadeStart: 0.83 };
 // the kept word-final stroke (table: h exit rule.y-bottom.). Anchor
 // (118.59, 148.48) = the canonical low scan point through this slice's
 // transform, 15.6% x-height.
+// (Coordinates are derive_band.py output + the baked (4, -4) stroke
+// shift, so the slice start meets the baked hump valley (94.28, 151.90).)
 const H_EXIT_BAND_SEGS = [
-  [[90.28, 156.41], [89.79, 156.85], [103.36, 156.52], [104.63, 155.38]],
-  [[104.63, 155.38], [106.19, 156.41], [112.74, 152.06], [120.55, 146.0]],
+  // Bridge (authored): starts ON the body centerline ~3.4 su back so the
+  // ribbon emerges from inside the valley ink. Without it the slice
+  // start sat 0.5 su past the body ribbon's end cap — connected at
+  // compose scale by sampling luck, but a separate ink island in the
+  // integer-unit font (h glyph split into body + floating exit).
+  [[90.9, 151.66], [92.0, 151.9], [93.3, 152.2], [94.28, 152.41]],
+  [[94.28, 152.41], [93.79, 152.85], [107.36, 152.52], [108.63, 151.38]],
+  [[108.63, 151.38], [110.19, 152.41], [116.74, 148.06], [124.55, 142.0]],
 ];
 // hairline rule-consistent (0.65 × 51.5/60); fadeStart holds full width
-// ~1 su past the anchor (30.4 su of the 33.3 su slice) — the profile
-// that put t→o over the 0.6 coarticulation bar.
-const H_EXIT_CONN = { hairline: 0.56, fadeStart: 0.943 };
+// ~1 su past the anchor (30.4 su of the 33.3 su slice, plus the ~3.5 su
+// bridge) — the profile that put t→o over the 0.6 coarticulation bar.
+const H_EXIT_CONN = { hairline: 0.56, fadeStart: 0.948 };
 
 // Join anchors — curs attach points in h's RENDERED frame (see H_RULE's
 // comment: the exit rides the stroke, so H_STROKE_OFFSET is folded into
@@ -3382,8 +3399,9 @@ function buildH(cx, cy, scale, dpr, overrides, variant = undefined) {
   }
 
   // ── Exit connector (band-true slice; see H_EXIT_BAND_SEGS) ───
-  // Sampled WITH the stroke offset so the slice start meets the rendered
-  // hump valley (the segs are derived in trace coords).
+  // Segs carry the baked stroke shift, so the slice start meets the
+  // hump valley in every frame; strokeOff is zero now but kept in the
+  // sampling call so a review-grid override still moves both together.
   let exitFills = [];
   if (variant.exit === 'low') {
     const exitCenter = sampleSegments(
@@ -4680,8 +4698,6 @@ function joinSegsForVariant(letter, variant) {
     };
   }
   if (letter === 'h') {
-    // NOTE: H_EXIT_BAND_SEGS are trace-frame; the render applies
-    // H_STROKE_OFFSET. Fine for tangents (translation-invariant).
     return {
       entry: v.entry === 'low' ? H_ENTRANCE_LOW_SEGS : H_ENTRANCE_SEGS,
       exit:  v.exit === 'low'  ? H_EXIT_BAND_SEGS : null,
