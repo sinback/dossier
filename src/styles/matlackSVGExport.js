@@ -51,6 +51,12 @@ const VARIANT_EXPORTS = {
     ['isol',      { entry: 'none', exit: 'none' }],   // standalone — traced base incl. tail
     ['fina',      { entry: 'low',  exit: 'none' }],   // word-final: keeps the traced tail
   ],
+  l: [
+    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
+    ['init',      { entry: 'none', exit: 'low' }],    // word-initial ("lorem")
+    ['isol',      { entry: 'none', exit: 'none' }],   // standalone — traced base incl. tail
+    ['fina',      { entry: 'low',  exit: 'none' }],   // word-final: keeps the traced tail
+  ],
 };
 
 // Returns a minimal calt+classes `.fea` snippet covering the variant glyphs
