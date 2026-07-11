@@ -79,6 +79,50 @@ word set. Commit the refactor as its own atomic commit(s).
    - n/x have y-center entries — a third join class with NO canonical
      band; needs sinback + possibly new traces.
 
+## Refactor execution detail (from the main session, 2026-07-11 — for
+## the fresh Opus session that runs this)
+
+Order of operations:
+1. Extract shared helpers to their own module FIRST
+   (buildConnectorRibbon, buildTaperedRibbon, buildRibbon,
+   sampleSegments, smoothStep, resolveOffset, ellipse samplers).
+   Letter modules will import helpers; if helpers stayed in
+   matlackGlyphs.js you'd get letter→aggregator→letter cycles. Run the
+   byte-identical gate right after.
+2. Prove the pattern on ONE letter (l or t — freshest, known shape):
+   constants + build fn + exportOutlines fn + registry entries +
+   VARIANT_EXPORTS entry → src/styles/glyphs/<letter>.js exporting one
+   descriptor. Gate.
+3. Move the rest in small batches, gate per batch (a failure must
+   bisect to a few letters, never one giant diff).
+4. Derive registries + dispatches (+ VARIANT_EXPORTS in
+   matlackSVGExport.js) by iterating the letter map. Public exports of
+   both files unchanged — MatlackCanvas, /api/outlines, /api/render,
+   /api/join-data, export_glyphs.mjs need no edits.
+5. Update SKILL.md (collision protocol shrinks to font-rebuild-only;
+   required-reading pointers → new per-letter files).
+
+Resolved design decision: resolveVariant currently reads the global
+VARIANT_SUPPORT from inside build functions — a cycle once the table is
+assembled FROM letter modules. Cut: make it resolveVariant(support,
+variant) (pure helper, support passed in); each builder passes its own
+module-local support. No letter needs another letter's variant table.
+
+Audit list (known unknowns — verify, don't assume):
+- Cross-letter borrowings: hBarBowlWidth = fBarBowlWidth is confirmed;
+  others are likely (early letters copied proportions). Grep before
+  moving; each becomes an explicit import.
+- Reference-overlay ellipse tables (scan-overlay data for MatlackCanvas
+  review views) live in matlackGlyphs.js; their per-letter extent and
+  MatlackCanvas's import surface are UNVERIFIED — least-checked corner.
+- The byte-identical gate covers matlack-glyphs.json only (alphabet
+  iteration = stable order). /api/join-data serializes registries whose
+  key ORDER may change with derived assembly — harmless, but eyeball
+  the two dashboards after.
+- pytest hits the live dev server, which hot-reloads every save;
+  mid-batch transient failures are noise. Only post-batch gate runs
+  count.
+
 ## Skill changes this implies (do with the refactor)
 
 - File-collision protocol section rewrites to the per-letter-module
