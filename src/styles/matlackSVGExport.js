@@ -57,6 +57,12 @@ const VARIANT_EXPORTS = {
     ['isol',      { entry: 'none', exit: 'none' }],   // standalone — traced base incl. tail
     ['fina',      { entry: 'low',  exit: 'none' }],   // word-final: keeps the traced tail
   ],
+  u: [
+    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
+    ['init',      { entry: 'none', exit: 'low' }],    // word-initial (traced nerfed flick)
+    ['isol',      { entry: 'none', exit: 'none' }],   // standalone — traced base incl. both flicks
+    ['fina',      { entry: 'low',  exit: 'none' }],   // word-final: keeps the traced flick
+  ],
 };
 
 // Returns a minimal calt+classes `.fea` snippet covering the variant glyphs

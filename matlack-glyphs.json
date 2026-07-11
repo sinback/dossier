@@ -6,7 +6,7 @@
   "descender": -200,
   "lsb": 50,
   "rsb": 50,
-  "features": "@high_exit   = [b f o v w o.afterHigh o.init o.isol];\n@all_letters = [a b c d e f g h i j k l m n o p q r s t u v w x y z o.afterHigh o.init o.isol r.afterHigh e.afterHigh m.afterHigh m.init t.init t.isol h.init h.isol h.fina l.init l.isol l.fina];\n\nfeature calt {\n\n  # Standalone o (neither preceded nor followed by a letter) → isol.\n  lookup calt_o_isol {\n    ignore sub @all_letters o';\n    ignore sub              o' @all_letters;\n             sub            o' by o.isol;\n  } calt_o_isol;\n\n  # Word-initial o (not preceded by a letter, IS followed by one) → init.\n  lookup calt_o_init {\n    ignore sub @all_letters o';\n             sub            o' @all_letters by o.init;\n  } calt_o_init;\n\n  # Word-initial m (not preceded by a letter, IS followed by one) → init.\n  lookup calt_m_init {\n    ignore sub @all_letters m';\n             sub            m' @all_letters by m.init;\n  } calt_m_init;\n\n  # Standalone t (neither preceded nor followed by a letter) → isol.\n  lookup calt_t_isol {\n    ignore sub @all_letters t';\n    ignore sub              t' @all_letters;\n             sub            t' by t.isol;\n  } calt_t_isol;\n\n  # Word-initial t (not preceded by a letter, IS followed by one) → init.\n  lookup calt_t_init {\n    ignore sub @all_letters t';\n             sub            t' @all_letters by t.init;\n  } calt_t_init;\n\n  # Standalone h (neither preceded nor followed by a letter) → isol.\n  lookup calt_h_isol {\n    ignore sub @all_letters h';\n    ignore sub              h' @all_letters;\n             sub            h' by h.isol;\n  } calt_h_isol;\n\n  # Word-initial h (not preceded by a letter, IS followed by one) → init.\n  lookup calt_h_init {\n    ignore sub @all_letters h';\n             sub            h' @all_letters by h.init;\n  } calt_h_init;\n\n  # Word-final h (preceded by a letter, NOT followed by one) → fina.\n  lookup calt_h_fina {\n    ignore sub h' @all_letters;\n             sub @all_letters h' by h.fina;\n  } calt_h_fina;\n\n  # Standalone l (neither preceded nor followed by a letter) → isol.\n  lookup calt_l_isol {\n    ignore sub @all_letters l';\n    ignore sub              l' @all_letters;\n             sub            l' by l.isol;\n  } calt_l_isol;\n\n  # Word-initial l (not preceded by a letter, IS followed by one) → init.\n  lookup calt_l_init {\n    ignore sub @all_letters l';\n             sub            l' @all_letters by l.init;\n  } calt_l_init;\n\n  # Word-final l (preceded by a letter, NOT followed by one) → fina.\n  lookup calt_l_fina {\n    ignore sub l' @all_letters;\n             sub @all_letters l' by l.fina;\n  } calt_l_fina;\n\n  # Contextual joins after @high_exit letters (plus entry-none guards for\n  # letters whose afterHigh geometry doesn't exist yet).\n  lookup calt_after_high {\n    sub @high_exit o' by o.afterHigh;\n    sub @high_exit r' by r.afterHigh;\n    sub @high_exit e' by e.afterHigh;\n    sub @high_exit m' by m.afterHigh;\n    sub @high_exit t' by t.init;\n    sub @high_exit h' by h.init;\n    sub @high_exit h.fina' by h.isol;\n    sub @high_exit l' by l.init;\n    sub @high_exit l.fina' by l.isol;\n  } calt_after_high;\n} calt;\n",
+  "features": "@high_exit   = [b f o v w o.afterHigh o.init o.isol];\n@all_letters = [a b c d e f g h i j k l m n o p q r s t u v w x y z o.afterHigh o.init o.isol r.afterHigh e.afterHigh m.afterHigh m.init t.init t.isol h.init h.isol h.fina l.init l.isol l.fina u.init u.isol u.fina];\n\nfeature calt {\n\n  # Standalone o (neither preceded nor followed by a letter) → isol.\n  lookup calt_o_isol {\n    ignore sub @all_letters o';\n    ignore sub              o' @all_letters;\n             sub            o' by o.isol;\n  } calt_o_isol;\n\n  # Word-initial o (not preceded by a letter, IS followed by one) → init.\n  lookup calt_o_init {\n    ignore sub @all_letters o';\n             sub            o' @all_letters by o.init;\n  } calt_o_init;\n\n  # Word-initial m (not preceded by a letter, IS followed by one) → init.\n  lookup calt_m_init {\n    ignore sub @all_letters m';\n             sub            m' @all_letters by m.init;\n  } calt_m_init;\n\n  # Standalone t (neither preceded nor followed by a letter) → isol.\n  lookup calt_t_isol {\n    ignore sub @all_letters t';\n    ignore sub              t' @all_letters;\n             sub            t' by t.isol;\n  } calt_t_isol;\n\n  # Word-initial t (not preceded by a letter, IS followed by one) → init.\n  lookup calt_t_init {\n    ignore sub @all_letters t';\n             sub            t' @all_letters by t.init;\n  } calt_t_init;\n\n  # Standalone h (neither preceded nor followed by a letter) → isol.\n  lookup calt_h_isol {\n    ignore sub @all_letters h';\n    ignore sub              h' @all_letters;\n             sub            h' by h.isol;\n  } calt_h_isol;\n\n  # Word-initial h (not preceded by a letter, IS followed by one) → init.\n  lookup calt_h_init {\n    ignore sub @all_letters h';\n             sub            h' @all_letters by h.init;\n  } calt_h_init;\n\n  # Word-final h (preceded by a letter, NOT followed by one) → fina.\n  lookup calt_h_fina {\n    ignore sub h' @all_letters;\n             sub @all_letters h' by h.fina;\n  } calt_h_fina;\n\n  # Standalone l (neither preceded nor followed by a letter) → isol.\n  lookup calt_l_isol {\n    ignore sub @all_letters l';\n    ignore sub              l' @all_letters;\n             sub            l' by l.isol;\n  } calt_l_isol;\n\n  # Word-initial l (not preceded by a letter, IS followed by one) → init.\n  lookup calt_l_init {\n    ignore sub @all_letters l';\n             sub            l' @all_letters by l.init;\n  } calt_l_init;\n\n  # Word-final l (preceded by a letter, NOT followed by one) → fina.\n  lookup calt_l_fina {\n    ignore sub l' @all_letters;\n             sub @all_letters l' by l.fina;\n  } calt_l_fina;\n\n  # Standalone u (neither preceded nor followed by a letter) → isol.\n  lookup calt_u_isol {\n    ignore sub @all_letters u';\n    ignore sub              u' @all_letters;\n             sub            u' by u.isol;\n  } calt_u_isol;\n\n  # Word-initial u (not preceded by a letter, IS followed by one) → init.\n  lookup calt_u_init {\n    ignore sub @all_letters u';\n             sub            u' @all_letters by u.init;\n  } calt_u_init;\n\n  # Word-final u (preceded by a letter, NOT followed by one) → fina.\n  lookup calt_u_fina {\n    ignore sub u' @all_letters;\n             sub @all_letters u' by u.fina;\n  } calt_u_fina;\n\n  # Contextual joins after @high_exit letters (plus entry-none guards for\n  # letters whose afterHigh geometry doesn't exist yet).\n  lookup calt_after_high {\n    sub @high_exit o' by o.afterHigh;\n    sub @high_exit r' by r.afterHigh;\n    sub @high_exit e' by e.afterHigh;\n    sub @high_exit m' by m.afterHigh;\n    sub @high_exit t' by t.init;\n    sub @high_exit h' by h.init;\n    sub @high_exit h.fina' by h.isol;\n    sub @high_exit l' by l.init;\n    sub @high_exit l.fina' by l.isol;\n    sub @high_exit u' by u.init;\n    sub @high_exit u.fina' by u.isol;\n  } calt_after_high;\n} calt;\n",
   "glyphs": {
     "a": {
       "paths": [
@@ -12694,6 +12694,1156 @@
           "evenodd": false
         },
         {
+          "d": "M 31.541 100.300 L 33.600 100.195 L 33.120 95.485 L 32.815 95.621 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -5.591 -0.819 L -5.077 -1.962 L 5.447 3.792 L 6.191 1.459 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -5.077 -1.962 L -5.333 -1.607 L 3.929 5.915 L 5.447 3.792 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -5.333 -1.607 L -6.601 0.018 L 1.991 7.944 L 3.929 5.915 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -6.601 0.018 L -8.521 2.446 L -0.610 10.238 L 1.991 7.944 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -8.521 2.446 L -10.926 5.591 L -3.931 12.774 L -0.610 10.238 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -10.926 5.591 L -13.721 9.394 L -7.949 15.501 L -3.931 12.774 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -13.721 9.394 L -16.889 13.741 L -12.569 18.423 L -7.949 15.501 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -16.889 13.741 L -20.492 18.441 L -17.616 21.621 L -12.569 18.423 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -20.492 18.441 L -24.649 23.230 L -22.856 25.250 L -17.616 21.621 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -24.649 23.230 L -29.478 27.841 L -28.058 29.468 L -22.856 25.250 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -29.478 27.841 L -34.746 32.400 L -33.339 34.039 L -28.058 29.468 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -34.746 32.400 L -40.219 37.057 L -38.821 38.703 L -33.339 34.039 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -40.219 37.057 L -41.862 38.443 L -40.470 40.095 L -38.821 38.703 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -41.862 38.443 L -43.508 39.829 L -42.117 41.482 L -40.470 40.095 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -43.508 39.829 L -45.155 41.214 L -43.766 42.868 L -42.117 41.482 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -45.155 41.214 L -46.804 42.599 L -45.414 44.253 L -43.766 42.868 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -46.804 42.599 L -48.452 43.983 L -47.062 45.637 L -45.414 44.253 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -48.452 43.983 L -50.100 45.368 L -48.710 47.022 L -47.062 45.637 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -50.100 45.368 L -51.748 46.754 L -50.356 48.407 L -48.710 47.022 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -51.748 46.754 L -53.394 48.142 L -52.001 49.793 L -50.356 48.407 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -53.394 48.142 L -55.039 49.532 L -53.644 51.181 L -52.001 49.793 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -55.039 49.532 L -56.683 50.924 L -55.285 52.571 L -53.644 51.181 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -56.683 50.924 L -58.324 52.320 L -56.923 53.964 L -55.285 52.571 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -58.324 52.320 L -59.960 53.718 L -58.560 55.362 L -56.923 53.964 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -59.960 53.718 L -66.402 59.196 L -65.009 60.847 L -58.560 55.362 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -66.402 59.196 L -73.005 64.727 L -71.626 66.389 L -65.009 60.847 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -73.005 64.727 L -79.654 70.197 L -78.290 71.873 L -71.626 66.389 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -79.654 70.197 L -86.230 75.491 L -84.886 77.183 L -78.290 71.873 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -86.230 75.491 L -92.615 80.493 L -91.297 82.205 L -84.886 77.183 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -92.615 80.493 L -98.692 85.086 L -97.408 86.824 L -91.297 82.205 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -98.692 85.086 L -104.340 89.154 L -103.104 90.926 L -97.408 86.824 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -104.340 89.154 L -109.261 92.855 L -108.450 94.124 L -103.104 90.926 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -109.261 92.855 L -113.525 95.841 L -113.141 96.534 L -108.450 94.124 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -113.525 95.841 L -117.108 97.848 L -116.968 98.189 L -113.141 96.534 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -117.108 97.848 L -119.862 98.793 L -119.843 98.943 L -116.968 98.189 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -119.862 98.793 L -121.657 98.590 L -121.663 98.650 L -119.843 98.943 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -121.657 98.590 L -121.772 98.677 L -121.739 98.721 L -121.663 98.650 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -121.772 98.677 L -121.884 98.756 L -121.858 98.798 L -121.739 98.721 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -121.884 98.756 L -122.016 98.833 L -121.996 98.872 L -121.858 98.798 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.016 98.833 L -122.167 98.909 L -122.151 98.944 L -121.996 98.872 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.167 98.909 L -122.337 98.984 L -122.325 99.014 L -122.151 98.944 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.337 98.984 L -122.524 99.058 L -122.516 99.082 L -122.325 99.014 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.524 99.058 L -122.729 99.130 L -122.723 99.149 L -122.516 99.082 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.729 99.130 L -122.949 99.200 L -122.945 99.213 L -122.723 99.149 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.949 99.200 L -123.186 99.268 L -123.183 99.277 L -122.945 99.213 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -123.186 99.268 L -123.436 99.334 L -123.435 99.339 L -123.183 99.277 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -123.436 99.334 L -123.702 99.398 L -123.701 99.400 L -123.435 99.339 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -123.702 99.398 L -123.980 99.460 L -123.980 99.460 L -123.701 99.400 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 27.833 94.933 L 28.256 95.643 L 30.097 94.514 L 29.687 93.827 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 28.256 95.643 L 28.722 96.383 L 30.532 95.204 L 30.097 94.514 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 28.722 96.383 L 29.226 97.132 L 30.993 95.890 L 30.532 95.204 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 29.226 97.132 L 29.771 97.875 L 31.481 96.556 L 30.993 95.890 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 29.771 97.875 L 30.357 98.598 L 31.993 97.187 L 31.481 96.556 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 30.357 98.598 L 30.989 99.286 L 32.526 97.769 L 31.993 97.187 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 30.989 99.286 L 31.670 99.925 L 33.076 98.286 L 32.526 97.769 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 31.670 99.925 L 32.404 100.497 L 33.638 98.725 L 33.076 98.286 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 32.404 100.497 L 33.197 100.985 L 34.206 99.075 L 33.638 98.725 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 33.197 100.985 L 34.053 101.366 L 34.777 99.331 L 34.206 99.075 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 34.053 101.366 L 34.972 101.613 L 35.351 99.486 L 34.777 99.331 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 34.972 101.613 L 35.692 101.671 L 36.188 99.569 L 35.351 99.486 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 35.692 101.671 L 36.031 101.864 L 36.446 99.744 L 36.188 99.569 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 36.031 101.864 L 37.437 102.003 L 37.554 99.846 L 36.446 99.744 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 37.437 102.003 L 39.521 102.062 L 39.545 99.903 L 37.554 99.846 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 39.521 102.062 L 42.188 102.057 L 42.160 99.897 L 39.545 99.903 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 42.188 102.057 L 45.276 101.987 L 45.207 99.829 L 42.160 99.897 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 45.276 101.987 L 48.611 101.854 L 48.504 99.696 L 45.207 99.829 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 48.611 101.854 L 52.019 101.655 L 51.871 99.500 L 48.504 99.696 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 52.019 101.655 L 55.327 101.392 L 55.125 99.241 L 51.871 99.500 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 55.327 101.392 L 58.362 101.061 L 58.085 98.919 L 55.125 99.241 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 58.362 101.061 L 60.963 100.659 L 60.557 98.538 L 58.085 98.919 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 60.963 100.659 L 62.995 100.168 L 62.321 98.116 L 60.557 98.538 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 62.995 100.168 L 63.863 99.693 L 63.617 97.547 L 62.321 98.116 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 63.863 99.693 L 64.632 99.985 L 64.780 97.831 L 63.617 97.547 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 64.632 99.985 L 66.280 99.835 L 65.831 97.722 L 64.780 97.831 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 66.280 99.835 L 68.143 99.269 L 67.384 97.247 L 65.831 97.722 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 68.143 99.269 L 70.273 98.344 L 69.336 96.398 L 67.384 97.247 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 70.273 98.344 L 72.677 97.087 L 71.626 95.200 L 69.336 96.398 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 72.677 97.087 L 75.344 95.521 L 74.216 93.679 L 71.626 95.200 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 75.344 95.521 L 78.255 93.670 L 77.071 91.864 L 74.216 93.679 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 78.255 93.670 L 81.389 91.558 L 80.162 89.780 L 77.071 91.864 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 81.389 91.558 L 84.721 89.209 L 83.461 87.455 L 80.162 89.780 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 84.721 89.209 L 88.227 86.649 L 86.941 84.913 L 83.461 87.455 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 88.227 86.649 L 91.883 83.902 L 90.575 82.182 L 86.941 84.913 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 91.883 83.902 L 95.000 80.140 L 95.000 80.140 L 90.575 82.182 Z",
+          "evenodd": false
+        }
+      ],
+      "rule": {
+        "yTop": -25.4,
+        "yCenter": 24.5,
+        "yBottom": 74.4
+      },
+      "refCenter": {
+        "x": 64,
+        "y": 24
+      },
+      "letter": "u",
+      "isDefault": true,
+      "joinAnchors": {
+        "entry": {
+          "x": -94.6,
+          "y": 85.25999999999999
+        },
+        "exit": {
+          "x": 90.80000000000001,
+          "y": 85.25999999999999
+        }
+      }
+    },
+    "u.init": {
+      "paths": [
+        {
+          "d": "M -5.813 -5.493 L -7.371 -3.777 L 1.749 4.148 L 3.213 2.413 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -7.371 -3.777 L -11.934 0.702 L -1.989 9.248 L 1.749 4.148 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -11.934 0.702 L -19.346 7.029 L -7.008 17.469 L -1.989 9.248 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -19.346 7.029 L -28.413 15.181 L -13.352 27.674 L -7.008 17.469 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -28.413 15.181 L -37.279 25.644 L -21.725 38.216 L -13.352 27.674 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -37.279 25.644 L -46.346 37.025 L -30.579 49.330 L -21.725 38.216 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -46.346 37.025 L -55.216 48.627 L -39.160 60.552 L -30.579 49.330 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -55.216 48.627 L -63.343 59.917 L -46.866 71.255 L -39.160 60.552 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -63.343 59.917 L -69.574 70.803 L -53.699 80.371 L -46.866 71.255 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -69.574 70.803 L -72.875 81.015 L -59.545 87.012 L -53.699 80.371 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.875 81.015 L -73.910 89.724 L -62.588 90.844 L -59.545 87.012 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -73.910 89.724 L -71.981 94.395 L -62.379 93.245 L -62.588 90.844 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -71.981 94.395 L -72.147 93.159 L -63.322 95.994 L -62.379 93.245 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.147 93.159 L -72.107 96.399 L -63.402 94.819 L -63.322 95.994 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.107 96.399 L -71.094 98.628 L -63.552 95.062 L -63.402 94.819 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -71.094 98.628 L -69.753 100.388 L -63.295 96.037 L -63.552 95.062 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -69.753 100.388 L -68.220 101.957 L -62.660 97.323 L -63.295 96.037 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -68.220 101.957 L -66.569 103.417 L -61.741 98.693 L -62.660 97.323 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -66.569 103.417 L -64.864 104.778 L -60.641 99.994 L -61.741 98.693 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -64.864 104.778 L -63.160 106.015 L -59.472 101.107 L -60.641 99.994 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -63.160 106.015 L -61.485 107.086 L -58.374 101.929 L -59.472 101.107 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -61.485 107.086 L -59.795 107.938 L -57.556 102.371 L -58.374 101.929 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -59.795 107.938 L -57.816 108.427 L -57.459 102.432 L -57.556 102.371 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -57.816 108.427 L -56.843 108.266 L -56.957 102.254 L -57.459 102.432 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -56.843 108.266 L -56.766 108.411 L -56.344 102.406 L -56.957 102.254 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -56.766 108.411 L -55.233 108.347 L -55.967 102.355 L -56.344 102.406 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -55.233 108.347 L -53.580 108.097 L -54.728 102.132 L -55.967 102.355 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -53.580 108.097 L -51.638 107.714 L -53.038 101.733 L -54.728 102.132 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -51.638 107.714 L -49.465 107.222 L -51.076 101.188 L -53.038 101.733 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -49.465 107.222 L -47.159 106.644 L -48.986 100.526 L -51.076 101.188 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -47.159 106.644 L -44.823 105.999 L -46.904 99.779 L -48.986 100.526 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -44.823 105.999 L -42.559 105.298 L -44.966 98.988 L -46.904 99.779 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -42.559 105.298 L -40.456 104.541 L -43.324 98.205 L -44.966 98.988 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -40.456 104.541 L -38.565 103.688 L -42.166 97.523 L -43.324 98.205 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -38.565 103.688 L -36.821 102.528 L -41.797 97.203 L -42.166 97.523 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -36.821 102.528 L -37.199 102.490 L -40.481 95.870 L -41.797 97.203 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -37.199 102.490 L -35.040 101.943 L -39.388 95.711 L -40.481 95.870 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -35.040 101.943 L -27.880 96.902 L -33.467 90.064 L -39.388 95.711 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -27.880 96.902 L -17.308 89.675 L -24.277 81.145 L -33.467 90.064 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -17.308 89.675 L -4.074 80.593 L -12.739 69.988 L -24.277 81.145 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -4.074 80.593 L 10.610 69.878 L 0.688 57.734 L -12.739 69.988 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 10.610 69.878 L 25.634 57.875 L 15.446 45.405 L 0.688 57.734 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 25.634 57.875 L 40.785 46.027 L 30.077 32.921 L 15.446 45.405 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 40.785 46.027 L 55.228 35.017 L 43.745 20.962 L 30.077 32.921 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 55.228 35.017 L 67.945 25.303 L 55.800 10.437 L 43.745 20.962 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 67.945 25.303 L 78.010 17.454 L 65.497 2.140 L 55.800 10.437 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 78.010 17.454 L 84.611 12.185 L 71.977 -3.279 L 65.497 2.140 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 84.611 12.185 L 82.768 12.293 L 78.552 -7.253 L 71.977 -3.279 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 82.768 12.293 L 72.884 0.325 L 91.795 6.835 L 78.552 -7.253 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 72.884 0.325 L 71.750 0.374 L 86.439 13.761 L 91.795 6.835 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 71.750 0.374 L 67.079 6.059 L 81.448 18.823 L 86.439 13.761 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 67.079 6.059 L 61.581 13.441 L 74.945 25.079 L 81.448 18.823 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 61.581 13.441 L 55.640 22.073 L 67.381 32.095 L 74.945 25.079 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 55.640 22.073 L 49.465 31.338 L 59.380 39.607 L 67.381 32.095 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 49.465 31.338 L 43.168 40.549 L 51.665 47.421 L 59.380 39.607 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 43.168 40.549 L 36.941 49.108 L 44.880 55.252 L 51.665 47.421 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 36.941 49.108 L 31.322 56.739 L 39.319 62.496 L 44.880 55.252 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 31.322 56.739 L 27.097 63.383 L 35.030 68.332 L 39.319 62.496 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 27.097 63.383 L 24.462 68.823 L 32.654 72.094 L 35.030 68.332 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.462 68.823 L 24.437 71.018 L 32.003 74.942 L 32.654 72.094 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.437 71.018 L 23.292 71.829 L 29.737 76.970 L 32.003 74.942 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 23.292 71.829 L 21.692 75.171 L 29.204 77.739 L 29.737 76.970 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.692 75.171 L 21.170 78.629 L 28.720 79.353 L 29.204 77.739 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.170 78.629 L 21.346 82.085 L 28.514 81.618 L 28.720 79.353 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.346 82.085 L 22.011 85.503 L 28.647 84.264 L 28.514 81.618 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 22.011 85.503 L 23.035 88.813 L 29.095 87.047 L 28.647 84.264 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 23.035 88.813 L 24.322 91.922 L 29.805 89.751 L 29.095 87.047 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.322 91.922 L 25.797 94.725 L 30.703 92.172 L 29.805 89.751 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 25.797 94.725 L 27.413 97.121 L 31.682 94.098 L 30.703 92.172 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 27.413 97.121 L 29.214 99.031 L 32.550 95.299 L 31.682 94.098 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 29.214 99.031 L 31.541 100.300 L 32.815 95.621 L 32.550 95.299 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 31.541 100.300 L 33.600 100.195 L 33.120 95.485 L 32.815 95.621 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -6.552 -3.810 L -6.982 -2.399 L 4.835 7.596 L 7.152 4.450 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -6.982 -2.399 L -11.018 2.833 L -1.099 12.842 L 4.835 7.596 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -11.018 2.833 L -18.097 10.959 L -9.877 19.833 L -1.099 12.842 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -18.097 10.959 L -27.432 20.977 L -20.953 28.289 L -9.877 19.833 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -27.432 20.977 L -38.400 32.102 L -33.614 37.716 L -20.953 28.289 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -38.400 32.102 L -50.392 43.591 L -47.133 47.574 L -33.614 37.716 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -50.392 43.591 L -62.791 54.730 L -60.793 57.296 L -47.133 47.574 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -62.791 54.730 L -74.956 64.832 L -73.899 66.288 L -60.793 57.296 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -74.956 64.832 L -86.224 73.239 L -85.779 73.926 L -73.899 66.288 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -86.224 73.239 L -95.909 79.321 L -95.785 79.561 L -85.779 73.926 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -95.909 79.321 L -103.300 82.471 L -103.290 82.516 L -95.785 79.561 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -103.300 82.471 L -107.680 82.100 L -107.680 82.100 L -103.290 82.516 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 27.833 94.933 L 28.256 95.643 L 30.097 94.514 L 29.687 93.827 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 28.256 95.643 L 28.722 96.383 L 30.532 95.204 L 30.097 94.514 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 28.722 96.383 L 29.226 97.132 L 30.993 95.890 L 30.532 95.204 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 29.226 97.132 L 29.771 97.875 L 31.481 96.556 L 30.993 95.890 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 29.771 97.875 L 30.357 98.598 L 31.993 97.187 L 31.481 96.556 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 30.357 98.598 L 30.989 99.286 L 32.526 97.769 L 31.993 97.187 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 30.989 99.286 L 31.670 99.925 L 33.076 98.286 L 32.526 97.769 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 31.670 99.925 L 32.404 100.497 L 33.638 98.725 L 33.076 98.286 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 32.404 100.497 L 33.197 100.985 L 34.206 99.075 L 33.638 98.725 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 33.197 100.985 L 34.053 101.366 L 34.777 99.331 L 34.206 99.075 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 34.053 101.366 L 34.972 101.613 L 35.351 99.486 L 34.777 99.331 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 34.972 101.613 L 35.692 101.671 L 36.188 99.569 L 35.351 99.486 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 35.692 101.671 L 36.031 101.864 L 36.446 99.744 L 36.188 99.569 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 36.031 101.864 L 37.437 102.003 L 37.554 99.846 L 36.446 99.744 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 37.437 102.003 L 39.521 102.062 L 39.545 99.903 L 37.554 99.846 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 39.521 102.062 L 42.188 102.057 L 42.160 99.897 L 39.545 99.903 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 42.188 102.057 L 45.276 101.987 L 45.207 99.829 L 42.160 99.897 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 45.276 101.987 L 48.611 101.854 L 48.504 99.696 L 45.207 99.829 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 48.611 101.854 L 52.019 101.655 L 51.871 99.500 L 48.504 99.696 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 52.019 101.655 L 55.327 101.392 L 55.125 99.241 L 51.871 99.500 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 55.327 101.392 L 58.362 101.061 L 58.085 98.919 L 55.125 99.241 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 58.362 101.061 L 60.963 100.659 L 60.557 98.538 L 58.085 98.919 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 60.963 100.659 L 62.995 100.168 L 62.321 98.116 L 60.557 98.538 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 62.995 100.168 L 63.863 99.693 L 63.617 97.547 L 62.321 98.116 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 63.863 99.693 L 64.632 99.985 L 64.780 97.831 L 63.617 97.547 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 64.632 99.985 L 66.280 99.835 L 65.831 97.722 L 64.780 97.831 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 66.280 99.835 L 68.143 99.269 L 67.384 97.247 L 65.831 97.722 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 68.143 99.269 L 70.273 98.344 L 69.336 96.398 L 67.384 97.247 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 70.273 98.344 L 72.677 97.087 L 71.626 95.200 L 69.336 96.398 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 72.677 97.087 L 75.344 95.521 L 74.216 93.679 L 71.626 95.200 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 75.344 95.521 L 78.255 93.670 L 77.071 91.864 L 74.216 93.679 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 78.255 93.670 L 81.389 91.558 L 80.162 89.780 L 77.071 91.864 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 81.389 91.558 L 84.721 89.209 L 83.461 87.455 L 80.162 89.780 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 84.721 89.209 L 88.227 86.649 L 86.941 84.913 L 83.461 87.455 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 88.227 86.649 L 91.883 83.902 L 90.575 82.182 L 86.941 84.913 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 91.883 83.902 L 95.000 80.140 L 95.000 80.140 L 90.575 82.182 Z",
+          "evenodd": false
+        }
+      ],
+      "rule": {
+        "yTop": -25.4,
+        "yCenter": 24.5,
+        "yBottom": 74.4
+      },
+      "refCenter": {
+        "x": 64,
+        "y": 24
+      },
+      "letter": "u",
+      "isDefault": false,
+      "joinAnchors": {
+        "exit": {
+          "x": 90.80000000000001,
+          "y": 85.25999999999999
+        }
+      }
+    },
+    "u.isol": {
+      "paths": [
+        {
+          "d": "M -5.813 -5.493 L -7.371 -3.777 L 1.749 4.148 L 3.213 2.413 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -7.371 -3.777 L -11.934 0.702 L -1.989 9.248 L 1.749 4.148 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -11.934 0.702 L -19.346 7.029 L -7.008 17.469 L -1.989 9.248 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -19.346 7.029 L -28.413 15.181 L -13.352 27.674 L -7.008 17.469 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -28.413 15.181 L -37.279 25.644 L -21.725 38.216 L -13.352 27.674 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -37.279 25.644 L -46.346 37.025 L -30.579 49.330 L -21.725 38.216 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -46.346 37.025 L -55.216 48.627 L -39.160 60.552 L -30.579 49.330 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -55.216 48.627 L -63.343 59.917 L -46.866 71.255 L -39.160 60.552 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -63.343 59.917 L -69.574 70.803 L -53.699 80.371 L -46.866 71.255 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -69.574 70.803 L -72.875 81.015 L -59.545 87.012 L -53.699 80.371 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.875 81.015 L -73.910 89.724 L -62.588 90.844 L -59.545 87.012 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -73.910 89.724 L -71.981 94.395 L -62.379 93.245 L -62.588 90.844 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -71.981 94.395 L -72.147 93.159 L -63.322 95.994 L -62.379 93.245 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.147 93.159 L -72.107 96.399 L -63.402 94.819 L -63.322 95.994 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.107 96.399 L -71.094 98.628 L -63.552 95.062 L -63.402 94.819 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -71.094 98.628 L -69.753 100.388 L -63.295 96.037 L -63.552 95.062 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -69.753 100.388 L -68.220 101.957 L -62.660 97.323 L -63.295 96.037 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -68.220 101.957 L -66.569 103.417 L -61.741 98.693 L -62.660 97.323 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -66.569 103.417 L -64.864 104.778 L -60.641 99.994 L -61.741 98.693 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -64.864 104.778 L -63.160 106.015 L -59.472 101.107 L -60.641 99.994 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -63.160 106.015 L -61.485 107.086 L -58.374 101.929 L -59.472 101.107 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -61.485 107.086 L -59.795 107.938 L -57.556 102.371 L -58.374 101.929 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -59.795 107.938 L -57.816 108.427 L -57.459 102.432 L -57.556 102.371 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -57.816 108.427 L -56.843 108.266 L -56.957 102.254 L -57.459 102.432 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -56.843 108.266 L -56.766 108.411 L -56.344 102.406 L -56.957 102.254 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -56.766 108.411 L -55.233 108.347 L -55.967 102.355 L -56.344 102.406 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -55.233 108.347 L -53.580 108.097 L -54.728 102.132 L -55.967 102.355 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -53.580 108.097 L -51.638 107.714 L -53.038 101.733 L -54.728 102.132 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -51.638 107.714 L -49.465 107.222 L -51.076 101.188 L -53.038 101.733 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -49.465 107.222 L -47.159 106.644 L -48.986 100.526 L -51.076 101.188 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -47.159 106.644 L -44.823 105.999 L -46.904 99.779 L -48.986 100.526 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -44.823 105.999 L -42.559 105.298 L -44.966 98.988 L -46.904 99.779 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -42.559 105.298 L -40.456 104.541 L -43.324 98.205 L -44.966 98.988 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -40.456 104.541 L -38.565 103.688 L -42.166 97.523 L -43.324 98.205 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -38.565 103.688 L -36.821 102.528 L -41.797 97.203 L -42.166 97.523 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -36.821 102.528 L -37.199 102.490 L -40.481 95.870 L -41.797 97.203 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -37.199 102.490 L -35.040 101.943 L -39.388 95.711 L -40.481 95.870 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -35.040 101.943 L -27.880 96.902 L -33.467 90.064 L -39.388 95.711 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -27.880 96.902 L -17.308 89.675 L -24.277 81.145 L -33.467 90.064 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -17.308 89.675 L -4.074 80.593 L -12.739 69.988 L -24.277 81.145 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -4.074 80.593 L 10.610 69.878 L 0.688 57.734 L -12.739 69.988 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 10.610 69.878 L 25.634 57.875 L 15.446 45.405 L 0.688 57.734 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 25.634 57.875 L 40.785 46.027 L 30.077 32.921 L 15.446 45.405 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 40.785 46.027 L 55.228 35.017 L 43.745 20.962 L 30.077 32.921 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 55.228 35.017 L 67.945 25.303 L 55.800 10.437 L 43.745 20.962 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 67.945 25.303 L 78.010 17.454 L 65.497 2.140 L 55.800 10.437 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 78.010 17.454 L 84.611 12.185 L 71.977 -3.279 L 65.497 2.140 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 84.611 12.185 L 82.768 12.293 L 78.552 -7.253 L 71.977 -3.279 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 82.768 12.293 L 72.884 0.325 L 91.795 6.835 L 78.552 -7.253 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 72.884 0.325 L 71.750 0.374 L 86.439 13.761 L 91.795 6.835 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 71.750 0.374 L 67.079 6.059 L 81.448 18.823 L 86.439 13.761 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 67.079 6.059 L 61.581 13.441 L 74.945 25.079 L 81.448 18.823 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 61.581 13.441 L 55.640 22.073 L 67.381 32.095 L 74.945 25.079 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 55.640 22.073 L 49.465 31.338 L 59.380 39.607 L 67.381 32.095 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 49.465 31.338 L 43.168 40.549 L 51.665 47.421 L 59.380 39.607 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 43.168 40.549 L 36.941 49.108 L 44.880 55.252 L 51.665 47.421 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 36.941 49.108 L 31.322 56.739 L 39.319 62.496 L 44.880 55.252 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 31.322 56.739 L 27.097 63.383 L 35.030 68.332 L 39.319 62.496 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 27.097 63.383 L 24.462 68.823 L 32.654 72.094 L 35.030 68.332 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.462 68.823 L 24.437 71.018 L 32.003 74.942 L 32.654 72.094 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.437 71.018 L 23.292 71.829 L 29.737 76.970 L 32.003 74.942 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 23.292 71.829 L 21.692 75.171 L 29.204 77.739 L 29.737 76.970 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.692 75.171 L 21.170 78.629 L 28.720 79.353 L 29.204 77.739 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.170 78.629 L 21.346 82.085 L 28.514 81.618 L 28.720 79.353 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.346 82.085 L 22.011 85.503 L 28.647 84.264 L 28.514 81.618 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 22.011 85.503 L 23.035 88.813 L 29.095 87.047 L 28.647 84.264 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 23.035 88.813 L 24.322 91.922 L 29.805 89.751 L 29.095 87.047 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.322 91.922 L 25.797 94.725 L 30.703 92.172 L 29.805 89.751 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 25.797 94.725 L 27.413 97.121 L 31.682 94.098 L 30.703 92.172 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 27.413 97.121 L 29.214 99.031 L 32.550 95.299 L 31.682 94.098 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 29.214 99.031 L 31.541 100.300 L 32.815 95.621 L 32.550 95.299 Z",
+          "evenodd": false
+        },
+        {
           "d": "M 31.541 100.300 L 32.965 100.174 L 33.755 95.506 L 32.815 95.621 Z",
           "evenodd": false
         },
@@ -12834,11 +13984,607 @@
           "evenodd": false
         }
       ],
-      "rule": null,
-      "refCenter": null,
+      "rule": {
+        "yTop": -25.4,
+        "yCenter": 24.5,
+        "yBottom": 74.4
+      },
+      "refCenter": {
+        "x": 64,
+        "y": 24
+      },
       "letter": "u",
-      "isDefault": true,
+      "isDefault": false,
       "joinAnchors": null
+    },
+    "u.fina": {
+      "paths": [
+        {
+          "d": "M -5.813 -5.493 L -7.371 -3.777 L 1.749 4.148 L 3.213 2.413 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -7.371 -3.777 L -11.934 0.702 L -1.989 9.248 L 1.749 4.148 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -11.934 0.702 L -19.346 7.029 L -7.008 17.469 L -1.989 9.248 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -19.346 7.029 L -28.413 15.181 L -13.352 27.674 L -7.008 17.469 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -28.413 15.181 L -37.279 25.644 L -21.725 38.216 L -13.352 27.674 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -37.279 25.644 L -46.346 37.025 L -30.579 49.330 L -21.725 38.216 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -46.346 37.025 L -55.216 48.627 L -39.160 60.552 L -30.579 49.330 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -55.216 48.627 L -63.343 59.917 L -46.866 71.255 L -39.160 60.552 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -63.343 59.917 L -69.574 70.803 L -53.699 80.371 L -46.866 71.255 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -69.574 70.803 L -72.875 81.015 L -59.545 87.012 L -53.699 80.371 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.875 81.015 L -73.910 89.724 L -62.588 90.844 L -59.545 87.012 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -73.910 89.724 L -71.981 94.395 L -62.379 93.245 L -62.588 90.844 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -71.981 94.395 L -72.147 93.159 L -63.322 95.994 L -62.379 93.245 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.147 93.159 L -72.107 96.399 L -63.402 94.819 L -63.322 95.994 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -72.107 96.399 L -71.094 98.628 L -63.552 95.062 L -63.402 94.819 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -71.094 98.628 L -69.753 100.388 L -63.295 96.037 L -63.552 95.062 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -69.753 100.388 L -68.220 101.957 L -62.660 97.323 L -63.295 96.037 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -68.220 101.957 L -66.569 103.417 L -61.741 98.693 L -62.660 97.323 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -66.569 103.417 L -64.864 104.778 L -60.641 99.994 L -61.741 98.693 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -64.864 104.778 L -63.160 106.015 L -59.472 101.107 L -60.641 99.994 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -63.160 106.015 L -61.485 107.086 L -58.374 101.929 L -59.472 101.107 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -61.485 107.086 L -59.795 107.938 L -57.556 102.371 L -58.374 101.929 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -59.795 107.938 L -57.816 108.427 L -57.459 102.432 L -57.556 102.371 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -57.816 108.427 L -56.843 108.266 L -56.957 102.254 L -57.459 102.432 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -56.843 108.266 L -56.766 108.411 L -56.344 102.406 L -56.957 102.254 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -56.766 108.411 L -55.233 108.347 L -55.967 102.355 L -56.344 102.406 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -55.233 108.347 L -53.580 108.097 L -54.728 102.132 L -55.967 102.355 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -53.580 108.097 L -51.638 107.714 L -53.038 101.733 L -54.728 102.132 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -51.638 107.714 L -49.465 107.222 L -51.076 101.188 L -53.038 101.733 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -49.465 107.222 L -47.159 106.644 L -48.986 100.526 L -51.076 101.188 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -47.159 106.644 L -44.823 105.999 L -46.904 99.779 L -48.986 100.526 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -44.823 105.999 L -42.559 105.298 L -44.966 98.988 L -46.904 99.779 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -42.559 105.298 L -40.456 104.541 L -43.324 98.205 L -44.966 98.988 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -40.456 104.541 L -38.565 103.688 L -42.166 97.523 L -43.324 98.205 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -38.565 103.688 L -36.821 102.528 L -41.797 97.203 L -42.166 97.523 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -36.821 102.528 L -37.199 102.490 L -40.481 95.870 L -41.797 97.203 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -37.199 102.490 L -35.040 101.943 L -39.388 95.711 L -40.481 95.870 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -35.040 101.943 L -27.880 96.902 L -33.467 90.064 L -39.388 95.711 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -27.880 96.902 L -17.308 89.675 L -24.277 81.145 L -33.467 90.064 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -17.308 89.675 L -4.074 80.593 L -12.739 69.988 L -24.277 81.145 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -4.074 80.593 L 10.610 69.878 L 0.688 57.734 L -12.739 69.988 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 10.610 69.878 L 25.634 57.875 L 15.446 45.405 L 0.688 57.734 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 25.634 57.875 L 40.785 46.027 L 30.077 32.921 L 15.446 45.405 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 40.785 46.027 L 55.228 35.017 L 43.745 20.962 L 30.077 32.921 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 55.228 35.017 L 67.945 25.303 L 55.800 10.437 L 43.745 20.962 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 67.945 25.303 L 78.010 17.454 L 65.497 2.140 L 55.800 10.437 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 78.010 17.454 L 84.611 12.185 L 71.977 -3.279 L 65.497 2.140 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 84.611 12.185 L 82.768 12.293 L 78.552 -7.253 L 71.977 -3.279 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 82.768 12.293 L 72.884 0.325 L 91.795 6.835 L 78.552 -7.253 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 72.884 0.325 L 71.750 0.374 L 86.439 13.761 L 91.795 6.835 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 71.750 0.374 L 67.079 6.059 L 81.448 18.823 L 86.439 13.761 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 67.079 6.059 L 61.581 13.441 L 74.945 25.079 L 81.448 18.823 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 61.581 13.441 L 55.640 22.073 L 67.381 32.095 L 74.945 25.079 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 55.640 22.073 L 49.465 31.338 L 59.380 39.607 L 67.381 32.095 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 49.465 31.338 L 43.168 40.549 L 51.665 47.421 L 59.380 39.607 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 43.168 40.549 L 36.941 49.108 L 44.880 55.252 L 51.665 47.421 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 36.941 49.108 L 31.322 56.739 L 39.319 62.496 L 44.880 55.252 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 31.322 56.739 L 27.097 63.383 L 35.030 68.332 L 39.319 62.496 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 27.097 63.383 L 24.462 68.823 L 32.654 72.094 L 35.030 68.332 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.462 68.823 L 24.437 71.018 L 32.003 74.942 L 32.654 72.094 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.437 71.018 L 23.292 71.829 L 29.737 76.970 L 32.003 74.942 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 23.292 71.829 L 21.692 75.171 L 29.204 77.739 L 29.737 76.970 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.692 75.171 L 21.170 78.629 L 28.720 79.353 L 29.204 77.739 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.170 78.629 L 21.346 82.085 L 28.514 81.618 L 28.720 79.353 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 21.346 82.085 L 22.011 85.503 L 28.647 84.264 L 28.514 81.618 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 22.011 85.503 L 23.035 88.813 L 29.095 87.047 L 28.647 84.264 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 23.035 88.813 L 24.322 91.922 L 29.805 89.751 L 29.095 87.047 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 24.322 91.922 L 25.797 94.725 L 30.703 92.172 L 29.805 89.751 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 25.797 94.725 L 27.413 97.121 L 31.682 94.098 L 30.703 92.172 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 27.413 97.121 L 29.214 99.031 L 32.550 95.299 L 31.682 94.098 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 29.214 99.031 L 31.541 100.300 L 32.815 95.621 L 32.550 95.299 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 31.541 100.300 L 32.965 100.174 L 33.755 95.506 L 32.815 95.621 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 32.965 100.174 L 32.414 100.241 L 34.722 96.150 L 33.755 95.506 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 32.414 100.241 L 34.140 100.644 L 34.306 96.010 L 34.722 96.150 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 34.140 100.644 L 35.556 100.509 L 34.921 96.002 L 34.306 96.010 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 35.556 100.509 L 37.048 100.165 L 36.004 95.840 L 34.921 96.002 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 37.048 100.165 L 38.654 99.658 L 37.342 95.520 L 36.004 95.840 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 38.654 99.658 L 40.334 99.015 L 38.801 95.060 L 37.342 95.520 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 40.334 99.015 L 42.023 98.252 L 40.270 94.485 L 38.801 95.060 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 42.023 98.252 L 43.653 97.384 L 41.642 93.825 L 40.270 94.485 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 43.653 97.384 L 45.159 96.410 L 42.807 93.122 L 41.642 93.825 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 45.159 96.410 L 46.481 95.298 L 43.649 92.451 L 42.807 93.122 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 46.481 95.298 L 47.547 93.942 L 44.067 91.963 L 43.649 92.451 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 47.547 93.942 L 48.016 92.657 L 44.224 91.383 L 44.067 91.963 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -5.591 -0.819 L -5.077 -1.962 L 5.447 3.792 L 6.191 1.459 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -5.077 -1.962 L -5.333 -1.607 L 3.929 5.915 L 5.447 3.792 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -5.333 -1.607 L -6.601 0.018 L 1.991 7.944 L 3.929 5.915 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -6.601 0.018 L -8.521 2.446 L -0.610 10.238 L 1.991 7.944 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -8.521 2.446 L -10.926 5.591 L -3.931 12.774 L -0.610 10.238 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -10.926 5.591 L -13.721 9.394 L -7.949 15.501 L -3.931 12.774 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -13.721 9.394 L -16.889 13.741 L -12.569 18.423 L -7.949 15.501 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -16.889 13.741 L -20.492 18.441 L -17.616 21.621 L -12.569 18.423 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -20.492 18.441 L -24.649 23.230 L -22.856 25.250 L -17.616 21.621 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -24.649 23.230 L -29.478 27.841 L -28.058 29.468 L -22.856 25.250 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -29.478 27.841 L -34.746 32.400 L -33.339 34.039 L -28.058 29.468 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -34.746 32.400 L -40.219 37.057 L -38.821 38.703 L -33.339 34.039 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -40.219 37.057 L -41.862 38.443 L -40.470 40.095 L -38.821 38.703 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -41.862 38.443 L -43.508 39.829 L -42.117 41.482 L -40.470 40.095 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -43.508 39.829 L -45.155 41.214 L -43.766 42.868 L -42.117 41.482 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -45.155 41.214 L -46.804 42.599 L -45.414 44.253 L -43.766 42.868 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -46.804 42.599 L -48.452 43.983 L -47.062 45.637 L -45.414 44.253 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -48.452 43.983 L -50.100 45.368 L -48.710 47.022 L -47.062 45.637 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -50.100 45.368 L -51.748 46.754 L -50.356 48.407 L -48.710 47.022 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -51.748 46.754 L -53.394 48.142 L -52.001 49.793 L -50.356 48.407 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -53.394 48.142 L -55.039 49.532 L -53.644 51.181 L -52.001 49.793 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -55.039 49.532 L -56.683 50.924 L -55.285 52.571 L -53.644 51.181 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -56.683 50.924 L -58.324 52.320 L -56.923 53.964 L -55.285 52.571 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -58.324 52.320 L -59.960 53.718 L -58.560 55.362 L -56.923 53.964 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -59.960 53.718 L -66.402 59.196 L -65.009 60.847 L -58.560 55.362 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -66.402 59.196 L -73.005 64.727 L -71.626 66.389 L -65.009 60.847 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -73.005 64.727 L -79.654 70.197 L -78.290 71.873 L -71.626 66.389 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -79.654 70.197 L -86.230 75.491 L -84.886 77.183 L -78.290 71.873 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -86.230 75.491 L -92.615 80.493 L -91.297 82.205 L -84.886 77.183 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -92.615 80.493 L -98.692 85.086 L -97.408 86.824 L -91.297 82.205 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -98.692 85.086 L -104.340 89.154 L -103.104 90.926 L -97.408 86.824 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -104.340 89.154 L -109.261 92.855 L -108.450 94.124 L -103.104 90.926 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -109.261 92.855 L -113.525 95.841 L -113.141 96.534 L -108.450 94.124 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -113.525 95.841 L -117.108 97.848 L -116.968 98.189 L -113.141 96.534 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -117.108 97.848 L -119.862 98.793 L -119.843 98.943 L -116.968 98.189 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -119.862 98.793 L -121.657 98.590 L -121.663 98.650 L -119.843 98.943 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -121.657 98.590 L -121.772 98.677 L -121.739 98.721 L -121.663 98.650 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -121.772 98.677 L -121.884 98.756 L -121.858 98.798 L -121.739 98.721 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -121.884 98.756 L -122.016 98.833 L -121.996 98.872 L -121.858 98.798 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.016 98.833 L -122.167 98.909 L -122.151 98.944 L -121.996 98.872 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.167 98.909 L -122.337 98.984 L -122.325 99.014 L -122.151 98.944 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.337 98.984 L -122.524 99.058 L -122.516 99.082 L -122.325 99.014 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.524 99.058 L -122.729 99.130 L -122.723 99.149 L -122.516 99.082 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.729 99.130 L -122.949 99.200 L -122.945 99.213 L -122.723 99.149 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -122.949 99.200 L -123.186 99.268 L -123.183 99.277 L -122.945 99.213 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -123.186 99.268 L -123.436 99.334 L -123.435 99.339 L -123.183 99.277 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -123.436 99.334 L -123.702 99.398 L -123.701 99.400 L -123.435 99.339 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M -123.702 99.398 L -123.980 99.460 L -123.980 99.460 L -123.701 99.400 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 49.347 95.568 L 50.529 94.237 L 45.250 88.648 L 43.853 89.752 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 50.529 94.237 L 53.807 90.565 L 49.103 85.584 L 45.250 88.648 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 53.807 90.565 L 58.785 85.047 L 54.896 80.929 L 49.103 85.584 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 58.785 85.047 L 65.071 78.178 L 62.112 75.045 L 54.896 80.929 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 65.071 78.178 L 72.270 70.453 L 70.236 68.299 L 62.112 75.045 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 72.270 70.453 L 79.978 62.353 L 78.762 61.067 L 70.236 68.299 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 79.978 62.353 L 87.776 54.350 L 87.197 53.738 L 78.762 61.067 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 87.776 54.350 L 95.232 46.897 L 95.064 46.719 L 87.197 53.738 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 95.232 46.897 L 101.900 40.433 L 101.899 40.431 L 95.064 46.719 Z",
+          "evenodd": false
+        },
+        {
+          "d": "M 101.900 40.433 L 107.285 35.345 L 107.285 35.345 L 101.899 40.431 Z",
+          "evenodd": false
+        }
+      ],
+      "rule": {
+        "yTop": -25.4,
+        "yCenter": 24.5,
+        "yBottom": 74.4
+      },
+      "refCenter": {
+        "x": 64,
+        "y": 24
+      },
+      "letter": "u",
+      "isDefault": false,
+      "joinAnchors": {
+        "entry": {
+          "x": -94.6,
+          "y": 85.25999999999999
+        }
+      }
     },
     "v": {
       "paths": [
