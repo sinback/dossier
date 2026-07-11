@@ -43,7 +43,16 @@ geometry (that rule comes from sinback).
    documented in comments.
 4. `matlack/analysis/lorem-ipsum-plan.md` if your letter is l, u, i, p, or
    s — it has per-letter traps (i's detached dot, p's descender, s's
-   hardness).
+   hardness). The plan is ADVISORY: where it and this skill disagree on
+   scope (e.g. it defers l's mid-word entry), this skill wins — bring up
+   both low connectors.
+5. If your letter's body is a fused single-loop ribbon (entrance and
+   exit tail are segments of one stroke, not separate components — l,
+   likely s): buildE (trimmed loop + separate connectors) and buildL are
+   the structural precedents. Split the body at seg boundaries and remap
+   the width function's arc fraction for the dropped head/tail segs
+   (buildH/buildL show the remap), keeping isol byte-identical to the
+   locked base.
 
 ## File-collision protocol (parallel agents)
 
@@ -98,8 +107,13 @@ Definitions: the letter's local frame is its trace's SVG units ("su");
    → 0.48; the short-hold profile → 0.63+.)
 4. **Entry connector** (mid-word, `entry:'low'`): band-true slice,
    `derive_band.py low ... --anchor-x <entry anchor x> --skip-head 12.1
-   --fade-len 6`, bridged onto the traced entrance line, which then
-   carries to the body junction. Do NOT just extend the traced entrance
+   --fade-len <N>`, bridged onto the traced entrance line, which then
+   carries to the body junction. Size `--fade-len` so the band-true span
+   covers the DEEPEST partner exit tail, not the default 6: e's exit
+   rides the trace ~10 scan-su past the anchor, so entries that will
+   face e need ~20 local su at xh≈50 (l precedent — fade-len 6 scored
+   e→l at 0.43; 20 fixed it). The overlap is a crossfade along the SAME
+   curve (o's entrance comment), so a long band-true span is free. Do NOT just extend the traced entrance
    as a straight line — against a band-true partner it crosses at a
    shallow angle instead of riding (t→h scored 0.07 that way; band-true
    conversion → 0.70). Keep the traced entrance as the word-initial form:
@@ -129,6 +143,11 @@ Definitions: the letter's local frame is its trace's SVG units ("su");
    `uv run python matlack/tools/compose_word.py "<pair>"` and a word if
    one is greenlighted. Full `uv run pytest` — the frozen oreo/from
    seam values must not move.
+   GAUGE WARNING: the composer PRINTS the whole-letter coarticulation
+   ratio (0.05 sanity floor); the 0.6 gate applies ONLY to the pair
+   test's labeled-component ratio. A low printed number with a passing
+   component ratio is normal (e→l prints 0.47, components score 0.70) —
+   don't "fix" it.
 8. **Font.** Add the letter to `VARIANT_EXPORTS` in
    `src/styles/matlackSVGExport.js` (default = mid-word, plus init/isol,
    fina only if the traced word-final form differs from the connector).
@@ -142,9 +161,13 @@ Definitions: the letter's local frame is its trace's SVG units ("su");
    for YOUR words/glyphs: correct variant picks, |dy| ≤ 2, one
    substantial ink component per word and per glyph.
    KNOWN BASELINE (pre-existing, deprioritized — do not fix, do not
-   regress further): "or" and "fr" (and hence "oreo"/"from") report 2
-   components — the HIGH-band seams into r.afterHigh split at font
-   integer precision.
+   regress further): "or" and "fr" (and hence "oreo"/"from"/"lorem")
+   report 2 components — the HIGH-band seams into r.afterHigh split at
+   font integer precision.
+   Also pick verification words WITHOUT afterHigh-guard seams (a
+   @high_exit letter followed by your letter, e.g. o→l in "toll"): the
+   guard deliberately breaks the curs chain there, so a 2-component
+   report on such a word is the designed gap, not your failure.
 10. **Commit atomically** (constants+build in one commit, tests with it
     or separate, font rebuild separate — mirror commits c6bb57b/5c1ca25/
     43cfc2f), with seam numbers in the message. Update nothing in
