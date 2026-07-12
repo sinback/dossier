@@ -61,6 +61,10 @@ export { buildRibbon, sampleSegments };
 // matlack/analysis/parallel-bringup-plan.md, which finishes the derivation).
 import tGlyph from './glyphs/t.js';
 import fGlyph, { fBarBowlWidth, fBarBowlDensity } from './glyphs/f.js';
+import xGlyph from './glyphs/x.js';
+import vGlyph from './glyphs/v.js';
+import sGlyph from './glyphs/s.js';
+import pGlyph from './glyphs/p.js';
 import nGlyph from './glyphs/n.js';
 import iGlyph from './glyphs/i.js';
 import qGlyph from './glyphs/q.js';
@@ -843,54 +847,6 @@ function mHumpsWidth(t, scale) {
 //            + second downstroke (power taper). No bowl — Matlack's 'p' form.
 // ═════════════════════════════════════════════════════════════════════════════
 
-const P_REF_CENTER = { x: 115.80, y: 53.08 };  // second downstroke start / junction
-
-// Main downstroke (long descender)
-const P_MAIN_DOWNSTROKE = {
-  x1: 116.81, y1: 12.61,
-  x2: 15.32,  y2: 178.87,
-};
-const P_MAIN_HALF_WIDTH = 5.0;
-const P_MAIN_OFFSET = { dx: 4, dy: 0 };  // review round 1, candidate 6
-
-// Upstroke hairline (thin connector going left)
-const P_UPSTROKE_SEGS = [
-  [[115.32,53.10],[115.57,52.73],[74.01,79.77],[71.11,84.10]],
-];
-const P_UPSTROKE = { startWidth: 1.5, taperPower: 1.7, liftPoint: 0.90 };
-
-// Second downstroke (power taper — starts fat, tapers to hairline exit)
-const P_SECOND_SEGS = [
-  [[115.80,53.08],[116.56,52.53],[123.07,61.09],[120.42,63.02]],
-  [[120.42,63.02],[119.83,66.05],[91.33,104.58],[91.71,105.63]],
-  [[91.71,105.63],[90.76,107.86],[99.71,113.56],[100.27,112.24]],
-  [[100.27,112.24],[100.92,113.39],[115.27,110.78],[114.65,109.68]],
-  [[114.65,109.68],[114.65,109.68],[137.62,86.34],[137.62,86.34]],
-];
-const P_SECOND_OFFSET = { dx: 0, dy: 0 };
-
-// Piecewise width for the second downstroke. Smooths the transition
-// from the hairline upstroke junction through the fat body to exit.
-function pSecondWidth(t, scale) {
-  // Entry from junction: starts moderate, thickens
-  if (t < 0.08) return 3.0 * scale;
-  if (t < 0.20) return smoothStep(3.0, 5.5, (t - 0.08) / 0.12) * scale;
-
-  // Main descent: fat
-  if (t < 0.45) return 5.5 * scale;
-
-  // Approaching bottom loop: slight thinning
-  if (t < 0.60) return smoothStep(5.5, 4.0, (t - 0.45) / 0.15) * scale;
-
-  // Bottom loop
-  if (t < 0.75) return smoothStep(4.0, 3.0, (t - 0.60) / 0.15) * scale;
-
-  // Exit flick: thinning to hairline
-  if (t < 0.90) return smoothStep(3.0, 0.7, (t - 0.75) / 0.15) * scale;
-
-  return 0.7 * scale;
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'r'
 // Source: hand-traced on r/01 from high-res 1823 facsimile (90×116, 1x).
@@ -1148,35 +1104,6 @@ const W_EXIT_OFFSET = { dx: 0, dy: 0 };
 // Surprisingly consistent width — nearly uniform through the whole stroke.
 // ═════════════════════════════════════════════════════════════════════════════
 
-const S_REF_CENTER = { x: 68, y: 24 };  // entrance flick end / swoop start
-
-// Entrance flick
-const S_ENTRANCE_SEGS = [
-  [[4.27,70.30],[4.27,70.30],[68.06,23.81],[68.31,24.20]],
-];
-const S_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
-
-// Swoopy S-curve
-const S_SWOOP_SEGS = [
-  [[68.85,23.67],[67.85,22.85],[55.18,32.12],[57.52,33.90]],
-  [[57.52,33.90],[60.61,34.28],[60.91,59.47],[55.03,58.49]],
-  [[55.03,58.49],[56.07,60.15],[31.69,71.04],[30.74,69.50]],
-  [[30.74,69.50],[30.18,70.83],[19.13,66.44],[20.95,62.60]],
-  [[20.95,62.60],[16.98,61.44],[27.19,47.76],[28.33,48.08]],
-];
-
-// Width: nearly uniform, slight thinning at entry and exit
-function sSwoopWidth(t, scale) {
-  // Entry: thicken from junction
-  if (t < 0.10) return smoothStep(3.5, 5.0, t / 0.10) * scale;
-
-  // Main body: uniform fat
-  if (t < 0.80) return 5.0 * scale;
-
-  // Exit: slight thinning
-  return smoothStep(5.0, 2.5, (t - 0.80) / 0.20) * scale;
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'u'
 // Source: hand-traced on u/01 from high-res 1823 facsimile (123×85, 1x).
@@ -1315,98 +1242,12 @@ const U_JOIN_ANCHORS = {
 //            fat exit (NOT a hairline flick — stays thick).
 // ═════════════════════════════════════════════════════════════════════════════
 
-const V_REF_CENTER = { x: 28, y: 29 };  // entrance flick end / downstroke top
-
-// Entrance flick
-const V_ENTRANCE_SEGS = [
-  [[2.57,50.49],[2.13,50.13],[21.50,24.18],[28.14,29.58]],
-];
-const V_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
-
-// V-stroke: downstroke + upstroke combined
-const V_STROKE_SEGS = [
-  // Downstroke
-  [[28.08,28.93],[28.08,28.93],[30.89,34.29],[30.89,34.29]],
-  [[30.89,34.29],[33.80,38.05],[14.67,60.15],[17.29,63.11]],
-  [[17.29,63.11],[15.73,63.91],[19.42,73.42],[22.58,71.81]],
-  [[22.58,71.81],[23.26,72.98],[31.69,71.22],[30.78,69.66]],
-  // Upstroke flick
-  [[30.63,70.47],[31.82,71.82],[69.19,31.78],[65.48,27.92]],
-];
-
-function vStrokeWidth(t, scale) {
-  // Entry from top: moderate thickening
-  if (t < 0.08) return smoothStep(3.0, 5.0, t / 0.08) * scale;
-
-  // Main descent: fat
-  if (t < 0.30) return 5.0 * scale;
-
-  // Bottom turnaround: thin
-  if (t < 0.45) return smoothStep(5.0, 1.5, (t - 0.30) / 0.15) * scale;
-
-  // Upstroke: thickening
-  if (t < 0.70) return smoothStep(1.5, 4.0, (t - 0.45) / 0.25) * scale;
-
-  // Approaching exit junction: moderate
-  if (t < 0.90) return smoothStep(4.0, 3.0, (t - 0.70) / 0.20) * scale;
-
-  // End: moderate
-  return 3.0 * scale;
-}
-
-// Fat exit: stays thick, not a hairline. Curves down then goes right.
-const V_EXIT_SEGS = [
-  [[65.51,27.99],[65.44,27.91],[58.23,42.67],[59.64,44.33]],
-  [[59.64,44.33],[58.79,44.81],[61.50,50.10],[63.64,48.87]],
-  [[63.64,48.87],[63.13,49.72],[82.66,49.92],[83.30,48.85]],
-];
-
-function vExitWidth(t, scale) {
-  // Starts moderate, stays fat throughout
-  if (t < 0.15) return smoothStep(3.0, 4.5, t / 0.15) * scale;
-  if (t < 0.70) return 4.5 * scale;
-  return smoothStep(4.5, 2.0, (t - 0.70) / 0.30) * scale;
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'x'
 // Source: hand-traced on x/01 from high-res 1823 facsimile (116×82, 1x).
 // Structure: two crossing crescent strokes (like a backwards 'c' + a 'c').
 // Each rendered as a variable-width ribbon, fat in the middle, thin at tips.
 // ═════════════════════════════════════════════════════════════════════════════
-
-const X_REF_CENTER = { x: 65, y: 50 };  // crossing point
-
-// Right crescent: upper-right → center → lower-right
-const X_RIGHT_SEGS = [
-  [[92.38,34.37],[93.06,35.01],[96.05,28.55],[94.22,26.81]],
-  [[94.22,26.81],[94.73,25.08],[77.88,30.71],[76.11,36.68]],
-  [[76.11,36.68],[75.37,36.51],[64.58,51.34],[65.13,51.58]],
-  [[65.13,51.58],[65.11,51.67],[55.33,64.98],[60.31,69.40]],
-  [[60.31,69.40],[59.63,69.81],[66.05,75.56],[67.49,74.67]],
-  [[67.49,74.67],[67.49,74.67],[74.23,74.30],[74.23,74.30]],
-  [[74.23,74.30],[74.23,74.30],[97.68,63.73],[97.68,63.73]],
-];
-
-// Left crescent: upper-left → center → lower-left
-const X_LEFT_SEGS = [
-  [[38.89,36.59],[38.62,36.04],[65.47,17.26],[67.42,21.23]],
-  [[67.42,21.23],[69.04,21.09],[69.56,40.82],[67.41,41.01]],
-  [[67.41,41.01],[68.42,41.55],[55.54,59.93],[53.19,58.67]],
-  [[53.19,58.67],[53.83,60.05],[28.16,73.52],[27.47,71.72]],
-  [[27.47,71.72],[27.57,72.25],[16.15,71.91],[16.86,68.45]],
-  [[16.86,68.45],[12.61,67.31],[22.25,52.59],[24.56,53.21]],
-];
-const X_LEFT_OFFSET = { dx: 0, dy: 0 };
-
-// Symmetric lens width: thin at tips, fat in the middle.
-// Minimum width 1.0 to prevent sub-pixel disappearance at small zoom levels.
-function xCrescentWidth(t, scale) {
-  const d = Math.abs(t - 0.50);
-  if (d < 0.10) return 5.0 * scale;
-  if (d < 0.35) return smoothStep(5.0, 2.0, (d - 0.10) / 0.25) * scale;
-  return smoothStep(2.0, 1.0, (d - 0.35) / 0.15) * scale;
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'z'
@@ -1937,23 +1778,23 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
     case 'o':
       return buildO(cx, cy, scale, dpr, overrides, variant)
     case 'p':
-      return buildP(cx, cy, scale, dpr, overrides)
+      return pGlyph.build(cx, cy, scale, dpr, overrides)
     case 'q':
       return qGlyph.build(cx, cy, scale, dpr, overrides)
     case 'r':
       return buildR(cx, cy, scale, dpr, overrides, variant)
     case 's':
-      return buildS(cx, cy, scale, dpr, overrides)
+      return sGlyph.build(cx, cy, scale, dpr, overrides)
     case 't':
       return tGlyph.build(cx, cy, scale, dpr, overrides, variant)
     case 'u':
       return buildU(cx, cy, scale, dpr, overrides, variant)
     case 'v':
-      return buildV(cx, cy, scale, dpr, overrides)
+      return vGlyph.build(cx, cy, scale, dpr, overrides)
     case 'w':
       return buildW(cx, cy, scale, dpr, overrides)
     case 'x':
-      return buildX(cx, cy, scale, dpr, overrides)
+      return xGlyph.build(cx, cy, scale, dpr, overrides)
     case 'y':
       return buildY(cx, cy, scale, dpr, overrides)
     case 'z':
@@ -2468,61 +2309,6 @@ function buildM(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
 }
 
 /**
- * Render a Matlack-style lowercase 'p'.
- * Components: main downstroke (fat bar) + upstroke hairline + second downstroke (power taper).
- * No bowl — Matlack's actual 'p' form.
- */
-function buildP(cx, cy, scale, dpr, overrides) {
-  // ── Main downstroke (long descender fat bar) ──────────────────
-  const mainOff = resolveOffset('mainDownstroke', P_MAIN_OFFSET, overrides, dpr);
-  const mhw = P_MAIN_HALF_WIDTH * scale;
-  const mp0 = refToCanvas(P_MAIN_DOWNSTROKE.x1, P_MAIN_DOWNSTROKE.y1, cx, cy, scale, P_REF_CENTER);
-  const mp1 = refToCanvas(P_MAIN_DOWNSTROKE.x2, P_MAIN_DOWNSTROKE.y2, cx, cy, scale, P_REF_CENTER);
-  mp0.x += mainOff.dx; mp0.y += mainOff.dy;
-  mp1.x += mainOff.dx; mp1.y += mainOff.dy;
-  const mdx = mp1.x - mp0.x, mdy = mp1.y - mp0.y;
-  const mlen = Math.hypot(mdx, mdy);
-  const mnx = -mdy / mlen * mhw, mny = mdx / mlen * mhw;
-  const mainBar = [
-    { x: mp0.x + mnx, y: mp0.y + mny },
-    { x: mp1.x + mnx, y: mp1.y + mny },
-    { x: mp1.x - mnx, y: mp1.y - mny },
-    { x: mp0.x - mnx, y: mp0.y - mny },
-  ];
-
-  // ── Upstroke hairline (tapered ribbon going left) ─────────────
-  const upCenter = sampleSegments(
-    P_UPSTROKE_SEGS, [0], 12, cx, cy, scale, P_REF_CENTER
-  );
-  const upQuads = buildTaperedRibbon(
-    upCenter,
-    P_UPSTROKE.startWidth * scale,
-    P_UPSTROKE.taperPower,
-    P_UPSTROKE.liftPoint,
-  );
-  const upFills = upQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Second downstroke (piecewise variable-width ribbon) ───────
-  const secOff = resolveOffset('secondDownstroke', P_SECOND_OFFSET, overrides, dpr);
-  const secCenter = sampleSegments(
-    P_SECOND_SEGS, [0, 1, 2, 3, 4], 12,
-    cx + secOff.dx, cy + secOff.dy, scale, P_REF_CENTER
-  );
-  const secQuads = buildRibbon(secCenter, (t) => pSecondWidth(t, scale));
-  const secFills = secQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      { points: mainBar, pressure: 0.85 },
-    ...upFills,
-    ...secFills,
-    ],
-  };
-}
-
-/**
  * Render a Matlack-style lowercase 'y'.
  * Components: entry flick + initial downstroke (ribbon) + second downstroke
  *             (ribbon) + bar-bowl loop + exit flick.
@@ -2547,47 +2333,6 @@ function buildP(cx, cy, scale, dpr, overrides) {
  * Render a Matlack-style lowercase 'u'.
  * Components: entrance flick + single descent/rise ribbon + exit flick.
  */
-/**
- * Render a Matlack-style lowercase 'v'.
- * Components: entrance flick + V-stroke ribbon + fat exit ribbon.
- */
-function buildV(cx, cy, scale, dpr, overrides) {
-  const strokeCenter = sampleSegments(
-    V_STROKE_SEGS,
-    Array.from({ length: V_STROKE_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, V_REF_CENTER
-  );
-  const strokeQuads = buildRibbon(strokeCenter, (t) => vStrokeWidth(t, scale));
-  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  const entrCenter = sampleSegments(
-    V_ENTRANCE_SEGS, [0], 12, cx, cy, scale, V_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed, 4.0 * scale, V_ENTRANCE.taperPower, V_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  const exitCenter = sampleSegments(
-    V_EXIT_SEGS,
-    Array.from({ length: V_EXIT_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, V_REF_CENTER
-  );
-  const exitQuads = buildRibbon(exitCenter, (t) => vExitWidth(t, scale));
-  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      ...strokeFills,
-    ...entrFills,
-    ...exitFills,
-    ],
-  };
-}
-
 function buildU(cx, cy, scale, dpr, overrides, variant = undefined) {
   variant = resolveVariant('u', variant);
 
@@ -2684,66 +2429,6 @@ function buildU(cx, cy, scale, dpr, overrides, variant = undefined) {
       ...strokeFills,
     ...entrFills,
     ...exitFills,
-    ],
-  };
-}
-
-function buildS(cx, cy, scale, dpr, overrides) {
-  // Swoopy S-curve
-  const swoopCenter = sampleSegments(
-    S_SWOOP_SEGS,
-    Array.from({ length: S_SWOOP_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, S_REF_CENTER
-  );
-  const swoopQuads = buildRibbon(swoopCenter, (t) => sSwoopWidth(t, scale));
-  const swoopFills = swoopQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // Entrance flick (reversed taper)
-  const entrCenter = sampleSegments(
-    S_ENTRANCE_SEGS, [0], 12, cx, cy, scale, S_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed, 4.0 * scale, S_ENTRANCE.taperPower, S_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      ...swoopFills,
-    ...entrFills,
-    ],
-  };
-}
-
-function buildX(cx, cy, scale, dpr, overrides) {
-  // Right crescent
-  const rightCenter = sampleSegments(
-    X_RIGHT_SEGS,
-    Array.from({ length: X_RIGHT_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, X_REF_CENTER
-  );
-  const rightQuads = buildRibbon(rightCenter, (t) => xCrescentWidth(t, scale));
-  const rightFills = rightQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // Left crescent (with position override)
-  const leftOff = resolveOffset('leftCrescent', X_LEFT_OFFSET, overrides, dpr);
-  const leftCenter = sampleSegments(
-    X_LEFT_SEGS,
-    Array.from({ length: X_LEFT_SEGS.length }, (_, i) => i),
-    12, cx + leftOff.dx, cy + leftOff.dy, scale, X_REF_CENTER
-  );
-  const leftQuads = buildRibbon(leftCenter, (t) => xCrescentWidth(t, scale));
-  const leftFills = leftQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      ...rightFills,
-    ...leftFills,
     ],
   };
 }
@@ -3121,7 +2806,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'l': return { loop: 'single-stroke' };
     case 'm': return { humps: 'single-stroke' };
     case 'n': return nGlyph.exportOutlines(overrides);
-    case 'p': return { mainDownstroke: 'fat-bar', secondDownstroke: 'tapered-ribbon' };
+    case 'p': return pGlyph.exportOutlines(overrides);
     case 'k': return {
       barBowl: { inner: sampleEllipse(K_BAR_BOWL.inner), outer: sampleEllipse(K_BAR_BOWL.outer) },
       crescent: { inner: sampleEllipse(K_CRESCENT.inner), outer: sampleEllipse(K_CRESCENT.outer) },
@@ -3129,10 +2814,10 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'o': return exportOutlinesO();
     case 'r': return { stroke: 'ribbon' };
     case 'w': return { stroke: 'ribbon', blob: 'filled-blob' };
-    case 's': return { swoop: 'ribbon' };
+    case 's': return sGlyph.exportOutlines(overrides);
     case 'u': return { stroke: 'ribbon' };
-    case 'v': return { stroke: 'ribbon', exit: 'ribbon' };
-    case 'x': return { rightCrescent: 'ribbon', leftCrescent: 'ribbon' };
+    case 'v': return vGlyph.exportOutlines(overrides);
+    case 'x': return xGlyph.exportOutlines(overrides);
     case 't': return tGlyph.exportOutlines(overrides);
     case 'y': return { barBowl: { inner: sampleEllipse(Y_BAR_BOWL.inner), outer: sampleEllipse(Y_BAR_BOWL.outer) } };
     case 'z': return { barBowl: { inner: sampleEllipse(Z_BAR_BOWL.inner), outer: sampleEllipse(Z_BAR_BOWL.outer) } };
