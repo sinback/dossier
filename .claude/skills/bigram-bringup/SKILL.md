@@ -15,7 +15,9 @@ geometry (that rule comes from sinback).
 ## Scope guard
 
 - ONE letter per skill invocation. Its bigram partners must already be
-  registered (check `GLYPH_JOIN_ANCHORS` in `src/styles/matlackGlyphs.js`).
+  registered (check each partner's `joinAnchors` in its
+  `src/styles/glyphs/<partner>.js` module, or the derived
+  `GLYPH_JOIN_ANCHORS` served by `/api/join-data`).
 - LOW joins only: the letter's rules-table row (`lowercase_rules_table.txt`)
   must say entry-y and exit-y are `rule.y-bottom` flavors. Letters with
   y-center entries (n, x) or high exits (b, f, o, v, w) are out of scope —
@@ -24,6 +26,28 @@ geometry (that rule comes from sinback).
   anchors, registration, variants — never the body shape. (Variant-
   dependent truncation of a traced mid-word tail is allowed — h precedent —
   because the exit:'none' forms keep the original look.)
+
+## Per-letter module layout (2026-07-12 refactor)
+
+Every letter's geometry now lives in its **own** module,
+`src/styles/glyphs/<letter>.js`, exporting one default descriptor:
+`{ letter, build, joinSegs?, exportOutlines, rule?, refCenter?,
+joinAnchors?, structuralAnchors?, variantSupport?, variantExports?,
+outerEllipse? }`. Shared geometry helpers (ribbon/taper/connector builders,
+samplers, `resolveVariantPure`) live in `src/styles/glyphs/helpers.js`.
+
+`src/styles/matlackGlyphs.js` is now just the aggregator: it imports every
+letter module into a `GLYPHS` map and **derives** `GLYPH_RULES`,
+`GLYPH_JOIN_ANCHORS`, `GLYPH_REF_CENTERS`, `GLYPH_STRUCTURAL_ANCHORS`,
+`VARIANT_SUPPORT`, the `buildGlyph`/`exportGlyphOutlines` dispatch,
+`glyphOuterEllipse`, and `joinSegsForVariant` from the descriptors —
+**registry membership = descriptor field presence**. `matlackSVGExport.js`
+derives `VARIANT_EXPORTS` from each descriptor's `variantExports`, in the
+pinned `VARIANT_EXPORT_ORDER`.
+
+Consequence for you: bringing up an EXISTING letter's low joins edits only
+`src/styles/glyphs/<letter>.js` (+ its pair tests). You do NOT edit the
+registries or the dispatch in matlackGlyphs.js — they update themselves.
 - Do NOT revisit deprioritized seams: o→e, r→r tip-to-tip (obsolete
   note — r→r now scores 0.74 band-true), f.entry, m.exit, and the known
   font-level 2-component words below. (r's and t's low entrances went
@@ -41,10 +65,11 @@ geometry (that rule comes from sinback).
    constitution. (The "from" bring-up history section is skippable.)
 2. Your letter's row + the annotation NOTES in
    `lowercase_rules_table.txt` (not the whole table).
-3. In `src/styles/matlackGlyphs.js`: the h block
-   (`H_RULE`/`H_ENTRANCE_LOW_SEGS`/`H_EXIT_BAND_SEGS` + `buildH`) — the
-   canonical worked precedent, traps documented in comments. (t's only
-   unique trick, the zero-bridge exit, is inline in step 3 below.)
+3. `src/styles/glyphs/h.js` — the whole module
+   (`H_RULE`/`H_ENTRANCE_LOW_SEGS`/`H_EXIT_BAND_SEGS` + `build` + `joinSegs`
+   + the descriptor) is the canonical worked precedent, traps documented in
+   comments. (t's only unique trick, the zero-bridge exit, is inline in
+   step 3 below; `src/styles/glyphs/t.js` if you want the full example.)
 4. Your letter's bullet ONLY in `matlack/analysis/lorem-ipsum-plan.md`
    if it is i, p, or s (traps: i's detached dot, p's descender, s's
    hardness). The plan is ADVISORY: where it and this skill disagree on
@@ -52,31 +77,42 @@ geometry (that rule comes from sinback).
 5. Glance at your letter's build function (~10 lines) to classify its
    structure. IF the body is a fused single-loop ribbon (entrance and
    exit tail are segments of one stroke, not separate components — l
-   was, s likely is): read buildE (trimmed loop + separate connectors)
-   and buildL, the structural precedents — split the body at seg
-   boundaries and remap the width function's arc fraction for the
-   dropped head/tail segs, keeping isol byte-identical. IF it is
-   component-structured (separate entrance/body/exit fills — t, h, u),
-   skip that reading; buildH is enough.
+   was, s likely is): read `glyphs/e.js`'s `build` (trimmed loop +
+   separate connectors) and `glyphs/l.js`, the structural precedents —
+   split the body at seg boundaries and remap the width function's arc
+   fraction for the dropped head/tail segs, keeping isol byte-identical.
+   IF it is component-structured (separate entrance/body/exit fills —
+   t, h, u), skip that reading; `glyphs/h.js` is enough.
 
 ## File-collision protocol (parallel agents)
 
-Shared files — only ONE agent may be in a bring-up at a time for these:
-- `src/styles/matlackGlyphs.js`, `src/styles/matlackSVGExport.js`
-- `matlack-glyphs.json`, `matlack-draft.otf`, `public/fonts/` (never run
-  `export_glyphs.mjs`/`build_font.py` concurrently with another agent)
+After the per-letter-module refactor (2026-07-12), a bring-up is almost
+entirely confined to your own letter's files — parallel agents rarely
+collide:
 
-Per-letter files — safe to create in parallel:
+Your own files — safe to edit/create fully in parallel:
+- `src/styles/glyphs/<letter>.js` (all your geometry, rules, anchors,
+  variants, joinSegs, variantExports live HERE now)
 - `tests/matlack/context/<pair>/test_<pair>_coarticulation.py`
 - scratch renders under `matlack/renders/_scratch/`
 
-If you were launched alongside other bring-up agents: do all your
-read-only analysis and `derive_band.py` derivations first, write your
-tests, and only then take the shared-file critical section (check
-`git status` — if another agent has uncommitted changes to the shared
-files, wait or report back rather than editing). Commit atomically per
-letter so the next agent starts clean. The orchestrator serializes font
-rebuilds at the end if several letters land together.
+Shared files — only ONE agent at a time, and now touched only lightly:
+- `src/styles/matlackSVGExport.js` — ONLY if your letter isn't yet in
+  `VARIANT_EXPORT_ORDER`; you append one entry (never reorder). A
+  brand-new letter (not yet in the `GLYPHS` map) also needs one import +
+  one map entry in `src/styles/matlackGlyphs.js` — but an existing
+  letter's low-join bring-up touches NEITHER file (registries derive
+  themselves).
+- `matlack-glyphs.json`, `matlack-draft.otf`, `public/fonts/` — the font
+  rebuild. Never run `export_glyphs.mjs`/`build_font.py` concurrently with
+  another agent; the orchestrator serializes rebuilds when several letters
+  land together.
+
+If launched alongside other agents: do your read-only analysis and
+`derive_band.py` derivations, write your letter module + tests, and only
+take the shared critical section (the one-line `VARIANT_EXPORT_ORDER`
+append, if needed, then the font rebuild) at the end. Commit atomically
+per letter so the next agent starts clean.
 
 ## The recipe
 
@@ -136,14 +172,19 @@ Definitions: the letter's local frame is its trace's SVG units ("su");
 6. **Render + register.** Connector ribbons use `buildConnectorRibbon`
    with rule-consistent hairline `0.65 × xh/60` (per-letter constant).
    Label fills: `'body'` / `'entrance'` / `'exit'` — the pair tests
-   isolate components by label. Register ALL of: `GLYPH_RULES`,
-   `GLYPH_JOIN_ANCHORS` (entry variant-keyed `{low: {x,y}}`, exit plain
-   point; y is FORCED — 15.6% xh above baseline for low, printed by
-   derive_band; only x is yours), `VARIANT_SUPPORT` (supported[0] = the
-   mid-word default; afterHigh forms go in notYet), `joinSegsForVariant`,
-   `GLYPH_REF_CENTERS`, and the `buildGlyph` case must pass `variant`
-   through. Anchors/rules must be in the RENDERED frame (offsets baked —
-   step 2).
+   isolate components by label. Set ALL of these as fields on your
+   letter's descriptor in `src/styles/glyphs/<letter>.js`: `rule`,
+   `joinAnchors` (entry variant-keyed `{low: {x,y}}`, exit plain point;
+   y is FORCED — 15.6% xh above baseline for low, printed by derive_band;
+   only x is yours), `variantSupport` (supported[0] = the mid-word
+   default; afterHigh forms go in notYet), `joinSegs` (a
+   `function joinSegs(v)` mirroring your build's entry/exit seg pick),
+   `refCenter`, and `build` must accept + pass `variant` through (call
+   `resolveVariantPure(VARIANT_SUPPORT, variant, '<letter>')` at the top).
+   The `GLYPH_*` registries and the `buildGlyph`/`joinSegsForVariant`
+   dispatch derive from these fields automatically — you do NOT edit
+   matlackGlyphs.js. Anchors/rules must be in the RENDERED frame (offsets
+   baked — step 2).
 7. **Pair tests, then compose.** Copy
    `tests/matlack/context/to/test_to_coarticulation.py` for each new
    bigram (both directions if both are registered): component
@@ -157,11 +198,14 @@ Definitions: the letter's local frame is its trace's SVG units ("su");
    test's labeled-component ratio. A low printed number with a passing
    component ratio is normal (e→l prints 0.47, components score 0.70) —
    don't "fix" it.
-8. **Font.** Add the letter to `VARIANT_EXPORTS` in
-   `src/styles/matlackSVGExport.js` (default = mid-word, plus init/isol,
-   fina only if the traced word-final form differs from the connector).
-   calt init/isol/fina lookups and the afterHigh entry-none guards are
-   GENERATED from VARIANT_EXPORTS — you should not hand-write FEA.
+8. **Font.** Set `variantExports` on your letter's descriptor (default =
+   mid-word, plus init/isol, fina only if the traced word-final form
+   differs from the connector). If your letter isn't already listed in
+   `VARIANT_EXPORT_ORDER` in `src/styles/matlackSVGExport.js`, append it
+   there — that order is the calt-lookup order and is load-bearing, so
+   append, never reorder. calt init/isol/fina lookups and the afterHigh
+   entry-none guards are GENERATED from the assembled VARIANT_EXPORTS —
+   you should not hand-write FEA.
    Rebuild: `node scripts/export_glyphs.mjs && uv run python
    scripts/build_font.py matlack-glyphs.json matlack-draft.otf`.
 9. **Font verification gate:**
