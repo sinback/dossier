@@ -24,13 +24,11 @@ geometry (that rule comes from sinback).
   anchors, registration, variants — never the body shape. (Variant-
   dependent truncation of a traced mid-word tail is allowed — h precedent —
   because the exit:'none' forms keep the original look.)
-- Do NOT revisit deprioritized seams: o→e, r→r, f.entry, m.exit, and the
-  known font-level 2-component words below. ALSO KNOWN (pending a
-  follow-up micro-task — do not fix, do not re-report): r's and t's low
-  ENTRANCES are straight-line extensions, not band-true slices, so any
-  low exit into them scores ~0.0 (u→r 0.02, l→t 0.00 with a gap). They
-  predate the band-true-entry lesson. Exclude X→r and X→t seams from
-  your verification words.
+- Do NOT revisit deprioritized seams: o→e, r→r tip-to-tip (obsolete
+  note — r→r now scores 0.74 band-true), f.entry, m.exit, and the known
+  font-level 2-component words below. (r's and t's low entrances went
+  band-true 2026-07-11, commit b7954e3 — X→r and X→t low seams are fine
+  to use in verification words now.)
 - No new hand-traced data is coming. If the letter has no
   `matlack/reference/lowercase/<letter>/01_paths` (SVG trace), STOP and
   ask sinback to trace it. Never read soft ink edges off scans — rule
