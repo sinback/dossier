@@ -61,6 +61,10 @@ export { buildRibbon, sampleSegments };
 // matlack/analysis/parallel-bringup-plan.md, which finishes the derivation).
 import tGlyph from './glyphs/t.js';
 import fGlyph, { fBarBowlWidth, fBarBowlDensity } from './glyphs/f.js';
+import nGlyph from './glyphs/n.js';
+import iGlyph from './glyphs/i.js';
+import qGlyph from './glyphs/q.js';
+import gGlyph from './glyphs/g.js';
 import dGlyph from './glyphs/d.js';
 import cGlyph from './glyphs/c.js';
 import bGlyph from './glyphs/b.js';
@@ -113,55 +117,6 @@ import aGlyph from './glyphs/a.js';
 // Structure: bowl + straight downstroke extending below (descender).
 // Very similar to 'd' but the downstroke goes down instead of up.
 // ═════════════════════════════════════════════════════════════════════════════
-
-const Q_REF_CENTER = { x: 36.6, y: 40.3 };  // inner ellipse center
-
-const Q_BOWL = {
-  inner: {
-    cx: 36.6, cy: 40.3,
-    a: 21.9, b: 7.7, tilt: -48.6    // tilt in hand's range, aspect 0.35
-  },
-  outer: {
-    cx: 30.9, cy: 46.0,
-    a: 31.9, b: 13.1, tilt: -49.1   // tilt diff 0.4° — nearly zero, like 'o'
-  },
-};
-
-// Downstroke: straight line from top-right to bottom-left (descender).
-const Q_DOWNSTROKE = {
-  x1: 67.33, y1: 14.62,   // top (starts above bowl)
-  x2: 6.55,  y2: 111.00,  // bottom (extends below — descender)
-};
-const Q_DOWNSTROKE_HALF_WIDTH = 6.5;  // measured from reference image
-
-const Q_DOWNSTROKE_OFFSET = { dx: 0, dy: 4 };
-
-// 'q' bowl width: nearly uniform (tilt diff ~0°, like 'o').
-// Top is fat (0.80) to merge with downstroke, same approach as 'd'.
-function qBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-
-  // Fat top — merges with downstroke
-  if (f < ARC_LIFT) return 0.80;
-
-  // Left side: fat top→peak
-  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / 0.33; return smoothStep(0.80, 1.0, t); }
-
-  // Bottom-left: peak
-  if (f < ARC_RISE) return 1.0;
-
-  // Bottom-right: fat→moderate
-  if (f < 0.85) { return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.07) };
-
-  // Upper-right: thin, returning to top
-  return 0.80;
-}
-
-function qBowlDensity(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f < 0.20) return 0.70;
-  return 0.85;
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'e'
@@ -294,71 +249,6 @@ function eLoopWidth(t, scale) {
 //            variable-width ribbon. The descender has a reversal/wiggle in
 //            the middle and tapers to hairline at the bottom.
 // ═════════════════════════════════════════════════════════════════════════════
-
-const G_REF_CENTER = { x: 92.4, y: 56.9 };  // inner ellipse center
-
-const G_BOWL = {
-  inner: {
-    cx: 92.4, cy: 56.9,
-    a: 28.0, b: 12.9, tilt: -50.5   // GOOD fit (0.061)
-  },
-  outer: {
-    cx: 85.8, cy: 61.2,
-    a: 39.6, b: 18.6, tilt: -41.7   // GOOD fit (0.063), tilt diff 8.8°
-  },
-};
-
-// Bowl width: similar to 'a' — large tilt diff (8.8°) creates dramatic variation.
-function gBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f < ARC_LIFT) return 0.20;
-  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / (ARC_PRESS - ARC_LIFT); return smoothStep(0.20, 1.0, t); }
-  if (f < ARC_RISE) return 1.0;
-  if (f < 0.92) return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.14);
-  return smoothStep(0.45, 0.20, (f - 0.92) / 0.08);
-}
-
-function gBowlDensity(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f > 0.10 && f < 0.25) return 0.65;
-  return 0.85;
-}
-
-// Downstroke centerline — the pen path through the descender.
-// Traced from 'g Downstroke' in g/01_paths.
-const G_DOWNSTROKE_SEGS = [
-  [[137.96,24.44],[137.96,24.44],[105.44,68.35],[105.44,68.35]],
-  [[105.44,68.35],[105.44,68.35],[73.72,124.08],[73.72,124.08]],
-  [[73.72,124.08],[76.04,131.94],[14.26,187.75],[11.95,180.16]],
-  [[11.95,180.16],[10.14,180.62],[26.70,152.48],[28.32,151.81]],
-  [[28.32,151.81],[30.12,151.93],[57.44,118.41],[64.22,117.49]],
-  [[64.22,117.49],[63.80,115.29],[102.43,92.53],[102.46,92.68]],
-  [[102.46,92.68],[102.46,92.68],[168.20,52.29],[168.20,52.29]],
-];
-const G_DOWNSTROKE_OFFSET = { dx: 0, dy: 0 };
-
-// Width function for the downstroke ribbon.
-// t = arc-length fraction along the centerline.
-function gDownstrokeWidth(t, scale) {
-  // Top entry: moderate width
-  if (t < 0.05) return 3.0 * scale;
-
-  // Main descender body: fat
-  if (t < 0.15) return smoothStep(3.0, 5.5, (t - 0.05) / 0.10) * scale;
-  if (t < 0.40) return 5.5 * scale;
-
-  // Thinning into the wiggle/reversal
-  if (t < 0.55) return smoothStep(5.5, 3.0, (t - 0.40) / 0.15) * scale;
-
-  // Wiggle zone: moderate
-  if (t < 0.65) return 3.0 * scale;
-
-  // Thinning to hairline
-  if (t < 0.80) return smoothStep(3.0, 0.7, (t - 0.65) / 0.15) * scale;
-
-  // Hairline exit (past the outline)
-  return 0.7 * scale;
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'h'
@@ -547,44 +437,6 @@ const H_JOIN_ANCHORS = {
 // Structure: entrance flick + downstroke (tapered ribbon) + dot (filled blob).
 // The downstroke is a simple power taper — no piecewise width function needed.
 // ═════════════════════════════════════════════════════════════════════════════
-
-const I_REF_CENTER = { x: 64.73, y: 69.56 };  // downstroke start
-
-// Dot — small filled blob above the stroke. Matlack places these with
-// disturbing consistency.
-const I_DOT_SEGS = [
-  [[92.43,7.14],[90.46,6.82],[87.37,16.67],[90.21,17.13]],
-  [[90.21,17.13],[88.92,17.68],[89.20,24.98],[96.37,21.87]],
-  [[96.37,21.87],[97.95,23.04],[108.73,12.87],[106.41,10.73]],
-  [[106.41,10.73],[107.15,8.31],[104.17,4.24],[104.17,4.24]],
-  [[104.17,4.24],[99.86,2.17],[91.80,6.84],[92.43,7.14]],
-];
-const I_DOT_OFFSET = { dx: 0, dy: 0 };
-
-// Downstroke centerline
-const I_DOWNSTROKE_SEGS = [
-  [[64.73,69.56],[64.64,69.52],[26.29,117.96],[32.49,120.94]],
-  [[32.49,120.94],[31.53,122.16],[43.40,124.72],[46.15,121.23]],
-  [[46.15,121.23],[46.15,121.23],[85.89,86.53],[85.89,86.53]],
-];
-
-// Simple power taper — no piecewise needed. Starts fat, tapers at the exit.
-const I_DOWNSTROKE = {
-  startWidth: 5.0,
-  taperPower: 1.7,
-  liftPoint: 0.85,
-};
-const I_DOWNSTROKE_OFFSET = { dx: -4, dy: 4 };  // review round 1, candidate 7
-
-// Entrance flick
-const I_ENTRANCE_SEGS = [
-  [[13.87,114.35],[13.87,114.35],[52.00,85.52],[52.00,85.52]],
-];
-const I_ENTRANCE = {
-  startWidth: 1.0,
-  taperPower: 1.7,
-  liftPoint: 1.0,
-};
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'j'
@@ -983,55 +835,6 @@ function mHumpsWidth(t, scale) {
 // Source: hand-traced on n/01 from high-res 1823 facsimile (107×93, 1x).
 // Structure: entrance flick + single-hump stroke (like 'm' with one hump).
 // ═════════════════════════════════════════════════════════════════════════════
-
-const N_REF_CENTER = { x: 34.90, y: 27.43 };  // hump centerline start
-
-const N_HUMP_SEGS = [
-  [[34.90,27.43],[35.65,26.70],[39.17,32.06],[38.12,33.08]],
-  [[38.12,33.08],[39.22,34.44],[19.99,70.45],[17.70,69.58]],
-  [[17.70,69.58],[17.69,69.58],[68.59,23.88],[69.85,24.86]],
-  [[69.85,24.86],[69.76,24.69],[76.26,24.29],[76.90,25.49]],
-  [[76.90,25.49],[77.08,25.32],[81.47,29.88],[81.00,31.02]],
-  [[81.00,31.02],[81.63,31.64],[80.74,35.22],[80.44,34.92]],
-  [[80.44,34.92],[81.95,36.72],[61.19,65.07],[61.11,64.97]],
-  [[61.11,64.97],[60.49,65.00],[61.12,70.45],[62.95,70.38]],
-  [[62.95,70.38],[62.45,70.52],[66.90,73.14],[68.79,72.60]],
-  [[68.79,72.60],[68.63,72.96],[75.98,72.92],[76.45,71.90]],
-  [[76.45,71.90],[76.84,72.65],[94.67,54.23],[94.15,53.24]],
-];
-
-const N_ENTRANCE_SEGS = [
-  [[3.35,54.91],[3.31,54.89],[28.12,27.81],[28.98,28.18]],
-  [[28.98,28.18],[28.83,27.81],[34.31,26.43],[34.74,27.45]],
-];
-const N_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
-
-// Width function for single hump. Same pattern as one cycle of 'm'.
-function nHumpWidth(t, scale) {
-  // Initial blob/loop at top
-  if (t < 0.05) return 3.0 * scale;
-
-  // First descent (fat)
-  if (t < 0.20) return smoothStep(3.0, 5.0, (t - 0.05) / 0.15) * scale;
-
-  // Turnaround (thin)
-  if (t < 0.30) return smoothStep(5.0, 1.5, (t - 0.20) / 0.10) * scale;
-
-  // Hump rising
-  if (t < 0.42) return smoothStep(1.5, 4.0, (t - 0.30) / 0.12) * scale;
-
-  // Hump arch (fat)
-  if (t < 0.55) return 4.0 * scale;
-
-  // Descent
-  if (t < 0.70) return smoothStep(4.0, 3.5, (t - 0.55) / 0.15) * scale;
-
-  // Bottom loop
-  if (t < 0.82) return smoothStep(3.5, 2.5, (t - 0.70) / 0.12) * scale;
-
-  // Exit flick (hairline)
-  return smoothStep(2.5, 0.7, (t - 0.82) / 0.18) * scale;
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'p'
@@ -1954,7 +1757,7 @@ export function glyphOuterEllipse(glyph) {
     d: dGlyph.outerEllipse,
     f: fGlyph.outerEllipse,
     o: { outer: O_BOWL.outer, refCenter: O_REF_CENTER },
-    q: { outer: Q_BOWL.outer, refCenter: Q_REF_CENTER },
+    q: qGlyph.outerEllipse,
   };
   return map[glyph] ?? null;
 }
@@ -2116,11 +1919,11 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
     case 'f':
       return fGlyph.build(cx, cy, scale, dpr, overrides)
     case 'g':
-      return buildG(cx, cy, scale, dpr, overrides)
+      return gGlyph.build(cx, cy, scale, dpr, overrides)
     case 'h':
       return buildH(cx, cy, scale, dpr, overrides, variant)
     case 'i':
-      return buildI(cx, cy, scale, dpr, overrides)
+      return iGlyph.build(cx, cy, scale, dpr, overrides)
     case 'j':
       return buildJ(cx, cy, scale, dpr, overrides)
     case 'k':
@@ -2130,13 +1933,13 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
     case 'm':
       return buildM(cx, cy, scale, dpr, overrides, variant)
     case 'n':
-      return buildN(cx, cy, scale, dpr, overrides)
+      return nGlyph.build(cx, cy, scale, dpr, overrides)
     case 'o':
       return buildO(cx, cy, scale, dpr, overrides, variant)
     case 'p':
       return buildP(cx, cy, scale, dpr, overrides)
     case 'q':
-      return buildQ(cx, cy, scale, dpr, overrides)
+      return qGlyph.build(cx, cy, scale, dpr, overrides)
     case 'r':
       return buildR(cx, cy, scale, dpr, overrides, variant)
     case 's':
@@ -2235,48 +2038,6 @@ function buildE(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       ...loopFills,
       ...entrFills,
       ...exitFills,
-    ],
-  };
-}
-
-/**
- * Render a Matlack-style lowercase 'q'.
- * Components: bowl, downstroke (descender).
- */
-function buildQ(cx, cy, scale, dpr, overrides) {
-  const inner = scaleEllipse(Q_BOWL.inner, cx, cy, scale, Q_REF_CENTER);
-  const outer = scaleEllipse(Q_BOWL.outer, cx, cy, scale, Q_REF_CENTER);
-
-  // Downstroke: straight fat bar from top to bottom (descender)
-  const dsOff = resolveOffset('downstroke', Q_DOWNSTROKE_OFFSET, overrides, dpr);
-  const hw = Q_DOWNSTROKE_HALF_WIDTH * scale;
-  const p0 = refToCanvas(Q_DOWNSTROKE.x1, Q_DOWNSTROKE.y1, cx, cy, scale, Q_REF_CENTER);
-  const p1 = refToCanvas(Q_DOWNSTROKE.x2, Q_DOWNSTROKE.y2, cx, cy, scale, Q_REF_CENTER);
-  p0.x += dsOff.dx; p0.y += dsOff.dy;
-  p1.x += dsOff.dx; p1.y += dsOff.dy;
-  const dx = p1.x - p0.x, dy = p1.y - p0.y;
-  const len = Math.hypot(dx, dy);
-  const nx = -dy / len * hw, ny = dx / len * hw;
-  const downstroke = [
-    { x: p0.x + nx, y: p0.y + ny },
-    { x: p1.x + nx, y: p1.y + ny },
-    { x: p1.x - nx, y: p1.y - ny },
-    { x: p0.x - nx, y: p0.y - ny },
-  ];
-
-  return {
-    bowls: [
-      {
-        outer: outer,
-        inner: inner,
-        widthFn: qBowlWidth,
-        densityFn: qBowlDensity,
-        overlayFills: [
-      { points: downstroke, pressure: 0.85 },
-    ],
-      },
-    ],
-    fills: [
     ],
   };
 }
@@ -2397,86 +2158,6 @@ function buildH(cx, cy, scale, dpr, overrides, variant = undefined) {
       },
     ],
     fills: [
-    ],
-  };
-}
-
-function buildG(cx, cy, scale, dpr, overrides) {
-  const inner = scaleEllipse(G_BOWL.inner, cx, cy, scale, G_REF_CENTER);
-  const outer = scaleEllipse(G_BOWL.outer, cx, cy, scale, G_REF_CENTER);
-
-  // Descender: variable-width ribbon following the wiggly centerline
-  const dsOff = resolveOffset('downstroke', G_DOWNSTROKE_OFFSET, overrides, dpr);
-  const dsCenter = sampleSegments(
-    G_DOWNSTROKE_SEGS,
-    [0, 1, 2, 3, 4, 5, 6],
-    12, cx + dsOff.dx, cy + dsOff.dy, scale, G_REF_CENTER
-  );
-  const dsQuads = buildRibbon(dsCenter, (t) => gDownstrokeWidth(t, scale));
-  const dsFills = dsQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-      {
-        outer: outer,
-        inner: inner,
-        widthFn: gBowlWidth,
-        densityFn: gBowlDensity,
-        overlayFills: dsFills,
-      },
-    ],
-    fills: [
-    ],
-  };
-}
-
-/**
- * Render a Matlack-style lowercase 'i'.
- * Components: entrance flick + downstroke (power taper) + dot (filled blob).
- * No bowl, no piecewise width function — just clean tapered ribbons.
- */
-function buildI(cx, cy, scale, dpr, overrides) {
-  // ── Downstroke (power taper ribbon) ───────────────────────────
-  const dsOff = resolveOffset('downstroke', I_DOWNSTROKE_OFFSET, overrides, dpr);
-  const dsCenter = sampleSegments(
-    I_DOWNSTROKE_SEGS, [0, 1, 2], 12,
-    cx + dsOff.dx, cy + dsOff.dy, scale, I_REF_CENTER
-  );
-  const dsQuads = buildTaperedRibbon(
-    dsCenter,
-    I_DOWNSTROKE.startWidth * scale,
-    I_DOWNSTROKE.taperPower,
-    I_DOWNSTROKE.liftPoint,
-  );
-  const dsFills = dsQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Entrance flick (reversed taper) ───────────────────────────
-  const entrCenter = sampleSegments(
-    I_ENTRANCE_SEGS, [0], 12, cx, cy, scale, I_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed,
-    I_DOWNSTROKE.startWidth * scale,
-    I_ENTRANCE.taperPower,
-    I_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Dot (filled blob) ─────────────────────────────────────────
-  const dotOff = resolveOffset('dot', I_DOT_OFFSET, overrides, dpr);
-  const dot = sampleSegments(
-    I_DOT_SEGS, [0, 1, 2, 3, 4], 12,
-    cx + dotOff.dx, cy + dotOff.dy, scale, I_REF_CENTER
-  );
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      ...dsFills,
-    ...entrFills,
-    { points: dot, pressure: 0.85 },
     ],
   };
 }
@@ -2781,41 +2462,6 @@ function buildM(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
     ],
     fills: [
       ...humpsFills,
-    ...entrFills,
-    ],
-  };
-}
-
-/**
- * Render a Matlack-style lowercase 'n'.
- * Components: entrance flick + single-hump ribbon.
- */
-function buildN(cx, cy, scale, dpr, overrides) {
-  const humpCenter = sampleSegments(
-    N_HUMP_SEGS,
-    Array.from({ length: N_HUMP_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, N_REF_CENTER
-  );
-  const humpQuads = buildRibbon(humpCenter, (t) => nHumpWidth(t, scale));
-  const humpFills = humpQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  const entrCenter = sampleSegments(
-    N_ENTRANCE_SEGS, [0, 1], 12, cx, cy, scale, N_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed,
-    4.0 * scale,
-    N_ENTRANCE.taperPower,
-    N_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      ...humpFills,
     ...entrFills,
     ],
   };
@@ -3443,19 +3089,6 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
 // Python side: json.load → Shapely Polygon for each component.
 // ═════════════════════════════════════════════════════════════════════════════
 
-function exportOutlinesQ(overrides) {
-  const dsOff = resolveRefOffset('downstroke', Q_DOWNSTROKE_OFFSET, overrides);
-  const downstroke = buildBar(
-    Q_DOWNSTROKE.x1 + dsOff.dx, Q_DOWNSTROKE.y1 + dsOff.dy,
-    Q_DOWNSTROKE.x2 + dsOff.dx, Q_DOWNSTROKE.y2 + dsOff.dy,
-    Q_DOWNSTROKE_HALF_WIDTH,
-  );
-  return {
-    bowl: { inner: sampleEllipse(Q_BOWL.inner), outer: sampleEllipse(Q_BOWL.outer) },
-    downstroke,
-  };
-}
-
 function exportOutlinesO() {
   return {
     bowl: { inner: sampleEllipse(O_BOWL.inner), outer: sampleEllipse(O_BOWL.outer) },
@@ -3481,13 +3114,13 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'd': return dGlyph.exportOutlines(overrides);
     case 'e': return { loop: 'single-stroke — no decomposition' };
     case 'f': return fGlyph.exportOutlines(overrides);
-    case 'g': return { bowl: { inner: sampleEllipse(G_BOWL.inner), outer: sampleEllipse(G_BOWL.outer) } };
+    case 'g': return gGlyph.exportOutlines(overrides);
     case 'h': return { barBowl: { inner: sampleEllipse(H_BAR_BOWL.inner), outer: sampleEllipse(H_BAR_BOWL.outer) } };
-    case 'i': return { downstroke: 'tapered-ribbon', dot: 'filled-blob' };
+    case 'i': return iGlyph.exportOutlines(overrides);
     case 'j': return { barBowl: { inner: sampleEllipse(J_BAR_BOWL.inner), outer: sampleEllipse(J_BAR_BOWL.outer) } };
     case 'l': return { loop: 'single-stroke' };
     case 'm': return { humps: 'single-stroke' };
-    case 'n': return { hump: 'single-stroke' };
+    case 'n': return nGlyph.exportOutlines(overrides);
     case 'p': return { mainDownstroke: 'fat-bar', secondDownstroke: 'tapered-ribbon' };
     case 'k': return {
       barBowl: { inner: sampleEllipse(K_BAR_BOWL.inner), outer: sampleEllipse(K_BAR_BOWL.outer) },
@@ -3503,7 +3136,7 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 't': return tGlyph.exportOutlines(overrides);
     case 'y': return { barBowl: { inner: sampleEllipse(Y_BAR_BOWL.inner), outer: sampleEllipse(Y_BAR_BOWL.outer) } };
     case 'z': return { barBowl: { inner: sampleEllipse(Z_BAR_BOWL.inner), outer: sampleEllipse(Z_BAR_BOWL.outer) } };
-    case 'q': return exportOutlinesQ(overrides);
+    case 'q': return qGlyph.exportOutlines(overrides);
     default: throw new Error(`Glyph ${glyph} not yet supported`);
   }
 }
