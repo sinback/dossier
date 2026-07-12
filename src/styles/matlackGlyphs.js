@@ -61,6 +61,9 @@ export { buildRibbon, sampleSegments };
 // matlack/analysis/parallel-bringup-plan.md, which finishes the derivation).
 import tGlyph from './glyphs/t.js';
 import fGlyph, { fBarBowlWidth, fBarBowlDensity } from './glyphs/f.js';
+import rGlyph from './glyphs/r.js';
+import mGlyph from './glyphs/m.js';
+import oGlyph from './glyphs/o.js';
 import eGlyph from './glyphs/e.js';
 import wGlyph from './glyphs/w.js';
 import zGlyph from './glyphs/z.js';
@@ -467,116 +470,6 @@ function lLoopWidth(t, scale) {
 // Structure: entrance flick + double-hump stroke (one continuous ribbon).
 // ═════════════════════════════════════════════════════════════════════════════
 
-const M_REF_CENTER = { x: 79.20, y: 37.62 };  // humps centerline start
-
-const M_HUMPS_SEGS = [
-  [[79.20,37.62],[79.97,37.56],[82.09,39.36],[81.72,42.28]],
-  [[81.72,42.28],[83.45,43.32],[49.19,87.98],[47.11,86.73]],
-  [[47.11,86.73],[47.09,86.72],[69.15,68.97],[71.01,68.53]],
-  [[71.01,68.53],[71.01,68.53],[105.86,44.17],[105.86,44.17]],
-  [[105.86,44.17],[105.97,43.34],[114.98,41.12],[116.11,43.29]],
-  [[116.11,43.29],[117.39,44.45],[117.72,51.34],[117.18,53.49]],
-  [[117.18,53.49],[115.07,58.96],[95.83,84.14],[94.43,83.73]],
-  [[94.43,83.73],[94.23,83.72],[115.64,64.34],[118.34,62.81]],
-  [[118.34,62.81],[118.26,61.19],[151.15,43.01],[152.18,42.91]],
-  [[152.18,42.91],[154.76,40.48],[160.19,46.03],[159.74,47.86]],
-  [[159.74,47.86],[157.37,53.72],[138.24,77.90],[138.10,77.69]],
-  [[138.10,77.69],[136.56,81.83],[138.45,85.50],[142.90,86.60]],
-  [[142.90,86.60],[143.22,87.67],[154.93,86.08],[155.30,85.54]],
-  [[155.30,85.54],[157.38,84.82],[183.40,67.70],[183.23,67.59]],
-];
-
-// Entrance — three forms.
-// init: the traced m/01 entrance verbatim — isolated-letter traces are the
-// word-INITIAL form (kept per the rules table, m entry '.').
-const M_ENTRANCE_INIT_SEGS = [
-  [[30.51,72.89],[31.01,72.18],[75.35,32.18],[79.40,37.67]],
-];
-const M_ENTRANCE_INIT = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
-// low (mid-word after low exits): band-true slice of to/01 path3
-// (derive_band.py low --xh 49.1 --ybottom 86.7 --anchor-x 22 --skip-head 10)
-// + authored bridge easing the 38° climb into the humps start.
-const M_ENTRANCE_LOW_SEGS = [
-  [[5.49, 86.36],[7.10, 86.18],[8.35, 85.93],[8.69, 85.63]],
-  [[8.69, 85.63],[12.90, 88.40],[55.11, 50.23],[54.93, 50.10]],
-  [[54.93, 50.10],[63.00, 44.30],[72.00, 39.60],[79.20, 37.62]],
-];
-// high (after b/f/o/v/w): band-true slice of or/01 path2 (derive_band.py
-// high --xh 49.1 --ybottom 86.7 --anchor-x 62.55 --skip-head 23). The trace
-// end lands 0.6 su above the humps start — the same trace-end-=-body-start
-// structure the or/01 scan shows for o→r.
-const M_ENTRANCE_HIGH_SEGS = [
-  [[55.41, 54.12],[60.24, 52.78],[66.71, 50.59],[67.06, 49.66]],
-  [[67.06, 49.66],[69.25, 51.16],[80.39, 39.05],[79.20, 38.21]],
-];
-// hairline rule-consistent (0.65 × 49.1/60). Anchors sit at body→tip arc
-// fractions 0.79 (low, incl. 28 su bridge) / 0.80 (high); fadeStart holds
-// hairline ~3-5 su PAST the anchor tip-ward so the pre-anchor overlap band
-// stays full-width (fading at the anchor starves the coarticulation zone).
-const M_ENTRANCE_CONN = { hairline: 0.53, fadeStartLow: 0.85, fadeStartHigh: 0.90 };
-
-// Rule lines — trace-derived (the m/01 crop has no visible paper rules):
-// yCenter = the entrance knob top / humps start height, yBottom = the hump
-// valleys (~86.7). yTop nominal (m has no ascender).
-const M_RULE = { yTop: -11.5, yCenter: 37.6, yBottom: 86.7 };
-
-// Join anchors. entry anchors are the canonical band scan points through
-// each slice's transform; exit sits ON the final traced stroke at 15.6%
-// x-height — not band-true yet (same status r→e had pre-conversion), fine
-// until an m→x pair becomes a close-study target.
-const M_JOIN_ANCHORS = {
-  entry: {
-    low:  { x: 22.0,  y: 79.05 },
-    high: { x: 62.55, y: 51.6 },
-  },
-  exit: { x: 165.93, y: 79.04 },
-};
-
-// Width function for the double-hump centerline.
-// Two hump cycles: each goes thin (turnaround) → fat (arch) → thin (descent).
-// The centerline has roughly:
-//   0-5%:   initial small loop/blob
-//   5-20%:  first descent (fat)
-//  20-30%:  first turnaround (thin)
-//  30-42%:  first hump arch (fat)
-//  42-50%:  second descent (fat)
-//  50-58%:  second turnaround (thin)
-//  58-70%:  second hump arch (fat)
-//  70-80%:  second descent (fat)
-//  80-90%:  bottom loop
-//  90-100%: exit flick (hairline)
-function mHumpsWidth(t, scale) {
-  // Initial blob/loop
-  if (t < 0.05) return 3.0 * scale;
-
-  // First descent
-  if (t < 0.18) return smoothStep(3.0, 5.0, (t - 0.05) / 0.13) * scale;
-
-  // First turnaround (thin)
-  if (t < 0.28) return smoothStep(5.0, 1.5, (t - 0.18) / 0.10) * scale;
-
-  // First hump rising
-  if (t < 0.38) return smoothStep(1.5, 4.0, (t - 0.28) / 0.10) * scale;
-
-  // First hump arch + second descent
-  if (t < 0.50) return smoothStep(4.0, 5.0, (t - 0.38) / 0.12) * scale;
-
-  // Second turnaround (thin)
-  if (t < 0.58) return smoothStep(5.0, 1.5, (t - 0.50) / 0.08) * scale;
-
-  // Second hump rising
-  if (t < 0.68) return smoothStep(1.5, 4.0, (t - 0.58) / 0.10) * scale;
-
-  // Second hump arch + descent
-  if (t < 0.78) return smoothStep(4.0, 3.5, (t - 0.68) / 0.10) * scale;
-
-  // Bottom loop
-  if (t < 0.88) return smoothStep(3.5, 2.5, (t - 0.78) / 0.10) * scale;
-
-  // Exit flick (hairline)
-  return smoothStep(2.5, 0.7, (t - 0.88) / 0.12) * scale;
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'n'
 // Source: hand-traced on n/01 from high-res 1823 facsimile (107×93, 1x).
@@ -596,171 +489,6 @@ function mHumpsWidth(t, scale) {
 // Beginning-of-word form. Structure: entrance flick + swoop/downstroke
 // (combined ribbon) + exit flick.
 // ═════════════════════════════════════════════════════════════════════════════
-
-const R_REF_CENTER = { x: 55, y: 44 };  // junction of entrance/swoop/downstroke
-
-// Rule-line y-values in r's local frame.
-// rule.y-top is extrapolated (r doesn't reach into the ascender zone),
-// preserving (yTop + yBottom) / 2 = yCenter.
-const R_RULE = { yTop: -18, yCenter: 38, yBottom: 94 };
-
-// Join anchors — curs attach points in r's local frame.
-//   entry: the overlap-zone anchor where the previous letter's exit lands.
-//          Derived from sinback's scan-space r.entry font-anchor (43.12,
-//          30.87 in 'or/01') via the structural transform. Sits on r's
-//          entry flick, past the body-side end, so the prev letter's
-//          exit stroke can overlap with r's entry flick.
-//   exit:  curs-attach for the next letter. Placeholder value pending
-//          r-before-x scan data.
-const R_JOIN_ANCHORS = {
-  entry: {
-    // low: ON the (extended) default entry flick at the 15% x-height
-    // low-join convention height. The old (28.18, 55.62) mid-flick spot
-    // sat at 68.5% — fine against the flick, but drift-inconsistent with
-    // every low exit (they anchor at 15%).
-    // (85.6 → 85.28 when the entrance went band-true: the canonical low
-    // scan point through the slice transform; the old value was read off
-    // the extended flick and carried a 0.32 su offset every band-true
-    // partner exit would have inherited as drift.)
-    low:  { x: -7.55, y: 85.28 },
-    // high: the SAME scan point as o.exit — sinback's (46.22, 30.11) on
-    // or/01 path2 — mapped through the transform that placed
-    // R_ENTRANCE_AFTERHIGH_SEGS (scale 2.17, end pinned to downstrokeTop,
-    // nudge included). Both glyphs anchoring the same trace point is what
-    // makes the curs overlay reconstruct the trace. Lands at 71.5%
-    // x-height, independently agreeing with o.exit's 71.6% convention.
-    high: { x: 32.76, y: 53.97 },
-  },
-  // The canonical low scan point (41.25, 71.64) through the exit
-  // connector's slice transform (see R_EXIT_BAND_SEGS) — 15.6% x-height.
-  exit:  { x: 87.09, y: 85.28 },
-};
-
-// Structural anchors — stable, identifiable features on the letter's body,
-// used for aligning the glyph geometry against a scan. Different from join
-// anchors (which live in the curs overlap zone); structural anchors sit on
-// the letter body proper so they're easy to mark on scans by eye.
-const R_STRUCTURAL_ANCHORS = {
-  downstrokeTop: { x: 51.75, y: 38.69 },  // top of r's swoop (R_STROKE_SEGS[0] start)
-};
-
-// Entrance — band-true slice of to/01 path3 (derive_band.py low --xh 56
-// --ybottom 94 --anchor-x -7.55 --skip-head 12.1 --fade-len 20), bridged
-// onto the traced entrance line (r/01 flick tip (18.10, 64.90) → body
-// junction (51.44, 37.99)). Replaces the original straight-line
-// extension of the traced flick, which predates the band-true-entry
-// lesson (h, 2026-07-10): a straight extension crosses a band-true
-// partner's exit at a shallow angle instead of riding it — u→r scored
-// coart 0.02 (essentially offset-parallel). The bridge is G1-ish at
-// both ends (slice end tangent −40.3°, line −38.9°). Note r has no
-// entry-none variant: this chain is also the word-initial render, whose
-// deep baseline-crawling tip matches the table's "naturally y-bottom"
-// entry note.
-const R_ENTRANCE_SEGS = [
-  // Band-true slice; anchor (-7.55, 85.28) at 15.6% x-height.
-  [[-25.54, 93.51], [-24.12, 93.31], [-23.05, 93.07], [-22.73, 92.78]],
-  [[-22.73, 92.78], [-20.07, 94.53], [-4.07, 81.92], [9.61, 70.31]],
-  // Bridge (authored): band → the traced entrance line.
-  [[9.61, 70.31], [14.2, 66.42], [19.72, 63.6], [24.0, 60.15]],
-  // The traced entrance line, on to the body junction.
-  [[24.0, 60.15], [24.0, 60.15], [51.44, 37.99], [51.44, 37.99]],
-];
-// Reversed render (body→tip fade): anchor sits ~0.78 of arc from the
-// body side; hold hairline ~4 su past it, fade over the deep tail.
-const R_ENTRANCE_LOW = { fadeStart: 0.83 };
-
-// Entrance flick — afterHigh variant (r after b/f/o/v/w, or after strong o-exit).
-// Source: or/01 path2 ('o Exit → r Entry'), sliced at t≈0.45 on its 2nd
-// cubic so the flick starts at the user's r.entry font-anchor. Transformed
-// to r's glyph local frame, then translated (-2.98, +0.54) so the endpoint
-// lands on R_STRUCTURAL_ANCHORS.downstrokeTop (= rule.y-center) for clean
-// tangent continuity with the afterHigh body at the top.
-// Two cubic segments.
-const R_ENTRANCE_AFTERHIGH_SEGS = [
-  [[25.20, 56.16], [31.00, 55.29], [37.10, 53.14], [37.46, 52.17]],
-  [[37.46, 52.17], [40.03, 53.94], [53.16, 39.67], [51.75, 38.69]],
-];
-
-// Swoop + downstroke as one continuous stroke
-const R_STROKE_SEGS = [
-  // Swoop (the little hook that makes 'r' recognizable)
-  [[51.75,38.69],[50.92,38.22],[53.16,49.03],[58.52,49.45]],
-  // Downstroke
-  [[58.96,49.27],[58.96,49.27],[30.91,80.27],[32.80,83.77]],
-  [[32.80,83.77],[31.26,84.62],[34.47,95.36],[36.97,93.99]],
-];
-
-// Width function: swoop is thin, descent fattens, bottom loop thins
-function rStrokeWidth(t, scale) {
-  // Swoop entry: thin
-  if (t < 0.10) return 2.0 * scale;
-
-  // Swoop body: moderate
-  if (t < 0.25) return smoothStep(2.0, 3.5, (t - 0.10) / 0.15) * scale;
-
-  // Transition to descent: fattening
-  if (t < 0.40) return smoothStep(3.5, 5.0, (t - 0.25) / 0.15) * scale;
-
-  // Main descent: fat
-  if (t < 0.65) return 5.0 * scale;
-
-  // Bottom turnaround: thinning
-  if (t < 0.80) return smoothStep(5.0, 3.0, (t - 0.65) / 0.15) * scale;
-
-  // Bottom loop: moderate, thinning to exit
-  return smoothStep(3.0, 1.5, (t - 0.80) / 0.20) * scale;
-}
-
-// Exit flick — traced from isolated r/01, i.e. the WORD-FINAL form (for/01
-// path1 'r Downstroke → r Exit (terminal)' confirms terminal r exits are a
-// distinct flourish). Kept for the future fina variant; mid-word exits use
-// the band-true connector below.
-const R_EXIT_SEGS = [
-  [[37.56,94.79],[36.90,95.64],[50.31,96.17],[51.21,95.00]],
-  [[51.21,95.00],[51.21,95.00],[74.98,86.19],[74.98,86.19]],
-];
-const R_EXIT = { startWidth: 2.5, taperPower: 1.7, liftPoint: 0.85 };
-const R_EXIT_OFFSET = { dx: 0, dy: 0 };
-
-// Mid-word exit connector — band-true slice of to/01 path3 (the canonical
-// LOW band; derive_band.py low --xh 56 --ybottom 94 --anchor-x 87.09
-// --fade-len 6). anchor-x was chosen so the trace START lands on the
-// afterHigh body's bottom-loop end (56.31, 94.58) — zero bridge for that
-// form; the default body reaches the trace via a baseline bridge (the
-// trace's own opening character is a baseline crawl, so the bridge just
-// extends it). Anchor (87.09, 85.28) = the canonical low scan point
-// (41.25, 71.64) through this slice's transform, 15.6% x-height.
-const R_EXIT_BAND_SEGS = [
-  [[56.31, 93.90], [55.77, 94.38], [70.53, 94.02], [71.91, 92.78]],
-  [[71.91, 92.78], [73.57, 93.87], [80.42, 89.38], [88.66, 83.02]],
-];
-const R_EXIT_BRIDGE_DEFAULT = [
-  [[36.97, 93.99], [43.40, 95.80], [50.20, 95.30], [56.31, 93.90]],
-];
-// hairline rule-consistent (0.65 × 56/60); fadeStart: anchor at 33.0 su of
-// the 35.5 su slice, plus the 19.8 su bridge for the default form.
-const R_EXIT_CONN = { hairline: 0.61, fadeStartAfterHigh: 0.929, fadeStartDefault: 0.955 };
-
-// ── afterHigh variant body + exit ────────────────────────────────────────────
-// In Copperplate literature the flat-topped r is a structurally different
-// letterform, not just "default r with a different entry flick" — so both
-// the body shape and the exit extension differ.
-//
-// Source: or/01 path1 ("r Downstroke → r Exit"), six cubic segments. That
-// scan's r is the afterHigh variant (o precedes it with a high exit).
-// Segments translated to r's glyph-local frame via the scan→glyph transform
-// for or/01 (scale≈0.446, offsets≈(30.54, 6.04)), then shifted +0.22 in y
-// so the first point coincides with R_STRUCTURAL_ANCHORS.downstrokeTop.
-const R_STROKE_SEGS_AFTERHIGH = [
-  [[51.75, 38.69], [51.55, 38.71], [48.35, 52.66], [50.50, 52.23]],
-  [[50.50, 52.23], [49.83, 52.25], [53.23, 60.23], [54.82, 59.58]],
-  [[54.82, 59.58], [54.53, 59.31], [32.31, 82.00], [37.08, 86.25]],
-  [[37.08, 86.25], [35.19, 86.74], [36.74, 97.25], [44.89, 95.12]],
-  [[44.89, 95.12], [43.39, 96.02], [52.95, 96.58], [56.31, 94.58]],
-];
-const R_EXIT_SEGS_AFTERHIGH = [
-  [[56.31, 94.58], [57.05, 97.99], [103.89, 66.30], [103.62, 65.00]],
-];
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'w'
@@ -944,168 +672,6 @@ const U_JOIN_ANCHORS = {
 // Confirmed tilt consistency with a/b/f at -45.5°.
 // ═════════════════════════════════════════════════════════════════════════════
 
-// Reference anchor: center of 'o's inner ellipse in ref o/03.
-// Image: reference/lowercase/o/03.png (75×66, 1x from high-res facsimile)
-const O_REF_CENTER = { x: 40.3, y: 33.5 };
-
-// Rule-line y-values in o's local frame.
-// o's bowl reaches from about y=3 (top, at θ where the tilted outer ellipse
-// peaks) to y=63 (bottom). rule.y-top is extrapolated — o doesn't extend
-// into the ascender zone.
-const O_RULE = { yTop: -57, yCenter: 3, yBottom: 63 };
-
-// Join anchors — curs attach points in o's local frame.
-//   entry: top-left of the bowl (~θ=-π/2 on the tilted outer ellipse),
-//          where both low and high entry flicks terminate at the body.
-//   exit:  upper-right of the bowl at ~rule.y-center height. o.exit is
-//          "strong" (per the rules table) so this anchor governs how a
-//          following letter lines up.
-// Join-height convention (canonical, from the two human-picked anchors):
-//   low joins  at 15% of x-height above rule.y-bottom (sinback's to/01
-//   t.exit anchor: 4.4 su / 28 su x-height = 15.7%)
-//   high joins at 68.5% (r.entry.high, the most scan-tuned high anchor)
-// Every letter's anchors must hit these percentages in its own rule frame,
-// or curs attachment accumulates baseline drift letter-by-letter.
-const O_JOIN_ANCHORS = {
-  entry: {
-    // low: sinback's to/01 scan anchor (41.25, 71.64) mapped through the
-    // entrance slice's placement transform (scale 2.143, see
-    // O_ENTRANCE_DEFAULT_SEGS). 15.6% x-height by rule consistency.
-    low:  { x: -7.91, y: 53.66 },
-    // high: ON the afterHigh entrance flick, at its closest approach to
-    // the 71.6% high-join height (flick min-y is 20.87 = 69.3%; residual
-    // drift vs convention -0.8 su, inside the 1.5 su tolerance). The old
-    // (27.3, 22.4) was the flick's body-side terminus, not a join point.
-    high: { x: 13.67, y: 20.87 },
-  },
-  // Exit font-anchor from sinback's scan-space o.exit (46.22, 30.11) in
-  // 'or/01' via the structural alignment transform. 71.6% x-height — the
-  // high-join convention height (matched by r.entry.high).
-  exit:  { x: 90.73, y: 20.06 },
-};
-
-const O_STRUCTURAL_ANCHORS = {
-  bowlCenter: { x: 40.3, y: 33.5 },  // inner ellipse center (= O_REF_CENTER)
-  // Topmost point of the outer ellipse (at rule.y-center). Where the
-  // pen emerges from the bowl on its way out. Anchor for the left end
-  // of O_EXIT_SEGS so the flick starts flush with the bowl.
-  bowlTop:    { x: 59.66, y:  3.40 },
-};
-
-// Exit-connector Bezier segments in o's local frame.
-//
-// Band-true slice rule: the portion of a connector inside the join band is
-// a rule-consistent-scale copy of the shared trace (or/01 path2), pinned at
-// sinback's scan anchor (46.22, 30.11) → local (90.73, 20.06), scale
-// 60/xh_scan = 2.325. The receiving glyph's slice (R_ENTRANCE_AFTERHIGH_SEGS)
-// is a same-scale copy of the same trace, so the curs overlay reconstructs
-// the trace exactly. Any adaptation to this glyph's own body happens in the
-// authored BRIDGE segment on the bowl side — never by warping the band.
-// (The pre-hiatus version stretched path2's first ~2 scan-units across the
-// whole bowl→band span, because our o/03-fitted bowl is smaller than the
-// or/01 o bowl; that warp is why the two strokes couldn't coarticulate.)
-const O_EXIT_SEGS = [
-  // Bridge (authored): bowl top → trace start, riding the bowl's top curve.
-  [[59.66,  3.40], [63.50,  4.40], [67.40,  5.40], [70.99,  6.55]],
-  // Trace: path2 seg1 — the reversal dip leaving the bowl.
-  [[70.99,  6.55], [69.74,  6.97], [71.71, 25.69], [75.62, 24.38]],
-  // Trace: path2 seg2 — rises through the anchor toward r; ends ~5 su past
-  // the anchor (the fade tail).
-  [[75.62, 24.38], [75.22, 25.41], [95.54, 19.53], [96.24, 17.69]],
-];
-// Connector, not a lift: hairline holds through the anchor (at arc-length
-// fraction 0.886), fades over the tail.
-const O_EXIT = { hairline: 0.6, fadeStart: 0.886 };
-
-// ── 'o' bowl ellipses ────────────────────────────────────────────────────────
-// Automated fit via scipy Nelder-Mead crescent model (93.8% → 86.2% constrained).
-// Tilt constrained to match across inner/outer (known from a/b/f).
-// Inner/outer ratio: a=0.54, b=0.71 — similar to 'a'.
-const O_BOWL = {
-  inner: {
-    cx: 40.3,    // = O_REF_CENTER.x
-    cy: 33.5,    // = O_REF_CENTER.y
-    a: 20.8,     // semi-major
-    b: 10.8,     // semi-minor
-    tilt: -45.5  // consistent with a (-44.9), b (-43.5), f (-48.8)
-  },
-  outer: {
-    cx: 38.2,    // offset from inner: (-2.1, -0.4) — nearly concentric
-    cy: 33.1,
-    a: 38.8,     // outer/inner ratio: 1.87× (very close to a's 1.46× and b's 1.89×)
-    b: 15.3,     // outer/inner ratio: 1.42×
-    tilt: -45.5  // same as inner — 0° tilt diff (most uniform of all letters)
-  },
-};
-
-// Entrance flick — default (o after @low_exit).
-// Enters from ~rule.y-bottom with horizontal-rightward tangent, bows
-// downward (stays low) as the pen continues from the preceding letter's
-// y-bottom exit, then sweeps up to meet the top-left of the bowl at the
-// bowl's own tangent direction (≈ (+0.70, -0.71) at θ=-π/2).
-// Band-true slice of the canonical LOW-band trace: to/01 path3 seg B
-// ('t Exit Flick → o Entry'), rule-consistent scale 60/28 = 2.143, pinned
-// at sinback's scan anchor (41.25, 71.64) → local (-7.91, 53.66). The
-// slice runs from the trace (trimmed at local x = -24 to stay in frame)
-// up to bowl-attach height; the authored BRIDGE segment covers the last
-// ~6 su into the bowl attach point (27.3, 22.4), arriving ~46°. This is
-// the long, leftward entrance the scan shows — the pen climbs from near
-// baseline (left of the whole bowl) up to the bowl top-left.
-const O_ENTRANCE_DEFAULT_SEGS = [
-  // Trace slice (seg B, t ∈ [0.011, 0.733], de Casteljau sub-curve).
-  [[-24.0, 61.79],[-19.58, 63.48],[8.54, 39.58],[23.3, 26.5]],
-  // Bridge (authored): slice end → bowl attach, continuing the ~42° climb.
-  [[23.3, 26.5],[24.6, 25.1],[26.0, 23.8],[27.3, 22.4]],
-];
-// Connector: anchor sits at arc-length fraction ~0.71 measured body → tip;
-// width holds ~7 su past the anchor before fading over the tip stretch
-// (the previous letter's exit slice is full-width there — the two
-// crossfade along the SAME curve).
-const O_ENTRANCE_DEFAULT = { hairline: 0.6, fadeStart: 0.60 };
-
-// Entrance flick — afterHigh variant (o after @high_exit = b/f/v/w, or after strong o-exit).
-// Enters at ~rule.y-center and arrives at the top-left of the bowl (~θ=-π/2 in
-// ref ellipse coords, at (27.3, 22.4)).
-const O_ENTRANCE_AFTERHIGH_SEGS = [
-  [[4, 22],[12, 20],[20, 21],[27.3, 22.4]],
-];
-// Connector: anchor (13.67, 20.87) sits at ~0.6 of arc length body → tip,
-// so the fade must not start before that.
-const O_ENTRANCE_AFTERHIGH = { hairline: 0.6, fadeStart: 0.6 };
-
-// ── 'o' bowl width function ──────────────────────────────────────────────────
-// Very similar to 'a' — thickest on the bottom-left (pen slowest),
-// thinnest at the top (pen fastest). No downstroke overlap zone,
-// so the upper-right is just thin like the top.
-// 'o' is slightly more uniform than 'a' since there's no downstroke
-// interaction distorting the width profile.
-function oBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-
-  // Top: thin. Pen moves fast across the top of the bowl.
-  if (f < 0.20) return 0.25;
-
-  // Left side: thin→fat. Pen decelerates.
-  if (f < ARC_PRESS) { const t = (f - 0.20) / (ARC_PRESS - 0.20); return smoothStep(0.25, 1.0, t); }
-
-  // Bottom-left: peak width. Pen at slowest.
-  if (f < ARC_RISE) return 1.0;
-
-  // Bottom-right: fat→thin. Pen accelerates back up.
-  if (f < 0.95) return smoothStep(1.0, 0.25, (f - ARC_RISE) / 0.17);
-
-  // Upper-right: thin, returning to top.
-  return 0.25;
-}
-
-// ── 'o' bowl density ─────────────────────────────────────────────────────────
-function oBowlDensity(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  // Slightly lighter at the thin top, solid everywhere else.
-  if (f < 0.20) return 0.70;
-  return 0.85;
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // PUBLIC RENDER FUNCTIONS
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1137,7 +703,7 @@ export function glyphOuterEllipse(glyph) {
     c: cGlyph.outerEllipse,
     d: dGlyph.outerEllipse,
     f: fGlyph.outerEllipse,
-    o: { outer: O_BOWL.outer, refCenter: O_REF_CENTER },
+    o: oGlyph.outerEllipse,
     q: qGlyph.outerEllipse,
   };
   return map[glyph] ?? null;
@@ -1184,41 +750,10 @@ function renderFromGeo(renderer, geo) {
 // yet; missing letters treat their variant arg as "ignored" for compatibility.
 // ═════════════════════════════════════════════════════════════════════════════
 export const VARIANT_SUPPORT = {
+  r: rGlyph.variantSupport,
+  m: mGlyph.variantSupport,
+  o: oGlyph.variantSupport,
   e: eGlyph.variantSupport,
-  o: {
-    supported: [
-      { entry: 'low',  exit: 'high' },
-      { entry: 'high', exit: 'high' },
-      { entry: 'none', exit: 'high' },      // init form (word-start)
-      { entry: 'none', exit: 'none' },      // isol (standalone "o")
-    ],
-    notYet: [
-      // o's exit-flick geometry isn't rendered yet, so exit:'high' and
-      // exit:'none' produce the same shape today. Promoted {none, high}
-      // to supported because semantically it's valid for word-initial o
-      // and renders correctly (bare bowl) until the exit flick is added.
-      { entry: 'low',  exit: 'none' },      // fina after low-exiting letter
-      { entry: 'high', exit: 'none' },      // fina after high-exiting letter
-    ],
-  },
-  m: {
-    supported: [
-      { entry: 'low',  exit: 'low' },
-      { entry: 'high', exit: 'low' },       // afterHigh
-      { entry: 'none', exit: 'low' },       // word-initial (traced flourish)
-    ],
-    notYet: [],
-  },
-  r: {
-    supported: [
-      { entry: 'low',  exit: 'low' },
-      { entry: 'high', exit: 'low' },       // afterHigh
-    ],
-    notYet: [
-      { entry: 'low',  exit: 'flourish' },
-      { entry: 'high', exit: 'flourish' },
-    ],
-  },
   h: {
     supported: [
       { entry: 'low',  exit: 'low' },       // mid-word default
@@ -1301,17 +836,17 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
     case 'l':
       return buildL(cx, cy, scale, dpr, overrides, variant)
     case 'm':
-      return buildM(cx, cy, scale, dpr, overrides, variant)
+      return mGlyph.build(cx, cy, scale, dpr, overrides, variant)
     case 'n':
       return nGlyph.build(cx, cy, scale, dpr, overrides)
     case 'o':
-      return buildO(cx, cy, scale, dpr, overrides, variant)
+      return oGlyph.build(cx, cy, scale, dpr, overrides, variant)
     case 'p':
       return pGlyph.build(cx, cy, scale, dpr, overrides)
     case 'q':
       return qGlyph.build(cx, cy, scale, dpr, overrides)
     case 'r':
-      return buildR(cx, cy, scale, dpr, overrides, variant)
+      return rGlyph.build(cx, cy, scale, dpr, overrides, variant)
     case 's':
       return sGlyph.build(cx, cy, scale, dpr, overrides)
     case 't':
@@ -1567,58 +1102,6 @@ function buildL(cx, cy, scale, dpr, overrides, variant = undefined) {
 }
 
 /**
- * Render a Matlack-style lowercase 'm'.
- * Components: entrance flick + double-hump ribbon.
- */
-function buildM(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'low' }) {
-  variant = resolveVariant('m', variant);
-
-  // Double-hump centerline as variable-width ribbon
-  const humpsCenter = sampleSegments(
-    M_HUMPS_SEGS,
-    Array.from({ length: M_HUMPS_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, M_REF_CENTER
-  );
-  const humpsQuads = buildRibbon(humpsCenter, (t) => mHumpsWidth(t, scale));
-  const humpsFills = humpsQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'body' }));
-
-  // Entrance: word-initial keeps the traced flourish (lift-taper); mid-word
-  // forms are band-true connectors.
-  const entrSegs = variant.entry === 'high' ? M_ENTRANCE_HIGH_SEGS
-                 : variant.entry === 'none' ? M_ENTRANCE_INIT_SEGS
-                 : M_ENTRANCE_LOW_SEGS;
-  const entrCenter = sampleSegments(
-    entrSegs,
-    Array.from({ length: entrSegs.length }, (_, i) => i),
-    12, cx, cy, scale, M_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = variant.entry === 'none'
-    ? buildTaperedRibbon(
-        entrReversed,
-        4.0 * scale,
-        M_ENTRANCE_INIT.taperPower,
-        M_ENTRANCE_INIT.liftPoint,
-      )
-    : buildConnectorRibbon(
-        entrReversed,
-        M_ENTRANCE_CONN.hairline * scale,
-        variant.entry === 'high' ? M_ENTRANCE_CONN.fadeStartHigh
-                                 : M_ENTRANCE_CONN.fadeStartLow,
-      );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      ...humpsFills,
-    ...entrFills,
-    ],
-  };
-}
-
-/**
  * Render a Matlack-style lowercase 'y'.
  * Components: entry flick + initial downstroke (ribbon) + second downstroke
  *             (ribbon) + bar-bowl loop + exit flick.
@@ -1743,158 +1226,6 @@ function buildU(cx, cy, scale, dpr, overrides, variant = undefined) {
   };
 }
 
-function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'low' }) {
-  variant = resolveVariant('r', variant);
-
-  // Body + exit geometry depends on variant.entry — r.afterHigh is a
-  // structurally different letterform, not just a different entry flick.
-  const isAfterHigh = variant.entry === 'high';
-  const strokeSegs = isAfterHigh ? R_STROKE_SEGS_AFTERHIGH : R_STROKE_SEGS;
-
-  // Swoop + downstroke as one ribbon.
-  const strokeIdxs = Array.from({ length: strokeSegs.length }, (_, i) => i);
-  const strokeCenter = sampleSegments(
-    strokeSegs, strokeIdxs, 12, cx, cy, scale, R_REF_CENTER
-  );
-  const strokeQuads = buildRibbon(strokeCenter, (t) => rStrokeWidth(t, scale));
-  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'body' }));
-
-  // Entrance flick (reversed taper).
-  const entrSegs = isAfterHigh ? R_ENTRANCE_AFTERHIGH_SEGS : R_ENTRANCE_SEGS;
-  const entrIdxs = Array.from({ length: entrSegs.length }, (_, i) => i);
-  const entrCenter = sampleSegments(
-    entrSegs, entrIdxs, 12, cx, cy, scale, R_REF_CENTER
-  );
-  // Connector profile: fat where it merges into the body, hairline through
-  // the join band (the trace is a hairline there — or/01 path2), brief fade
-  // at the free tip. The old tip-to-zero lift taper left the band portion
-  // thinner than the shared trace, so the neighbor's slice couldn't
-  // coarticulate with it.
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildConnectorRibbon(
-    entrReversed,
-    0.65 * scale,
-    isAfterHigh ? 0.9 : R_ENTRANCE_LOW.fadeStart,
-    { bodyWidth: 3.5 * scale, blendEnd: 0.4 },
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
-
-  // Exit connector — band-true slice (see R_EXIT_BAND_SEGS). The traced
-  // flourish forms (R_EXIT_SEGS / R_EXIT_SEGS_AFTERHIGH) are word-final;
-  // they'll return as the fina variant.
-  const exitOff = resolveOffset('exitFlick', R_EXIT_OFFSET, overrides, dpr);
-  const exitConnSegs = isAfterHigh
-    ? R_EXIT_BAND_SEGS
-    : [...R_EXIT_BRIDGE_DEFAULT, ...R_EXIT_BAND_SEGS];
-  const exitIdxs = Array.from({ length: exitConnSegs.length }, (_, i) => i);
-  const exitCenter = sampleSegments(
-    exitConnSegs, exitIdxs, 12,
-    cx + exitOff.dx, cy + exitOff.dy, scale, R_REF_CENTER
-  );
-  const exitQuads = buildConnectorRibbon(
-    exitCenter,
-    R_EXIT_CONN.hairline * scale,
-    isAfterHigh ? R_EXIT_CONN.fadeStartAfterHigh : R_EXIT_CONN.fadeStartDefault,
-  );
-  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'exit' }));
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      ...strokeFills,
-    ...entrFills,
-    ...exitFills,
-    ],
-  };
-}
-
-function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'high' }) {
-  variant = resolveVariant('o', variant);
-
-  const inner = scaleEllipse(O_BOWL.inner, cx, cy, scale, O_REF_CENTER);
-  const outer = scaleEllipse(O_BOWL.outer, cx, cy, scale, O_REF_CENTER);
-
-  // Entrance flick depends on variant.entry.
-  let entrSegs = null, entrParams = null;
-  if (variant.entry === 'high') {
-    entrSegs = O_ENTRANCE_AFTERHIGH_SEGS;
-    entrParams = O_ENTRANCE_AFTERHIGH;
-  } else if (variant.entry === 'low') {
-    entrSegs = O_ENTRANCE_DEFAULT_SEGS;
-    entrParams = O_ENTRANCE_DEFAULT;
-  }
-  // 'none' → no entry stroke; entrSegs stays null.
-
-  // Optional CW rotation of the low-entry flick around its junction (P3)
-  // with the bowl. Used for iterating on the flick's angle; in y-down image
-  // coords, math CCW rotation visually reads as CW on the page.
-  if (entrSegs && variant.entry === 'low' && overrides.defaultEntryRotation) {
-    const rad = overrides.defaultEntryRotation * Math.PI / 180;
-    const c = Math.cos(rad), s = Math.sin(rad);
-    entrSegs = entrSegs.map(seg => {
-      const [px, py] = seg[3];
-      return seg.map((p, i) => {
-        if (i === 3) return p;
-        const dx = p[0] - px, dy = p[1] - py;
-        return [dx * c - dy * s + px, dx * s + dy * c + py];
-      });
-    });
-  }
-
-  let entrFills = [];
-  if (entrSegs) {
-    const entrCenter = sampleSegments(
-      entrSegs,
-      Array.from({ length: entrSegs.length }, (_, i) => i),
-      12, cx, cy, scale, O_REF_CENTER,
-    );
-    // Reversed → body-to-tip order, so the connector fade lands at the tip
-    // (the free end reaching toward the previous letter).
-    const entrReversed = [...entrCenter].reverse();
-    const entrQuads = buildConnectorRibbon(
-      entrReversed,
-      entrParams.hairline * scale,
-      entrParams.fadeStart,
-    );
-    entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
-  }
-
-  // Exit connector when variant.exit === 'high'. Geometry is path2 from
-  // 'or/01' (o Exit → r Entry) up to the font-anchor plus a short fade
-  // tail, in o's glyph local frame. Hairline width — mid-word connectors
-  // are continuous strokes, not pen lifts.
-  let exitFills = [];
-  if (variant.exit === 'high') {
-    const exitCenter = sampleSegments(
-      O_EXIT_SEGS,
-      Array.from({ length: O_EXIT_SEGS.length }, (_, i) => i),
-      12, cx, cy, scale, O_REF_CENTER,
-    );
-    const exitQuads = buildConnectorRibbon(
-      exitCenter,
-      O_EXIT.hairline * scale,
-      O_EXIT.fadeStart,
-    );
-    exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'exit' }));
-  }
-
-  return {
-    bowls: [
-      {
-        outer: outer,
-        inner: inner,
-        widthFn: oBowlWidth,
-        densityFn: oBowlDensity,
-      },
-    ],
-    fills: [
-      ...entrFills,
-      ...exitFills,
-    ],
-  };
-}
-
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1904,12 +1235,6 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
 // No canvas, no DPR — just raw geometry with overrides applied.
 // Python side: json.load → Shapely Polygon for each component.
 // ═════════════════════════════════════════════════════════════════════════════
-
-function exportOutlinesO() {
-  return {
-    bowl: { inner: sampleEllipse(O_BOWL.inner), outer: sampleEllipse(O_BOWL.outer) },
-  };
-}
 
 /**
  * Export component outlines as coordinate arrays for geometric analysis.
@@ -1935,12 +1260,12 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'i': return iGlyph.exportOutlines(overrides);
     case 'j': return jGlyph.exportOutlines(overrides);
     case 'l': return { loop: 'single-stroke' };
-    case 'm': return { humps: 'single-stroke' };
+    case 'm': return mGlyph.exportOutlines(overrides);
     case 'n': return nGlyph.exportOutlines(overrides);
     case 'p': return pGlyph.exportOutlines(overrides);
     case 'k': return kGlyph.exportOutlines(overrides);
-    case 'o': return exportOutlinesO();
-    case 'r': return { stroke: 'ribbon' };
+    case 'o': return oGlyph.exportOutlines(overrides);
+    case 'r': return rGlyph.exportOutlines(overrides);
     case 'w': return wGlyph.exportOutlines(overrides);
     case 's': return sGlyph.exportOutlines(overrides);
     case 'u': return { stroke: 'ribbon' };
@@ -2012,9 +1337,9 @@ export const GLYPH_RULES = {
   f: fGlyph.rule,
   h: H_RULE,
   l: L_RULE,
-  m: M_RULE,
-  o: O_RULE,
-  r: R_RULE,
+  m: mGlyph.rule,
+  o: oGlyph.rule,
+  r: rGlyph.rule,
   t: tGlyph.rule,
   u: U_RULE,
 };
@@ -2024,9 +1349,9 @@ export const GLYPH_JOIN_ANCHORS = {
   f: fGlyph.joinAnchors,
   h: H_JOIN_ANCHORS,
   l: L_JOIN_ANCHORS,
-  m: M_JOIN_ANCHORS,
-  o: O_JOIN_ANCHORS,
-  r: R_JOIN_ANCHORS,
+  m: mGlyph.joinAnchors,
+  o: oGlyph.joinAnchors,
+  r: rGlyph.joinAnchors,
   t: tGlyph.joinAnchors,
   u: U_JOIN_ANCHORS,
 };
@@ -2045,35 +1370,12 @@ export const GLYPH_JOIN_ANCHORS = {
 // get a stale tangent out of joinTangentsForVariant below.
 function joinSegsForVariant(letter, variant) {
   const v = resolveVariant(letter, variant) || {};
+  if (letter === 'r') return rGlyph.joinSegs(v);
+  if (letter === 'm') return mGlyph.joinSegs(v);
+  if (letter === 'o') return oGlyph.joinSegs(v);
   if (letter === 'e') return eGlyph.joinSegs(v);
-  if (letter === 'o') {
-    return {
-      entry: v.entry === 'high' ? O_ENTRANCE_AFTERHIGH_SEGS
-           : v.entry === 'low'  ? O_ENTRANCE_DEFAULT_SEGS : null,
-      exit:  v.exit === 'high' ? O_EXIT_SEGS : null,
-    };
-  }
   if (letter === 'f') {
     return fGlyph.joinSegs(v);
-  }
-  if (letter === 'm') {
-    return {
-      entry: v.entry === 'high' ? M_ENTRANCE_HIGH_SEGS
-           : v.entry === 'low'  ? M_ENTRANCE_LOW_SEGS : null,
-      exit:  v.exit !== 'none' ? M_HUMPS_SEGS : null,
-    };
-  }
-  if (letter === 'r') {
-    // r.afterHigh is a structurally different letterform (see R_STROKE_SEGS_
-    // AFTERHIGH's comment) — body AND exit shape change with variant.entry,
-    // not variant.exit. R_JOIN_ANCHORS.exit is a single point shared by both
-    // forms, but the curve it sits on differs.
-    const isAfterHigh = v.entry === 'high';
-    return {
-      entry: isAfterHigh ? R_ENTRANCE_AFTERHIGH_SEGS : R_ENTRANCE_SEGS,
-      exit:  isAfterHigh ? R_EXIT_BAND_SEGS
-           : [...R_EXIT_BRIDGE_DEFAULT, ...R_EXIT_BAND_SEGS],
-    };
   }
   if (letter === 't') {
     return tGlyph.joinSegs(v);
@@ -2136,9 +1438,9 @@ export const GLYPH_REF_CENTERS = {
   f: fGlyph.refCenter,
   h: H_REF_CENTER,
   l: L_REF_CENTER,
-  m: M_REF_CENTER,
-  o: O_REF_CENTER,
-  r: R_REF_CENTER,
+  m: mGlyph.refCenter,
+  o: oGlyph.refCenter,
+  r: rGlyph.refCenter,
   t: tGlyph.refCenter,
   u: U_REF_CENTER,
 };
@@ -2149,8 +1451,8 @@ export const GLYPH_REF_CENTERS = {
 export const GLYPH_STRUCTURAL_ANCHORS = {
   e: eGlyph.structuralAnchors,
   f: fGlyph.structuralAnchors,
-  o: O_STRUCTURAL_ANCHORS,
-  r: R_STRUCTURAL_ANCHORS,
+  o: oGlyph.structuralAnchors,
+  r: rGlyph.structuralAnchors,
 };
 
 /**
