@@ -25,7 +25,12 @@ geometry (that rule comes from sinback).
   dependent truncation of a traced mid-word tail is allowed — h precedent —
   because the exit:'none' forms keep the original look.)
 - Do NOT revisit deprioritized seams: o→e, r→r, f.entry, m.exit, and the
-  known font-level 2-component words below.
+  known font-level 2-component words below. ALSO KNOWN (pending a
+  follow-up micro-task — do not fix, do not re-report): r's and t's low
+  ENTRANCES are straight-line extensions, not band-true slices, so any
+  low exit into them scores ~0.0 (u→r 0.02, l→t 0.00 with a gap). They
+  predate the band-true-entry lesson. Exclude X→r and X→t seams from
+  your verification words.
 - No new hand-traced data is coming. If the letter has no
   `matlack/reference/lowercase/<letter>/01_paths` (SVG trace), STOP and
   ask sinback to trace it. Never read soft ink edges off scans — rule
@@ -34,25 +39,27 @@ geometry (that rule comes from sinback).
 ## Required reading (in order, before editing)
 
 1. `matlack/analysis/join-architecture.md` — the band-true model, worked
-   example, coordinate notation. This is the constitution.
-2. The letter's row + NOTES in `lowercase_rules_table.txt`.
-3. In `src/styles/matlackGlyphs.js`: the t constants block
-   (`T_RULE`/`T_EXIT_BAND_SEGS`/`T_JOIN_ANCHORS` + `buildT`) and the h
-   block (`H_RULE`/`H_ENTRANCE_LOW_SEGS`/`H_EXIT_BAND_SEGS` + `buildH`)
-   — they are the two most recent worked precedents, with the traps
-   documented in comments.
-4. `matlack/analysis/lorem-ipsum-plan.md` if your letter is l, u, i, p, or
-   s — it has per-letter traps (i's detached dot, p's descender, s's
+   example, measurement semantics, coordinate notation. This is the
+   constitution. (The "from" bring-up history section is skippable.)
+2. Your letter's row + the annotation NOTES in
+   `lowercase_rules_table.txt` (not the whole table).
+3. In `src/styles/matlackGlyphs.js`: the h block
+   (`H_RULE`/`H_ENTRANCE_LOW_SEGS`/`H_EXIT_BAND_SEGS` + `buildH`) — the
+   canonical worked precedent, traps documented in comments. (t's only
+   unique trick, the zero-bridge exit, is inline in step 3 below.)
+4. Your letter's bullet ONLY in `matlack/analysis/lorem-ipsum-plan.md`
+   if it is i, p, or s (traps: i's detached dot, p's descender, s's
    hardness). The plan is ADVISORY: where it and this skill disagree on
-   scope (e.g. it defers l's mid-word entry), this skill wins — bring up
-   both low connectors.
-5. If your letter's body is a fused single-loop ribbon (entrance and
-   exit tail are segments of one stroke, not separate components — l,
-   likely s): buildE (trimmed loop + separate connectors) and buildL are
-   the structural precedents. Split the body at seg boundaries and remap
-   the width function's arc fraction for the dropped head/tail segs
-   (buildH/buildL show the remap), keeping isol byte-identical to the
-   locked base.
+   scope, this skill wins — bring up both low connectors.
+5. Glance at your letter's build function (~10 lines) to classify its
+   structure. IF the body is a fused single-loop ribbon (entrance and
+   exit tail are segments of one stroke, not separate components — l
+   was, s likely is): read buildE (trimmed loop + separate connectors)
+   and buildL, the structural precedents — split the body at seg
+   boundaries and remap the width function's arc fraction for the
+   dropped head/tail segs, keeping isol byte-identical. IF it is
+   component-structured (separate entrance/body/exit fills — t, h, u),
+   skip that reading; buildH is enough.
 
 ## File-collision protocol (parallel agents)
 
@@ -83,6 +90,10 @@ Definitions: the letter's local frame is its trace's SVG units ("su");
    eyeballing the scan): feet/valleys sit ON the baseline (downstroke
    feet may hook 0–5% xh below); short-letter tops / hump-start knobs /
    bowl tops sit at yCenter; t-like crossbars cross the bar at ~x-height.
+   When baseline anchors DISAGREE (u's two valleys differ by 3.5 su):
+   the baseline is where the connecting stroke departs the foot — the
+   functional writing line — and the other feet may hook below within
+   the 0–5% convention.
    Ascenders in this hand reach ~2.8 xh (f/t/h all agree) and tops reach
    ~90% of yTop. Cross-validate against context traces
    (`matlack/reference/context/*/`) when the letter appears in one.
