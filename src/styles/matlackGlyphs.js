@@ -61,138 +61,18 @@ export { buildRibbon, sampleSegments };
 // matlack/analysis/parallel-bringup-plan.md, which finishes the derivation).
 import tGlyph from './glyphs/t.js';
 import fGlyph, { fBarBowlWidth, fBarBowlDensity } from './glyphs/f.js';
+import dGlyph from './glyphs/d.js';
+import cGlyph from './glyphs/c.js';
+import bGlyph from './glyphs/b.js';
+import aGlyph from './glyphs/a.js';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'a'
 // Source: sinback's hand traces on ref a/09 (4x upscaled Declaration facsimile)
 // ═════════════════════════════════════════════════════════════════════════════
 
-// Reference anchor: the center of 'a's inner (counter) ellipse in ref 09.
-// All 'a' coordinates are relative to this point.
-// Image: matlack/reference/lowercase/a_4x/09.png (132×104 at 4x)
-const A_REF_CENTER = { x: 55.1, y: 51.7 };
-
-// ── 'a' bowl ellipses ────────────────────────────────────────────────────────
-// Hand-traced by sinback in GIMP, validated with moment fitting.
-// Residuals < 0.08 — the traces are genuinely elliptical.
-// See bowl-ellipse-model.md for cross-letter analysis.
-const A_BOWL = {
-  inner: {
-    cx: 55.1,   // x center in ref coords (= A_REF_CENTER.x, so maps to cx)
-    cy: 51.7,   // y center in ref coords (= A_REF_CENTER.y, so maps to cy)
-    a: 32.8,    // semi-major axis (px at 4x). Along the tilt direction.
-    b: 14.1,    // semi-minor axis (px at 4x). Perpendicular to tilt.
-    tilt: -44.9 // degrees from horizontal. Negative = tilted upper-left to lower-right.
-  },
-  outer: {
-    cx: 51.7,   // slightly left of inner center (offset: -3.4 px at 4x)
-    cy: 50.2,   // slightly above inner center (offset: -1.5 px at 4x)
-    a: 47.9,    // larger than inner (ratio: 1.46×) — the gap = stroke width
-    b: 26.5,    // larger than inner (ratio: 1.88×) — wider gap perpendicular to tilt
-    tilt: -40.3 // 4.6° less tilted than inner — THIS creates the thin-top/fat-bottom effect
-  },
-};
-
-// ── 'a' downstroke outline ───────────────────────────────────────────────────
-// 8 cubic bezier segments forming a closed path around the downstroke ink.
-// Traced from sinback's "Downstroke Outline" path on ref a/09.
-//
-// Segments 0-1: the top loop (pen goes up before going down — Matlack quirk).
-//   Currently OMITTED from rendering — too thin to fill properly.
-//
-// Segments 2-7: the main body (descent + flick + left edge).
-//   Rendered as a filled polygon via ear-clipping triangulation.
-//   This shape merges with the bowl in the coverage FBO (MAX blend).
-const A_DOWNSTROKE_SEGS = [
-  [[91.91,23.16],[90.96,21.94],[103.61,11.21],[106.13,14.45]],  // 0: loop up-right
-  [[106.13,14.45],[114.07,15.68],[106.49,31.93],[103.90,31.53]], // 1: loop back down
-  [[103.90,31.53],[101.87,42.03],[77.43,75.10],[78.97,67.12]],  // 2: main descent (diagonal)
-  [[78.97,67.12],[76.75,69.71],[90.97,75.37],[92.22,73.90]],    // 3: bottom curve
-  [[92.22,73.90],[96.41,75.43],[107.74,68.41],[107.18,68.42]],  // 4: flick start (rightward)
-  [[107.18,68.42],[109.75,70.97],[88.02,90.49],[83.93,86.95]],  // 5: flick bottom (curves down)
-  [[83.93,86.95],[82.72,88.15],[51.45,76.09],[57.73,69.87]],    // 6: flick return (leftward)
-  [[57.73,69.87],[57.57,66.76],[91.66,18.32],[91.91,23.16]],    // 7: left edge (back to start)
-];
-
-// Offset applied to the downstroke position relative to the bowl center.
-// Found via 3×3 then 5×3 grid search with sinback + Chris evaluating.
-// Units: CSS pixels before DPR scaling. Applied as: dsCx = cx + dx * dpr.
-const A_DOWNSTROKE_OFFSET = {
-  dx: 4,  // shift right 4 CSS pixels
-  dy: 2,  // shift down 2 CSS pixels
-};
-
-
-// ── 'a' bowl width function ──────────────────────────────────────────────────
-// Returns [0, 1] controlling how much of the outer-inner ellipse gap to fill.
-//   1.0 = full stroke width (inner cutout stays at base size)
-//   0.0 = invisible (inner cutout inflates to match outer)
-//
-// arcFrac goes 0→1 around the ellipse. After the outer's tilt (~-40°),
-// arcFrac 0.0 lands at upper-right on screen. Going CCW:
-//   ~0.00-0.05: upper-right (downstroke overlap zone)
-//   ~0.05-0.22: top (segment 1 — thin, fast pen)
-//   ~0.22-0.55: left side going down (segment 2 — thickening, pen decelerating)
-//   ~0.55-0.75: bottom-left (peak — pen slowest, most ink)
-//   ~0.75-0.92: bottom going right (segment 3 — thinning, pen accelerating)
-//   ~0.92-1.00: lower-right (back to downstroke zone)
-//
-// BOWL_PHASE (0.03) shifts everything ~10° CCW to match Matlack's references.
-// Thin floor (0.20): minimum width that remains visible at small font sizes.
-//   Too low → thin part vanishes at realistic zoom. Too high → no thin/fat contrast.
-function aBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-
-  // Zone: upper-right (downstroke territory). Moderate, stable width.
-  // Value 0.45: enough to see ink but not as thick as the fat zones.
-  if (f < 0.05) return smoothStep(0.45, 0.45, f / 0.05);
-
-  // Transition: ease from moderate (0.45) DOWN to thin (0.20).
-  // Duration: 7% of arc (~25°). Cosine ease prevents sharp corner.
-  if (f < 0.12) return smoothStep(0.45, 0.20, (f - 0.05) / 0.07);
-
-  // Zone: segment 1 — thin top. Pen is moving fast here.
-  // Floor 0.20 = 20% of max gap. Visible but clearly thinner than the fat zones.
-  if (f < ARC_LIFT) return 0.20;
-
-  // Transition: segment 2 — thin→fat. Pen decelerates through the left side.
-  // Duration: 33% of arc (~120°). Cosine ease for smooth thickening.
-  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / 0.33; return smoothStep(0.20, 1.0, t); }
-
-  // Zone: bottom-left — peak width. Maximum ink deposit, pen at slowest.
-  if (f < ARC_RISE) return 1.0;
-
-  // Transition: segment 3 — fat→moderate. Pen accelerates out of the bottom.
-  // Duration: 14% of arc (~50°). Eases back to the moderate downstroke zone.
-  if (f < 0.92) return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.14);
-
-  // Zone: lower-right — moderate, returning to downstroke territory.
-  return smoothStep(0.45, 0.45, (f - 0.92) / 0.08);
-}
-
-// ── 'a' bowl density function ────────────────────────────────────────────────
-// Controls ink darkness [0, 1] independent of width.
-// Mostly uniform (0.85 = dark ink) since width carries the penmanship intent.
-// Only the thin top (segment 1) is slightly lighter (0.65) to reinforce
-// the visual impression of fast, light pen movement there.
-function aBowlDensity(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f > 0.10 && f < 0.25) return 0.65;  // segment 1: slightly lighter ink
-  return 0.85;                              // everywhere else: solid dark
-}
 
 // ── 'a' geometry builders ────────────────────────────────────────────────────
-
-// Build the downstroke body as a closed polygon (segs 2-7, skip the loop).
-// Returns array of {x, y} in canvas coords.
-function buildADownstrokeBody(cx, cy, scale) {
-  return sampleSegments(
-    A_DOWNSTROKE_SEGS,
-    [2, 3, 4, 5, 6, 7],  // skip segs 0-1 (the loop)
-    12,                    // 12 samples per bezier segment
-    cx, cy, scale, A_REF_CENTER
-  );
-}
 
 
 
@@ -200,98 +80,6 @@ function buildADownstrokeBody(cx, cy, scale) {
 // LOWERCASE 'b'
 // Source: sinback's hand traces on ref b/01 (4x upscaled Declaration facsimile)
 // ═════════════════════════════════════════════════════════════════════════════
-
-// Reference anchor: center of 'b's inner (counter) ellipse in ref b/01.
-// Image: matlack/reference/lowercase/b_4x/01.png (140×196 at 4x)
-const B_REF_CENTER = { x: 34.7, y: 149.2 };
-
-// ── 'b' bowl ellipses ────────────────────────────────────────────────────────
-// Hand-traced by sinback. Residuals < 0.06 — excellent ellipse fit.
-// Tilt is very similar to 'a' (~-43° vs -45°) — same hand, same nib angle.
-// Bowl is smaller than 'a' (inner a=26.6 vs 32.8).
-// Tilt difference (inner vs outer) is only 1.3° — much less than 'a' (4.6°),
-// meaning 'b's bowl has more uniform width around the arc.
-const B_BOWL = {
-  inner: {
-    cx: 34.7,   // in ref b/01 coords (= B_REF_CENTER, maps to cx)
-    cy: 149.2,  // note: b/01 is tall (196px at 4x), bowl is near the bottom
-    a: 26.6,    // smaller semi-major than 'a' (26.6 vs 32.8)
-    b: 11.0,    // smaller semi-minor than 'a' (11.0 vs 14.1)
-    tilt: -43.5 // degrees. Very close to 'a' (-44.9°) — consistent hand.
-  },
-  outer: {
-    cx: 34.8,   // nearly concentric with inner (offset: +0.1 px horizontally)
-    cy: 145.0,  // 4.2 px above inner center (offset is mostly vertical)
-    a: 50.3,    // outer/inner ratio: 1.89× (similar to 'a')
-    b: 21.1,    // outer/inner ratio: 1.92× (similar to 'a')
-    tilt: -42.2 // only 1.3° less than inner → uniform width around bowl
-  },
-};
-
-// ── 'b' bar-bowl ellipses ─────────────────────────────────────────────────────
-// The vertical stem of 'b' rendered as an elongated bowl (bar-bowl).
-// Hand-traced from ref b/01, optimized ellipse fit (scipy, aspect ~0.13-0.18).
-// Tilt is consistent with main bowl (~-49°). Very elongated (aspect 0.13 inner).
-// Bar-bowl and main bowl overlap where the stem meets the counter — the
-// renderer merges them in the same coverage FBO pass.
-const B_BAR_BOWL = {
-  inner: {
-    cx: 72.6,    // in ref b/01 coords — far upper-right of the main bowl
-    cy: 81.5,    // well above the main bowl center (149.2)
-    a: 63.6,     // very long semi-major — this is the "height" of the stem
-    b: 8.5,      // very narrow semi-minor — thin stem
-    tilt: -49.3  // consistent with main bowl and 'a' (~-44 to -51° range)
-  },
-  outer: {
-    cx: 72.4,    // nearly concentric with inner (offset: -0.2, -2.9)
-    cy: 78.6,
-    a: 85.5,     // inner→outer ratio: 1.34× (consistent with main bowl)
-    b: 16.8,     // inner→outer ratio: 1.98× (consistent with main bowl)
-    tilt: -48.6  // tilt diff from inner: 0.7° — very uniform width
-  },
-};
-
-// ── 'b' bowl width function ──────────────────────────────────────────────────
-// Same structure as 'a' but MIRRORED in arc space: (1 - arcFrac) flips
-// the width profile horizontally so the fat part is on the bottom-right
-// (where 'b's bowl is thickest) instead of bottom-left (where 'a's is).
-//
-// Thin floor is 0.30 (higher than 'a's 0.20) because 'b's bowl is smaller
-// overall. A smaller bowl with a lower floor would vanish at small font sizes.
-function bBowlWidth(arcFracRaw) {
-  // Mirror by using (1 - arcFrac) — flips left↔right in the width profile
-  const f = (1.0 - arcFracRaw + BOWL_PHASE + 1) % 1.0;
-  if (f < 0.05) return smoothStep(0.45, 0.45, f / 0.05);           // stem side: stable
-  if (f < 0.12) return smoothStep(0.45, 0.30, (f - 0.05) / 0.07);  // ease into thin
-  if (f < ARC_LIFT) return 0.30;                                        // thin floor (higher than 'a')
-  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / 0.33; return smoothStep(0.30, 1.0, t); }  // thin→fat
-  if (f < ARC_RISE) return 1.0;                                         // peak width (bottom-right)
-  if (f < 0.92) return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.14);   // fat→moderate
-  return smoothStep(0.45, 0.45, (f - 0.92) / 0.08);                // returning to stem zone
-}
-
-// ── 'b' main bowl density ────────────────────────────────────────────────────
-function bBowlDensity(arcFracRaw) {
-  const f = (1.0 - arcFracRaw + BOWL_PHASE + 1) % 1.0;
-  if (f > 0.10 && f < 0.25) return 0.65;
-  return 0.85;
-}
-
-// ── 'b' bar-bowl width function ──────────────────────────────────────────────
-// Very elongated shape (aspect ~0.13). Tilt diff is only 0.7° so width is
-// nearly uniform. Gentle variation: slightly thinner at tips (top/bottom),
-// full width through the middle of the stem.
-function bBarBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  // For elongated ellipse: arcFrac ~0.0 and ~0.5 = tips, ~0.25 and ~0.75 = sides
-  if (f < 0.10) return smoothStep(0.40, 0.70, f / 0.10);
-  if (f < 0.40) return smoothStep(0.70, 1.0, (f - 0.10) / 0.30);
-  if (f < 0.60) return 1.0;
-  if (f < 0.90) return smoothStep(1.0, 0.70, (f - 0.60) / 0.30);
-  return smoothStep(0.70, 0.40, (f - 0.90) / 0.10);
-}
-
-function bBarBowlDensity() { return 0.85; }
 
 
 
@@ -313,164 +101,11 @@ function bBarBowlDensity() { return 0.85; }
 // 'c' is a partial bowl (~260° arc, gap on the right side).
 // ═════════════════════════════════════════════════════════════════════════════
 
-// Reference anchor: center of 'c's inner ellipse in ref c/02 (68×78, 1x).
-const C_REF_CENTER = { x: 40.5, y: 43.1 };
-
-// ── 'c' bowl ellipses ────────────────────────────────────────────────────────
-// Hand-traced arcs fitted with tilt constrained to known hand range.
-// Outer residual 0.178, inner 0.125 — higher than full bowls due to partial arc.
-const C_BOWL = {
-  inner: {
-    cx: 40.5,
-    cy: 43.1,
-    a: 24.6,
-    b: 16.4,
-    tilt: -52.0
-  },
-  outer: {
-    cx: 30.8,
-    cy: 42.1,
-    a: 35.0,
-    b: 19.7,
-    tilt: -52.0
-  },
-};
-
-// ── 'c' top blob (entry ink pooling) ─────────────────────────────────────────
-// Closed bezier loop where the pen pauses at the top of the arc.
-// Hand-traced from c/02. Rendered as a filled polygon.
-const C_TOP_BLOB_SEGS = [
-  [[48.97,10.11],[48.97,10.11],[45.13,19.64],[45.13,19.64]],
-  [[45.13,19.64],[43.98,19.57],[43.23,29.91],[46.29,30.09]],
-  [[46.29,30.09],[47.87,32.36],[57.77,20.41],[57.14,19.50]],
-  [[57.14,19.50],[64.23,8.85],[52.53,4.77],[48.97,10.11]],
-];
-
-// ── 'c' bottom flick (exit curve) ────────────────────────────────────────────
-// Short curved stroke at the bottom-right exit of the arc.
-// Hand-traced from c/02. Rendered as a tapered ribbon.
-const C_FLICK_SEGS = [
-  [[27.39,67.26],[28.24,67.12],[36.83,67.84],[36.83,67.84]],
-  [[36.83,67.84],[36.83,67.84],[48.94,59.57],[48.94,59.57]],
-];
-const C_FLICK = {
-  startWidth: 4.55,   // from review grid candidate 3
-  taperPower: 0.63,   // gentle decay — thin stroke persists
-  liftPoint: 0.95,
-};
-const C_FLICK_OFFSET = { dx: -4, dy: 0 };
-
-// ── 'c' bowl width function ──────────────────────────────────────────────────
-// Like 'a' but with the right side (~0.85-0.15 in arcFrac) tapered to zero.
-// The gap creates the open mouth of the 'c'.
-// Taper at endpoints prevents a hard edge where the stroke cuts off.
-function cBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-
-  // Gap region: wide open mouth on the right side.
-  // Exit taper (bottom-right): arc fades in slowly.
-  if (f < 0.14) return smoothStep(0, 0.20, f / 0.14);
-
-  // Entry taper (top → top-right): arc fades out early, well before
-  // the right side, so the gap is wide and 'c' reads as open, not 'o'.
-  // Blob handles all visual weight in the top-right.
-  if (f > 0.82) return 0;                                        // gap: fully open
-  if (f > 0.65) return smoothStep(0.25, 0, (f - 0.65) / 0.17);  // taper into gap
-
-  // Thin top
-  if (f < ARC_LIFT) return 0.25;
-
-  // Left side: thin→fat
-  if (f < ARC_PRESS) { const t = (f - ARC_LIFT) / (ARC_PRESS - ARC_LIFT); return smoothStep(0.25, 1.0, t); }
-
-  // Bottom-left: peak
-  if (f < ARC_RISE) return 1.0;
-
-  // Bottom-right: fat→thin approaching the exit
-  return smoothStep(1.0, 0.25, (f - ARC_RISE) / 0.12);
-}
-
-function cBowlDensity(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  // Fade density at exit taper only — entry stays solid to merge with blob
-  if (f < 0.05) return smoothStep(0, 0.75, f / 0.05);
-  if (f < 0.20) return 0.70;
-  return 0.85;
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'd'
 // Source: hand-traced on d/01 from high-res 1823 facsimile (151×156, 1x).
 // Structure: bowl (like 'a') + straight downstroke extending above.
 // ═════════════════════════════════════════════════════════════════════════════
-
-const D_REF_CENTER = { x: 41.2, y: 121.2 };  // inner ellipse center
-
-const D_BOWL = {
-  inner: {
-    cx: 41.2, cy: 121.2,
-    a: 28.8, b: 10.8, tilt: -44.5   // tilt in hand's range, aspect 0.38
-  },
-  outer: {
-    cx: 38.0, cy: 123.3,
-    a: 39.5, b: 15.9, tilt: -38.2   // tilt diff 5.4° — like 'a', dramatic variation
-  },
-};
-
-// Downstroke: straight line from top-right to bottom-left.
-// Endpoints from hand-traced path d/01.
-const D_DOWNSTROKE = {
-  x1: 139.45, y1: 5.14,    // top (extends well above bowl — ascender)
-  x2: 53.86,  y2: 134.02,  // bottom (meets bowl)
-};
-const D_DOWNSTROKE_HALF_WIDTH = 4.5;  // measured from reference image
-
-// Offset for downstroke position relative to bowl center (grid-searchable).
-const D_DOWNSTROKE_OFFSET = { dx: 0, dy: 0 };
-
-// ── 'd' flick (bottom-right exit curve) ──────────────────────────────────────
-// Short curve at the base of the downstroke, extending right.
-// Hand-traced from d/01. Starts within ~1px of downstroke bottom endpoint.
-const D_FLICK_SEGS = [
-  [[54.18,134.93],[53.22,135.28],[51.94,144.30],[54.91,143.23]],
-  [[54.91,143.23],[55.17,145.03],[64.41,146.01],[64.23,144.76]],
-  [[64.23,144.76],[68.35,145.68],[82.92,142.69],[80.41,142.13]],
-  [[80.41,142.13],[80.41,142.13],[116.08,123.91],[116.08,123.91]],
-];
-// Flick taper parameters:
-//   startWidth: half-width at the base (should match departing stroke)
-//   taperPower: exponent for power-law decay (~1.7 for Matlack's hand)
-//   liftPoint:  fraction of path where ink stops (1.0 = full path tapers)
-const D_FLICK = {
-  startWidth: D_DOWNSTROKE_HALF_WIDTH,  // match the downstroke thickness
-  taperPower: 1.7,
-  liftPoint: 0.85,  // taper over 85% of the path
-};
-
-// 'd' bowl width: same as 'a' — thick bottom-left, thin top.
-// The tilt diff (5.4°) already creates good variation; widthFn reinforces it.
-// Top is fat (0.80) to merge with downstroke.
-function dBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-
-  // Fat top — merges with downstroke
-  if (f < ARC_LIFT) return 0.80;
-
-  // Left side: thin→fat
-  if (f < ARC_PRESS) { const t = (f - 0.26) / 0.36; return smoothStep(0.80, 1.0, t); }
-
-  // Bottom-left: peak
-  if (f < ARC_RISE) return 1.0;
-
-  // Bottom-right: fat→moderate
-  return smoothStep(1.0, 0.45, (f - ARC_RISE) / 0.10);
-}
-
-function dBowlDensity(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f > 0.10 && f < 0.25) return 0.65;
-  return 0.85;
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'q'
@@ -2313,10 +1948,10 @@ function oBowlDensity(arcFracRaw) {
 // Returns { outer, refCenter } for a glyph — used for debug tick marks.
 export function glyphOuterEllipse(glyph) {
   const map = {
-    a: { outer: A_BOWL.outer, refCenter: A_REF_CENTER },
-    b: { outer: B_BOWL.outer, refCenter: B_REF_CENTER },
-    c: { outer: C_BOWL.outer, refCenter: C_REF_CENTER },
-    d: { outer: D_BOWL.outer, refCenter: D_REF_CENTER },
+    a: aGlyph.outerEllipse,
+    b: bGlyph.outerEllipse,
+    c: cGlyph.outerEllipse,
+    d: dGlyph.outerEllipse,
     f: fGlyph.outerEllipse,
     o: { outer: O_BOWL.outer, refCenter: O_REF_CENTER },
     q: { outer: Q_BOWL.outer, refCenter: Q_REF_CENTER },
@@ -2469,13 +2104,13 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
   const scale = (size * dpr) / 100;
   switch(glyph) {
     case 'a':
-      return buildA(cx, cy, scale, dpr, overrides)
+      return aGlyph.build(cx, cy, scale, dpr, overrides)
     case 'b':
-      return buildB(cx, cy, scale, dpr, overrides)
+      return bGlyph.build(cx, cy, scale, dpr, overrides)
     case 'c':
-      return buildC(cx, cy, scale, dpr, overrides)
+      return cGlyph.build(cx, cy, scale, dpr, overrides)
     case 'd':
-      return buildD(cx, cy, scale, dpr, overrides)
+      return dGlyph.build(cx, cy, scale, dpr, overrides)
     case 'e':
       return buildE(cx, cy, scale, dpr, overrides, variant)
     case 'f':
@@ -2528,120 +2163,6 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
 export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}, variant) {
   const geo = buildGlyph(glyph, cx, cy, size, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
-}
-
-/**
- * Render a Matlack-style lowercase 'a'.
- * Components: bowl, downstroke.
- */
-function buildA(cx, cy, scale, dpr, overrides) {
-  const inner = scaleEllipse(A_BOWL.inner, cx, cy, scale, A_REF_CENTER);
-  const outer = scaleEllipse(A_BOWL.outer, cx, cy, scale, A_REF_CENTER);
-
-  const dsOff = resolveOffset('downstroke', A_DOWNSTROKE_OFFSET, overrides, dpr);
-  const body = buildADownstrokeBody(cx + dsOff.dx, cy + dsOff.dy, scale);
-
-  return {
-    bowls: [
-      {
-        outer: outer,
-        inner: inner,
-        widthFn: aBowlWidth,
-        densityFn: aBowlDensity,
-        extraFills: [{ points: body, pressure: 0.85 }],
-      },
-    ],
-    fills: [
-    ],
-  };
-}
-
-/**
- * Render a Matlack-style lowercase 'b'.
- * Components: bowl, barBowl.
- */
-function buildB(cx, cy, scale, dpr, overrides) {
-  // Main bowl (lower, round)
-  const inner = scaleEllipse(B_BOWL.inner, cx, cy, scale, B_REF_CENTER);
-  const outer = scaleEllipse(B_BOWL.outer, cx, cy, scale, B_REF_CENTER);
-
-  // Bar-bowl (upper, elongated stem)
-  const bbOff = resolveOffset('barBowl', { dx: -4, dy: 0 }, overrides, dpr);
-  const bbInner = scaleEllipse(B_BAR_BOWL.inner, cx + bbOff.dx, cy + bbOff.dy, scale, B_REF_CENTER);
-  const bbOuter = scaleEllipse(B_BAR_BOWL.outer, cx + bbOff.dx, cy + bbOff.dy, scale, B_REF_CENTER);
-
-  return {
-    bowls: [
-      {
-        outer: outer,
-        inner: inner,
-        widthFn: bBowlWidth,
-        densityFn: bBowlDensity,
-      },
-      {
-        outer: bbOuter,
-        inner: bbInner,
-        widthFn: bBarBowlWidth,
-        densityFn: bBarBowlDensity,
-      },
-    ],
-    fills: [
-    ],
-  };
-}
-
-/**
- * Render a Matlack-style lowercase 'c'.
- * Components: bowl (partial arc), topBlob (filled), bottomHairline (thin stroke).
- */
-function buildC(cx, cy, scale, dpr, overrides) {
-  const inner = scaleEllipse(C_BOWL.inner, cx, cy, scale, C_REF_CENTER);
-  const outer = scaleEllipse(C_BOWL.outer, cx, cy, scale, C_REF_CENTER);
-
-  // Top blob: sample bezier segments into a filled polygon
-  const blobOff = resolveOffset('topBlob', { dx: 0, dy: 0 }, overrides, dpr);
-  const blobScale = overrides.topBlob ?? {};
-  let blob = sampleSegments(
-    C_TOP_BLOB_SEGS,
-    [0, 1, 2, 3],
-    12, cx + blobOff.dx, cy + blobOff.dy, scale, C_REF_CENTER
-  );
-  blob = scalePolygon(blob, blobScale.sx ?? 1, blobScale.sy ?? 1);
-
-  // Bottom flick: tapered ribbon (params + offset overrideable via review grid)
-  const flickParams = overrides.flick ?? C_FLICK;
-  const flickOff = resolveOffset('flickPos', C_FLICK_OFFSET, overrides, dpr);
-  const flickCenter = sampleSegments(
-    C_FLICK_SEGS, [0, 1], 12, cx + flickOff.dx, cy + flickOff.dy, scale, C_REF_CENTER
-  );
-  const flickQuads = buildTaperedRibbon(
-    flickCenter,
-    (flickParams.startWidth ?? C_FLICK.startWidth) * scale,
-    flickParams.taperPower ?? C_FLICK.taperPower,
-    flickParams.liftPoint ?? C_FLICK.liftPoint,
-  );
-  const flickScale = overrides.flick ?? {};
-  const flickFills = flickQuads.map(quad => ({
-    points: scalePolygon(quad, flickScale.sx ?? 1, flickScale.sy ?? 1),
-    pressure: 0.85,
-  }));
-
-  return {
-    bowls: [
-      {
-        outer: outer,
-        inner: inner,
-        widthFn: cBowlWidth,
-        densityFn: cBowlDensity,
-        overlayFills: [
-      { points: blob, pressure: 0.85 },
-      ...flickFills,
-    ],
-      },
-    ],
-    fills: [
-    ],
-  };
 }
 
 /**
@@ -2714,69 +2235,6 @@ function buildE(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       ...loopFills,
       ...entrFills,
       ...exitFills,
-    ],
-  };
-}
-
-function buildD(cx, cy, scale, dpr, overrides) {
-  const inner = scaleEllipse(D_BOWL.inner, cx, cy, scale, D_REF_CENTER);
-  const outer = scaleEllipse(D_BOWL.outer, cx, cy, scale, D_REF_CENTER);
-
-  // Downstroke: straight fat bar from top to bottom
-  const dsOff = resolveOffset('downstroke', D_DOWNSTROKE_OFFSET, overrides, dpr);
-  const hw = D_DOWNSTROKE_HALF_WIDTH * scale;
-  const p0 = refToCanvas(D_DOWNSTROKE.x1, D_DOWNSTROKE.y1, cx, cy, scale, D_REF_CENTER);
-  const p1 = refToCanvas(D_DOWNSTROKE.x2, D_DOWNSTROKE.y2, cx, cy, scale, D_REF_CENTER);
-  p0.x += dsOff.dx; p0.y += dsOff.dy;
-  p1.x += dsOff.dx; p1.y += dsOff.dy;
-  const dx = p1.x - p0.x, dy = p1.y - p0.y;
-  const len = Math.hypot(dx, dy);
-  const nx = -dy / len * hw, ny = dx / len * hw;
-  const downstroke = [
-    { x: p0.x + nx, y: p0.y + ny },
-    { x: p1.x + nx, y: p1.y + ny },
-    { x: p1.x - nx, y: p1.y - ny },
-    { x: p0.x - nx, y: p0.y - ny },
-  ];
-
-  // Flick: tapered ribbon anchored to the downstroke's bottom endpoint.
-  // Sample the bezier path in ref coords, then shift so the flick's start
-  // matches p1 (the downstroke bottom) exactly — stays connected when
-  // downstroke offset is grid-searched.
-  const flickRef = sampleSegments(
-    D_FLICK_SEGS, [0, 1, 2, 3], 12, cx, cy, scale, D_REF_CENTER
-  );
-  // Nudge anchor slightly up the downstroke direction so the flick's
-  // first quad overlaps the fat bar by ~2px, eliminating the seam gap.
-  const dsNx = (p0.x - p1.x) / len, dsNy = (p0.y - p1.y) / len;  // unit vector up the downstroke
-  const overlap = 2 * scale;
-  const anchorDx = (p1.x + dsNx * overlap) - flickRef[0].x;
-  const anchorDy = (p1.y + dsNy * overlap) - flickRef[0].y;
-  const flickCenter = flickRef.map(p => ({ x: p.x + anchorDx, y: p.y + anchorDy }));
-  const flick = buildTaperedRibbon(
-    flickCenter,
-    D_FLICK.startWidth * scale,
-    D_FLICK.taperPower,
-    D_FLICK.liftPoint,
-  );
-
-  // flick is an array of quads — each quad is 4 {x,y} points
-  const flickFills = flick.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-      {
-        outer: outer,
-        inner: inner,
-        widthFn: dBowlWidth,
-        densityFn: dBowlDensity,
-        overlayFills: [
-      { points: downstroke, pressure: 0.85 },
-      ...flickFills,
-    ],
-      },
-    ],
-    fills: [
     ],
   };
 }
@@ -3985,46 +3443,6 @@ function buildO(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
 // Python side: json.load → Shapely Polygon for each component.
 // ═════════════════════════════════════════════════════════════════════════════
 
-function exportOutlinesA(overrides) {
-  const dsOff = resolveRefOffset('downstroke', A_DOWNSTROKE_OFFSET, overrides);
-  // Downstroke body: sample bezier segments in ref coords (cx=0, cy=0 relative to REF_CENTER)
-  const body = sampleSegments(
-    A_DOWNSTROKE_SEGS,
-    [2, 3, 4, 5, 6, 7],
-    12, dsOff.dx, dsOff.dy, 1, { x: 0, y: 0 }
-  ).map(p => [p.x + A_REF_CENTER.x, p.y + A_REF_CENTER.y]);
-
-  return {
-    bowl: { inner: sampleEllipse(A_BOWL.inner), outer: sampleEllipse(A_BOWL.outer) },
-    downstroke: body,
-  };
-}
-
-function exportOutlinesB(overrides) {
-  const bbOff = resolveRefOffset('barBowl', { dx: -4, dy: 0 }, overrides);
-  const shifted = {
-    inner: { ...B_BAR_BOWL.inner, cx: B_BAR_BOWL.inner.cx + bbOff.dx, cy: B_BAR_BOWL.inner.cy + bbOff.dy },
-    outer: { ...B_BAR_BOWL.outer, cx: B_BAR_BOWL.outer.cx + bbOff.dx, cy: B_BAR_BOWL.outer.cy + bbOff.dy },
-  };
-  return {
-    bowl: { inner: sampleEllipse(B_BOWL.inner), outer: sampleEllipse(B_BOWL.outer) },
-    barBowl: { inner: sampleEllipse(shifted.inner), outer: sampleEllipse(shifted.outer) },
-  };
-}
-
-function exportOutlinesD(overrides) {
-  const dsOff = resolveRefOffset('downstroke', D_DOWNSTROKE_OFFSET, overrides);
-  const downstroke = buildBar(
-    D_DOWNSTROKE.x1 + dsOff.dx, D_DOWNSTROKE.y1 + dsOff.dy,
-    D_DOWNSTROKE.x2 + dsOff.dx, D_DOWNSTROKE.y2 + dsOff.dy,
-    D_DOWNSTROKE_HALF_WIDTH,
-  );
-  return {
-    bowl: { inner: sampleEllipse(D_BOWL.inner), outer: sampleEllipse(D_BOWL.outer) },
-    downstroke,
-  };
-}
-
 function exportOutlinesQ(overrides) {
   const dsOff = resolveRefOffset('downstroke', Q_DOWNSTROKE_OFFSET, overrides);
   const downstroke = buildBar(
@@ -4035,12 +3453,6 @@ function exportOutlinesQ(overrides) {
   return {
     bowl: { inner: sampleEllipse(Q_BOWL.inner), outer: sampleEllipse(Q_BOWL.outer) },
     downstroke,
-  };
-}
-
-function exportOutlinesC() {
-  return {
-    bowl: { inner: sampleEllipse(C_BOWL.inner), outer: sampleEllipse(C_BOWL.outer) },
   };
 }
 
@@ -4063,10 +3475,10 @@ function exportOutlinesO() {
  */
 export function exportGlyphOutlines(glyph, overrides = {}) {
   switch (glyph) {
-    case 'a': return exportOutlinesA(overrides);
-    case 'b': return exportOutlinesB(overrides);
-    case 'c': return exportOutlinesC();
-    case 'd': return exportOutlinesD(overrides);
+    case 'a': return aGlyph.exportOutlines(overrides);
+    case 'b': return bGlyph.exportOutlines(overrides);
+    case 'c': return cGlyph.exportOutlines(overrides);
+    case 'd': return dGlyph.exportOutlines(overrides);
     case 'e': return { loop: 'single-stroke — no decomposition' };
     case 'f': return fGlyph.exportOutlines(overrides);
     case 'g': return { bowl: { inner: sampleEllipse(G_BOWL.inner), outer: sampleEllipse(G_BOWL.outer) } };
