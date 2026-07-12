@@ -60,7 +60,7 @@ export { buildRibbon, sampleSegments };
 // for migrated letters and inline constants for the rest (see Phase D of
 // matlack/analysis/parallel-bringup-plan.md, which finishes the derivation).
 import tGlyph from './glyphs/t.js';
-import fGlyph, { fBarBowlWidth, fBarBowlDensity } from './glyphs/f.js';
+import fGlyph from './glyphs/f.js';
 import uGlyph from './glyphs/u.js';
 import lGlyph from './glyphs/l.js';
 import hGlyph from './glyphs/h.js';
@@ -87,188 +87,32 @@ import bGlyph from './glyphs/b.js';
 import aGlyph from './glyphs/a.js';
 
 // ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'a'
-// Source: sinback's hand traces on ref a/09 (4x upscaled Declaration facsimile)
-// ═════════════════════════════════════════════════════════════════════════════
-
-
-// ── 'a' geometry builders ────────────────────────────────────────────────────
-
-
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'b'
-// Source: sinback's hand traces on ref b/01 (4x upscaled Declaration facsimile)
-// ═════════════════════════════════════════════════════════════════════════════
-
-
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'f' — rebuilt from for/01_paths
-// Components: bar-bowl (ellipse, ascender loop), fat-bar (filled polygon,
-// descender), entry flick (tapered ribbon), exit crossbar (tapered ribbon).
-// All coords in for/01's native frame (viewBox 238×214).
+// DESCRIPTOR REGISTRY — single source of truth
 //
-// This is a fresh fit: the previous 'f' was traced from fir/01 at 4× upscale
-// and that frame didn't give us room to line f up nicely with o and r. The
-// for/01 scan has f + o + r together, so everything calibrates in one frame.
+// Every letter's geometry, variants, join segments, and registry data live in
+// its own module under ./glyphs/. This map keys those descriptors by letter;
+// the build/outline dispatch, all GLYPH_* registries, VARIANT_SUPPORT, and
+// glyphOuterEllipse below are derived from it — and matlackSVGExport.js derives
+// VARIANT_EXPORTS from it too. A letter is a member of a registry iff its
+// descriptor carries the corresponding field (rule, joinAnchors, refCenter,
+// structuralAnchors, variantSupport, outerEllipse), so bringing a letter up
+// touches only its module, not this file.
 // ═════════════════════════════════════════════════════════════════════════════
+export const GLYPHS = {
+  a: aGlyph, b: bGlyph, c: cGlyph, d: dGlyph, e: eGlyph, f: fGlyph, g: gGlyph,
+  h: hGlyph, i: iGlyph, j: jGlyph, k: kGlyph, l: lGlyph, m: mGlyph, n: nGlyph,
+  o: oGlyph, p: pGlyph, q: qGlyph, r: rGlyph, s: sGlyph, t: tGlyph, u: uGlyph,
+  v: vGlyph, w: wGlyph, x: xGlyph, y: yGlyph, z: zGlyph,
+};
 
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'c'
-// Source: hand-traced inner + outer arcs on c/02 from high-res facsimile,
-// ellipse fit via least-squares with tilt constrained to [-40, -52].
-// 'c' is a partial bowl (~260° arc, gap on the right side).
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'd'
-// Source: hand-traced on d/01 from high-res 1823 facsimile (151×156, 1x).
-// Structure: bowl (like 'a') + straight downstroke extending above.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'q'
-// Source: hand-traced on q/01 from high-res 1823 facsimile (84×117, 1x).
-// Structure: bowl + straight downstroke extending below (descender).
-// Very similar to 'd' but the downstroke goes down instead of up.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'e'
-// Source: hand-traced on e/01 from high-res 1823 facsimile (69×64, 1x).
-// Structure: single continuous loop stroke — no separate bowl or crossbar.
-// The pen traces: entry top-right → crossbar left → sweep down around bowl →
-//                 come back up → exit right.
-// Rendered as a variable-width ribbon following the loop centerline.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'g'
-// Source: hand-traced on g/01 from high-res 1823 facsimile (182×200, 1x).
-// Structure: bowl (like 'a'/'d') + wiggly descender stroke rendered as
-//            variable-width ribbon. The descender has a reversal/wiggle in
-//            the middle and tapers to hairline at the bottom.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'h'
-// Source: hand-traced on h/01 from high-res 1823 facsimile (160×182, 1x).
-// Structure: entrance flick + bar-bowl (tall stem) + fat bar (short downstroke)
-//            + variable-width hump.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'i'
-// Source: hand-traced on i/01 from high-res 1823 facsimile (121×137, 1x).
-// Structure: entrance flick + downstroke (tapered ribbon) + dot (filled blob).
-// The downstroke is a simple power taper — no piecewise width function needed.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'j'
-// Source: hand-traced on j/01 from high-res 1823 facsimile (218×249, 1x).
-// Structure: dot + entrance flick + downstroke (fat bar) + bar-bowl (bottom loop)
-//            + exit flick. Similar to 'f' structurally.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'k'
-// Source: hand-traced on k/01 from high-res 1823 facsimile (119×130, 1x).
-// Three-stroke letter: 1) entrance flick + bar-bowl + downstroke,
-// 2) retrace up along downstroke (implicit), 3) upper crescent + exit stroke.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'l'
-// Source: hand-traced on l/01 from high-res 1823 facsimile (136×171, 1x).
-// Structure: single continuous loop stroke, like 'e' but taller (ascender).
-// Rendered as a variable-width ribbon following the loop centerline.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'm'
-// Source: hand-traced on m/01 from high-res 1823 facsimile (175×118, 1x).
-// Structure: entrance flick + double-hump stroke (one continuous ribbon).
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'n'
-// Source: hand-traced on n/01 from high-res 1823 facsimile (107×93, 1x).
-// Structure: entrance flick + single-hump stroke (like 'm' with one hump).
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'p'
-// Source: hand-traced on p/01 from high-res 1823 facsimile (160×196, 1x).
-// Structure: main downstroke (long fat bar descender) + upstroke hairline
-//            + second downstroke (power taper). No bowl — Matlack's 'p' form.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'r'
-// Source: hand-traced on r/01 from high-res 1823 facsimile (90×116, 1x).
-// Beginning-of-word form. Structure: entrance flick + swoop/downstroke
-// (combined ribbon) + exit flick.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'w'
-// Source: hand-traced on w/03 from high-res 1823 facsimile (134×87, 1x).
-// Structure: entrance flick + double-descent stroke (like 'm' mirrored) +
-//            ink blob at third peak + exit flick.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 's'
-// Source: hand-traced on s/01 from high-res 1823 facsimile (91×91, 1x).
-// Structure: entrance flick + swoopy S-curve.
-// Surprisingly consistent width — nearly uniform through the whole stroke.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'u'
-// Source: hand-traced on u/01 from high-res 1823 facsimile (123×85, 1x).
-// Structure: entrance flick + single descent/rise stroke + exit flick.
-// Like 'w' with one fewer hump, or 'n' mirrored.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'v'
-// Source: hand-traced on v/02 from high-res 1823 facsimile (91×87, 1x).
-// Structure: entrance flick + V-stroke (downstroke + upstroke combined) +
-//            fat exit (NOT a hairline flick — stays thick).
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'x'
-// Source: hand-traced on x/01 from high-res 1823 facsimile (116×82, 1x).
-// Structure: two crossing crescent strokes (like a backwards 'c' + a 'c').
-// Each rendered as a variable-width ribbon, fat in the middle, thin at tips.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'z'
-// Source: hand-traced on z/01 from high-res 1823 facsimile (118×173, 1x).
-// Structure: entry flick + "main weird stroke" (the zigzag z-shape) +
-//            bar-bowl descender loop + exit flick.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'y'
-// Source: hand-traced on y/01 from high-res 1823 facsimile (227×196, 1x).
-// Structure: entry flick + initial downstroke (variable-width ribbon) +
-//            second downstroke (fat bar / ribbon) + bar-bowl loop (descender)
-//            + exit flick.
-// REF_CENTER at the junction point where all strokes converge.
-// ═════════════════════════════════════════════════════════════════════════════
-
-// ═════════════════════════════════════════════════════════════════════════════
-// LOWERCASE 'o'
-// Source: automated crescent fit on o/03 from high-res 1823 facsimile.
-// 'o' is the simplest letter: just a bowl, no extra components.
-// Confirmed tilt consistency with a/b/f at -45.5°.
-// ═════════════════════════════════════════════════════════════════════════════
+// Derive a registry object { letter: descriptor[field] } over letters whose
+// descriptor defines `field`. Iteration order is alphabetical (GLYPHS order).
+function byDescriptorField(field) {
+  return Object.fromEntries(
+    Object.entries(GLYPHS)
+      .filter(([, g]) => g[field] !== undefined)
+      .map(([k, g]) => [k, g[field]]));
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PUBLIC RENDER FUNCTIONS
@@ -295,16 +139,7 @@ import aGlyph from './glyphs/a.js';
  */
 // Returns { outer, refCenter } for a glyph — used for debug tick marks.
 export function glyphOuterEllipse(glyph) {
-  const map = {
-    a: aGlyph.outerEllipse,
-    b: bGlyph.outerEllipse,
-    c: cGlyph.outerEllipse,
-    d: dGlyph.outerEllipse,
-    f: fGlyph.outerEllipse,
-    o: oGlyph.outerEllipse,
-    q: qGlyph.outerEllipse,
-  };
-  return map[glyph] ?? null;
+  return GLYPHS[glyph]?.outerEllipse ?? null;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -347,16 +182,7 @@ function renderFromGeo(renderer, geo) {
 // Add entries as letters gain variants. Not all letters need a support entry
 // yet; missing letters treat their variant arg as "ignored" for compatibility.
 // ═════════════════════════════════════════════════════════════════════════════
-export const VARIANT_SUPPORT = {
-  u: uGlyph.variantSupport,
-  l: lGlyph.variantSupport,
-  h: hGlyph.variantSupport,
-  r: rGlyph.variantSupport,
-  m: mGlyph.variantSupport,
-  o: oGlyph.variantSupport,
-  e: eGlyph.variantSupport,
-  t: tGlyph.variantSupport,
-};
+export const VARIANT_SUPPORT = byDescriptorField('variantSupport');
 
 // Public wrapper: looks the letter's support table up in the assembled
 // VARIANT_SUPPORT registry, then delegates to the pure resolver in helpers.js.
@@ -368,103 +194,16 @@ export function resolveVariant(letter, variant) {
 }
 
 export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
+  const g = GLYPHS[glyph];
+  if (!g) throw new Error(`Glyph ${glyph} not yet supported`);
   const scale = (size * dpr) / 100;
-  switch(glyph) {
-    case 'a':
-      return aGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'b':
-      return bGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'c':
-      return cGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'd':
-      return dGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'e':
-      return eGlyph.build(cx, cy, scale, dpr, overrides, variant)
-    case 'f':
-      return fGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'g':
-      return gGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'h':
-      return hGlyph.build(cx, cy, scale, dpr, overrides, variant)
-    case 'i':
-      return iGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'j':
-      return jGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'k':
-      return kGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'l':
-      return lGlyph.build(cx, cy, scale, dpr, overrides, variant)
-    case 'm':
-      return mGlyph.build(cx, cy, scale, dpr, overrides, variant)
-    case 'n':
-      return nGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'o':
-      return oGlyph.build(cx, cy, scale, dpr, overrides, variant)
-    case 'p':
-      return pGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'q':
-      return qGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'r':
-      return rGlyph.build(cx, cy, scale, dpr, overrides, variant)
-    case 's':
-      return sGlyph.build(cx, cy, scale, dpr, overrides)
-    case 't':
-      return tGlyph.build(cx, cy, scale, dpr, overrides, variant)
-    case 'u':
-      return uGlyph.build(cx, cy, scale, dpr, overrides, variant)
-    case 'v':
-      return vGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'w':
-      return wGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'x':
-      return xGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'y':
-      return yGlyph.build(cx, cy, scale, dpr, overrides)
-    case 'z':
-      return zGlyph.build(cx, cy, scale, dpr, overrides)
-    default:
-      throw new Error(`Glyph ${glyph} not yet supported`)
-  }
+  return g.build(cx, cy, scale, dpr, overrides, variant);
 }
 
 export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}, variant) {
   const geo = buildGlyph(glyph, cx, cy, size, dpr, overrides, variant);
   renderFromGeo(renderer, geo);
 }
-
-/**
- * Render a Matlack-style lowercase 'o'.
- * Components: bowl (only).
- */
-/**
- * Render a Matlack-style lowercase 'd'.
- * Components: bowl, downstroke (ascender).
- */
-/**
- * Render a Matlack-style lowercase 'g'.
- * Components: bowl + variable-width descender ribbon.
- */
-/**
- * Render a Matlack-style lowercase 'y'.
- * Components: entry flick + initial downstroke (ribbon) + second downstroke
- *             (ribbon) + bar-bowl loop + exit flick.
- */
-/**
- * Render a Matlack-style lowercase 'r' (beginning-of-word form).
- * Components: entrance flick + swoop/downstroke ribbon + exit flick.
- */
-/**
- * Render a Matlack-style lowercase 'w'.
- * Components: entrance flick + double-descent ribbon + blob + exit flick.
- */
-/**
- * Render a Matlack-style lowercase 'x'.
- * Two crossing crescent strokes, each a variable-width ribbon.
- */
-/**
- * Render a Matlack-style lowercase 's'.
- * Components: entrance flick + swoopy S-curve (nearly uniform width).
- */
 
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -487,35 +226,9 @@ export function renderGlyph(glyph, renderer, cx, cy, size, dpr, overrides = {}, 
  * @returns {object} keyed by component name
  */
 export function exportGlyphOutlines(glyph, overrides = {}) {
-  switch (glyph) {
-    case 'a': return aGlyph.exportOutlines(overrides);
-    case 'b': return bGlyph.exportOutlines(overrides);
-    case 'c': return cGlyph.exportOutlines(overrides);
-    case 'd': return dGlyph.exportOutlines(overrides);
-    case 'e': return eGlyph.exportOutlines(overrides);
-    case 'f': return fGlyph.exportOutlines(overrides);
-    case 'g': return gGlyph.exportOutlines(overrides);
-    case 'h': return hGlyph.exportOutlines(overrides);
-    case 'i': return iGlyph.exportOutlines(overrides);
-    case 'j': return jGlyph.exportOutlines(overrides);
-    case 'l': return lGlyph.exportOutlines(overrides);
-    case 'm': return mGlyph.exportOutlines(overrides);
-    case 'n': return nGlyph.exportOutlines(overrides);
-    case 'p': return pGlyph.exportOutlines(overrides);
-    case 'k': return kGlyph.exportOutlines(overrides);
-    case 'o': return oGlyph.exportOutlines(overrides);
-    case 'r': return rGlyph.exportOutlines(overrides);
-    case 'w': return wGlyph.exportOutlines(overrides);
-    case 's': return sGlyph.exportOutlines(overrides);
-    case 'u': return uGlyph.exportOutlines(overrides);
-    case 'v': return vGlyph.exportOutlines(overrides);
-    case 'x': return xGlyph.exportOutlines(overrides);
-    case 't': return tGlyph.exportOutlines(overrides);
-    case 'y': return yGlyph.exportOutlines(overrides);
-    case 'z': return zGlyph.exportOutlines(overrides);
-    case 'q': return qGlyph.exportOutlines(overrides);
-    default: throw new Error(`Glyph ${glyph} not yet supported`);
-  }
+  const g = GLYPHS[glyph];
+  if (!g) throw new Error(`Glyph ${glyph} not yet supported`);
+  return g.exportOutlines(overrides);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -571,29 +284,9 @@ export const ELLIPSE_DATA = {
 // Only populated for variant-aware letters so far (e, o, r). Fill in
 // others as they gain anchor data.
 // ═════════════════════════════════════════════════════════════════════════════
-export const GLYPH_RULES = {
-  e: eGlyph.rule,
-  f: fGlyph.rule,
-  h: hGlyph.rule,
-  l: lGlyph.rule,
-  m: mGlyph.rule,
-  o: oGlyph.rule,
-  r: rGlyph.rule,
-  t: tGlyph.rule,
-  u: uGlyph.rule,
-};
+export const GLYPH_RULES = byDescriptorField('rule');
 
-export const GLYPH_JOIN_ANCHORS = {
-  e: eGlyph.joinAnchors,
-  f: fGlyph.joinAnchors,
-  h: hGlyph.joinAnchors,
-  l: lGlyph.joinAnchors,
-  m: mGlyph.joinAnchors,
-  o: oGlyph.joinAnchors,
-  r: rGlyph.joinAnchors,
-  t: tGlyph.joinAnchors,
-  u: uGlyph.joinAnchors,
-};
+export const GLYPH_JOIN_ANCHORS = byDescriptorField('joinAnchors');
 
 // ── Join tangents (direction of travel at a join anchor) ────────────────────
 // tangentAtAnchor (closest-sample finite difference; handles degenerate
@@ -608,21 +301,10 @@ export const GLYPH_JOIN_ANCHORS = {
 // today (it passes no such override), but a future caller that does would
 // get a stale tangent out of joinTangentsForVariant below.
 function joinSegsForVariant(letter, variant) {
+  const g = GLYPHS[letter];
+  if (!g || !g.joinSegs) return { entry: null, exit: null };
   const v = resolveVariant(letter, variant) || {};
-  if (letter === 'u') return uGlyph.joinSegs(v);
-  if (letter === 'l') return lGlyph.joinSegs(v);
-  if (letter === 'h') return hGlyph.joinSegs(v);
-  if (letter === 'r') return rGlyph.joinSegs(v);
-  if (letter === 'm') return mGlyph.joinSegs(v);
-  if (letter === 'o') return oGlyph.joinSegs(v);
-  if (letter === 'e') return eGlyph.joinSegs(v);
-  if (letter === 'f') {
-    return fGlyph.joinSegs(v);
-  }
-  if (letter === 't') {
-    return tGlyph.joinSegs(v);
-  }
-  return { entry: null, exit: null };
+  return g.joinSegs(v);
 }
 
 // Direction of travel (degrees) at each of a glyph's join anchors, for the
@@ -655,27 +337,12 @@ export function joinTangentsForVariant(letter, variant) {
 // where a glyph's local origin lands after applying a glyphToScanTransform.
 // (Each build function uses its own X_REF_CENTER constant internally; this
 // just surfaces them for external transform math.)
-export const GLYPH_REF_CENTERS = {
-  e: eGlyph.refCenter,
-  f: fGlyph.refCenter,
-  h: hGlyph.refCenter,
-  l: lGlyph.refCenter,
-  m: mGlyph.refCenter,
-  o: oGlyph.refCenter,
-  r: rGlyph.refCenter,
-  t: tGlyph.refCenter,
-  u: uGlyph.refCenter,
-};
+export const GLYPH_REF_CENTERS = byDescriptorField('refCenter');
 
 // Structural anchors — stable features on the letter body (downstroke top,
 // bowl center, etc.), used for aligning the glyph's rendering with a scan.
 // Distinct from join anchors, which live in the curs overlap zone.
-export const GLYPH_STRUCTURAL_ANCHORS = {
-  e: eGlyph.structuralAnchors,
-  f: fGlyph.structuralAnchors,
-  o: oGlyph.structuralAnchors,
-  r: rGlyph.structuralAnchors,
-};
+export const GLYPH_STRUCTURAL_ANCHORS = byDescriptorField('structuralAnchors');
 
 /**
  * Compute a glyph→scan similarity transform for rendering a glyph on top

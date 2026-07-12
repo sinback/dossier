@@ -11,59 +11,22 @@
 
 import { buildGlyph, GLYPH_RULES, GLYPH_REF_CENTERS,
          GLYPH_JOIN_ANCHORS, resolveVariant,
-         joinTangentsForVariant } from './matlackGlyphs.js';
+         joinTangentsForVariant, GLYPHS } from './matlackGlyphs.js';
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
-// Per-letter variant-glyph exports. First entry (suffix '') is the "default"
-// used without any calt substitution. Remaining entries become separate glyphs
-// named `<letter>.<suffix>`, referenced by the calt rules emitted alongside.
-const VARIANT_EXPORTS = {
-  o: [
-    ['',          { entry: 'low',  exit: 'high' }],   // mid-word default
-    ['afterHigh', { entry: 'high', exit: 'high' }],   // after b/f/o/v/w
-    ['init',      { entry: 'none', exit: 'high' }],   // word-initial
-    ['isol',      { entry: 'none', exit: 'none' }],   // standalone (no neighbors)
-  ],
-  r: [
-    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
-    ['afterHigh', { entry: 'high', exit: 'low' }],    // after b/f/o/v/w
-  ],
-  e: [
-    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
-    ['afterHigh', { entry: 'high', exit: 'low' }],    // after b/f/o/v/w
-  ],
-  m: [
-    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
-    ['afterHigh', { entry: 'high', exit: 'low' }],    // after b/f/o/v/w
-    ['init',      { entry: 'none', exit: 'low' }],    // word-initial (traced flourish)
-  ],
-  t: [
-    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
-    ['init',      { entry: 'none', exit: 'low' }],    // word-initial ("to", "the")
-    ['isol',      { entry: 'none', exit: 'none' }],   // standalone — the traced base
-    // No fina: like m, the low exit connector doubles as the kept
-    // word-final stroke (table: rule.y-bottom~).
-  ],
-  h: [
-    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
-    ['init',      { entry: 'none', exit: 'low' }],    // word-initial
-    ['isol',      { entry: 'none', exit: 'none' }],   // standalone — traced base incl. tail
-    ['fina',      { entry: 'low',  exit: 'none' }],   // word-final: keeps the traced tail
-  ],
-  l: [
-    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
-    ['init',      { entry: 'none', exit: 'low' }],    // word-initial ("lorem")
-    ['isol',      { entry: 'none', exit: 'none' }],   // standalone — traced base incl. tail
-    ['fina',      { entry: 'low',  exit: 'none' }],   // word-final: keeps the traced tail
-  ],
-  u: [
-    ['',          { entry: 'low',  exit: 'low' }],    // mid-word default
-    ['init',      { entry: 'none', exit: 'low' }],    // word-initial (traced nerfed flick)
-    ['isol',      { entry: 'none', exit: 'none' }],   // standalone — traced base incl. both flicks
-    ['fina',      { entry: 'low',  exit: 'none' }],   // word-final: keeps the traced flick
-  ],
-};
+// Per-letter variant-glyph exports, sourced from each letter's
+// descriptor.variantExports (single source of truth). First entry (suffix '')
+// is the "default" used without any calt substitution; the rest become separate
+// glyphs named `<letter>.<suffix>`, referenced by the calt rules emitted below.
+//
+// ORDER IS LOAD-BEARING: generateFeatures() emits calt lookups by iterating
+// this object, and earlier lookups substitute glyphs that later lookups' context
+// classes must still match. This pinned bring-up order (o, r, e, m, t, h, l, u)
+// reproduces the historical hand-listed order — do not alphabetize it.
+const VARIANT_EXPORT_ORDER = ['o', 'r', 'e', 'm', 't', 'h', 'l', 'u'];
+const VARIANT_EXPORTS = Object.fromEntries(
+  VARIANT_EXPORT_ORDER.map(l => [l, GLYPHS[l].variantExports]));
 
 // Returns a minimal calt+classes `.fea` snippet covering the variant glyphs
 // above. Written into the UFO features.fea by the Python side.
