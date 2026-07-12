@@ -61,6 +61,11 @@ export { buildRibbon, sampleSegments };
 // matlack/analysis/parallel-bringup-plan.md, which finishes the derivation).
 import tGlyph from './glyphs/t.js';
 import fGlyph, { fBarBowlWidth, fBarBowlDensity } from './glyphs/f.js';
+import wGlyph from './glyphs/w.js';
+import zGlyph from './glyphs/z.js';
+import kGlyph from './glyphs/k.js';
+import jGlyph from './glyphs/j.js';
+import yGlyph from './glyphs/y.js';
 import xGlyph from './glyphs/x.js';
 import vGlyph from './glyphs/v.js';
 import sGlyph from './glyphs/s.js';
@@ -449,160 +454,12 @@ const H_JOIN_ANCHORS = {
 //            + exit flick. Similar to 'f' structurally.
 // ═════════════════════════════════════════════════════════════════════════════
 
-// REF_CENTER at x-height midline so 'j' aligns vertically with other letters.
-// Original junction was (112.22, 156.02); entrance flick meets downstroke at y≈97.
-const J_REF_CENTER = { x: 139, y: 97 };
-
-const J_BAR_BOWL = {
-  inner: {
-    cx: 66.6, cy: 198.7,
-    a: 40.0, b: 6.6, tilt: -42.6   // FAIR fit (egg GOOD at 0.035)
-  },
-  outer: {
-    cx: 72.0, cy: 192.9,
-    a: 62.4, b: 13.9, tilt: -41.2  // GOOD fit (0.084), tilt diff 3.8°
-  },
-};
-
-// Bar-bowl width — moderate variation (tilt diff 3.8°)
-function jBarBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f < 0.10) return smoothStep(0.45, 0.70, f / 0.10);
-  if (f < 0.40) return smoothStep(0.70, 1.0, (f - 0.10) / 0.30);
-  if (f < 0.60) return 1.0;
-  if (f < 0.90) return smoothStep(1.0, 0.70, (f - 0.60) / 0.30);
-  return smoothStep(0.70, 0.45, (f - 0.90) / 0.10);
-}
-function jBarBowlDensity() { return 0.85; }
-
-// Downstroke (fat bar from top down to bar-bowl)
-const J_DOWNSTROKE_SEGS = [
-  [[155.11,78.54],[155.11,78.54],[139.01,97.49],[139.01,97.49]],
-  [[139.01,97.49],[132.43,104.48],[107.70,159.56],[109.39,157.77]],
-];
-const J_DOWNSTROKE_HALF_WIDTH = 5.0;
-const J_DOWNSTROKE_OFFSET = { dx: 4, dy: -4 };  // review round 1, candidate 3
-
-// Dot
-const J_DOT_SEGS = [
-  [[193.80,10.52],[192.68,10.27],[185.10,18.39],[185.90,18.57]],
-  [[185.90,18.57],[184.69,19.90],[185.42,26.24],[186.18,25.39]],
-  [[186.18,25.39],[184.70,26.12],[189.20,28.42],[193.06,26.63]],
-  [[193.06,26.63],[195.03,24.88],[201.91,16.75],[201.23,17.42]],
-  [[201.23,17.42],[201.58,17.58],[203.53,10.07],[202.23,9.56]],
-  [[202.23,9.56],[200.26,8.49],[193.24,9.75],[194.58,10.57]],
-];
-const J_DOT_OFFSET = { dx: 0, dy: 0 };
-
-// Entrance flick
-const J_ENTRANCE_SEGS = [
-  [[94.50,130.54],[94.50,130.54],[141.85,97.40],[141.85,97.40]],
-];
-const J_ENTRANCE = {
-  startWidth: 1.0,
-  taperPower: 1.7,
-  liftPoint: 1.0,
-};
-
-// Exit flick
-const J_EXIT_SEGS = [
-  [[114.58,145.95],[115.26,146.07],[161.50,119.55],[161.50,119.55]],
-];
-const J_EXIT = {
-  startWidth: 3.0,
-  taperPower: 1.7,
-  liftPoint: 0.85,
-};
-const J_EXIT_OFFSET = { dx: 3, dy: 4 };  // review round 3 (fine), candidate 4
-
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'k'
 // Source: hand-traced on k/01 from high-res 1823 facsimile (119×130, 1x).
 // Three-stroke letter: 1) entrance flick + bar-bowl + downstroke,
 // 2) retrace up along downstroke (implicit), 3) upper crescent + exit stroke.
 // ═════════════════════════════════════════════════════════════════════════════
-
-const K_REF_CENTER = { x: 52.13, y: 73.38 };  // entrance flick end / downstroke top
-
-// Bar-bowl (tall stem)
-const K_BAR_BOWL = {
-  inner: {
-    cx: 82.1, cy: 37.5,
-    a: 28.0, b: 3.8, tilt: -52.5
-  },
-  outer: {
-    cx: 73.3, cy: 48.5,
-    a: 44.8, b: 5.8, tilt: -50.5   // tilt diff 2.8°
-  },
-};
-// Bar-bowl width: higher floor than 'f' to stay visible at small sizes.
-function kBarBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f < 0.10) return smoothStep(0.55, 0.75, f / 0.10);
-  if (f < 0.40) return smoothStep(0.75, 1.0, (f - 0.10) / 0.30);
-  if (f < 0.60) return 1.0;
-  if (f < 0.90) return smoothStep(1.0, 0.75, (f - 0.60) / 0.30);
-  return smoothStep(0.75, 0.55, (f - 0.90) / 0.10);
-}
-const kBarBowlDensity = fBarBowlDensity;
-
-// Downstroke (fat bar)
-const K_DOWNSTROKE = {
-  x1: 53.70, y1: 72.68,
-  x2: 24.11, y2: 113.87,
-};
-const K_DOWNSTROKE_HALF_WIDTH = 4.5;
-const K_DOWNSTROKE_OFFSET = { dx: 0, dy: 0 };
-
-// Entrance flick
-const K_ENTRANCE_SEGS = [
-  [[8.81,104.60],[8.81,104.60],[52.13,73.38],[52.13,73.38]],
-];
-const K_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
-
-// Upper crescent (partial arc, like 'c')
-const K_CRESCENT = {
-  inner: {
-    cx: 55.3, cy: 89.5,
-    a: 8.9, b: 6.0, tilt: -51.1
-  },
-  outer: {
-    cx: 54.9, cy: 90.0,
-    a: 13.6, b: 10.0, tilt: -42.9  // tilt diff 0.3° — very uniform
-  },
-};
-
-// Crescent width: nearly complete arc with a narrow gap at the bottom-left
-// where it meets the downstroke. The crescent needs to wrap far enough
-// to connect with the exit stroke below.
-function kCrescentWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  // Narrow gap at bottom-left only (where the downstroke passes through)
-  if (f > 0.60 && f < 0.72) return 0;
-  if (f > 0.52 && f <= 0.60) return smoothStep(0.80, 0, (f - 0.52) / 0.08);
-  if (f >= 0.72 && f < 0.80) return smoothStep(0, 0.80, (f - 0.72) / 0.08);
-  // Everything else: solid
-  return 0.80;
-}
-function kCrescentDensity() { return 0.85; }
-
-// Exit stroke (variable-width ribbon from crescent to exit)
-const K_EXIT_SEGS = [
-  [[45.90,96.49],[45.39,96.49],[42.07,109.31],[43.63,109.31]],
-  [[43.63,109.31],[42.88,109.31],[44.82,116.17],[46.76,116.16]],
-  [[46.76,116.16],[46.01,117.47],[54.02,117.71],[54.19,117.26]],
-  [[54.19,117.26],[56.16,118.00],[68.32,109.06],[68.02,108.92]],
-];
-const K_EXIT_OFFSET = { dx: 0, dy: -4 };  // review round 1, candidate 2
-
-// Exit stroke width: starts moderate, thins to hairline
-function kExitWidth(t, scale) {
-  if (t < 0.15) return 3.0 * scale;
-  if (t < 0.50) return smoothStep(3.0, 4.0, (t - 0.15) / 0.35) * scale;
-  if (t < 0.70) return 4.0 * scale;
-  if (t < 0.90) return smoothStep(4.0, 0.7, (t - 0.70) / 0.20) * scale;
-  return 0.7 * scale;
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'l'
@@ -1026,77 +883,6 @@ const R_EXIT_SEGS_AFTERHIGH = [
 //            ink blob at third peak + exit flick.
 // ═════════════════════════════════════════════════════════════════════════════
 
-const W_REF_CENTER = { x: 43, y: 32 };  // entrance flick end / first descent top
-
-// Entrance flick — extended further left and steepened to separate
-// from the first descent visually.
-const W_ENTRANCE_SEGS = [
-  [[-5,78],[-5,78],[42.95,31.91],[42.95,31.91]],
-];
-const W_ENTRANCE = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
-
-// Combined stroke: initial downstroke → second flick → second downstroke → third flick
-const W_STROKE_SEGS = [
-  // Initial downstroke
-  [[44.45,32.90],[44.02,32.90],[10.60,68.37],[17.49,70.34]],
-  // Second flick (swoops back up-right)
-  [[17.75,70.95],[17.61,70.84],[21.73,78.17],[22.64,78.85]],
-  [[22.64,78.85],[31.57,84.37],[82.61,35.35],[81.78,34.80]],
-  // Second downstroke
-  [[81.99,34.88],[81.99,34.88],[53.62,61.64],[57.58,65.04]],
-  [[57.58,65.04],[56.39,65.49],[58.29,71.36],[61.55,70.13]],
-  // Third flick (swoops up to blob)
-  [[62.28,70.17],[63.40,73.47],[77.91,72.53],[77.69,71.87]],
-  [[77.69,71.87],[85.14,74.26],[112.96,34.03],[111.61,33.60]],
-];
-
-// Width function: two descent cycles, like 'm' but with the flow reversed.
-// descent → thin turnaround → rise → descent → thin turnaround → rise → thins to blob
-function wStrokeWidth(t, scale) {
-  // First descent: fat
-  if (t < 0.12) return smoothStep(3.0, 5.0, t / 0.12) * scale;
-
-  // First turnaround: thin
-  if (t < 0.20) return smoothStep(5.0, 1.5, (t - 0.12) / 0.08) * scale;
-
-  // First rise / second flick: thickening
-  if (t < 0.35) return smoothStep(1.5, 4.0, (t - 0.20) / 0.15) * scale;
-
-  // Transition to second descent
-  if (t < 0.45) return smoothStep(4.0, 5.0, (t - 0.35) / 0.10) * scale;
-
-  // Second descent: fat
-  if (t < 0.55) return 5.0 * scale;
-
-  // Second turnaround: thin
-  if (t < 0.63) return smoothStep(5.0, 1.5, (t - 0.55) / 0.08) * scale;
-
-  // Second rise / third flick: thickening then thinning to blob
-  if (t < 0.78) return smoothStep(1.5, 4.0, (t - 0.63) / 0.15) * scale;
-  if (t < 0.90) return smoothStep(4.0, 2.5, (t - 0.78) / 0.12) * scale;
-
-  // Approaching blob: thin
-  return smoothStep(2.5, 1.0, (t - 0.90) / 0.10) * scale;
-}
-
-// Ink blob at third peak
-const W_BLOB_SEGS = [
-  [[109.23,24.35],[108.06,24.31],[97.96,32.65],[99.07,32.68]],
-  [[99.07,32.68],[97.85,33.74],[101.20,44.33],[102.88,43.06]],
-  [[102.88,43.06],[102.94,44.62],[109.14,44.79],[109.12,44.08]],
-  [[109.12,44.08],[109.43,44.79],[119.63,41.39],[118.97,39.92]],
-  [[118.97,39.92],[120.24,40.15],[120.91,27.76],[120.52,27.70]],
-  [[120.52,27.70],[121.28,26.01],[112.14,19.51],[110.11,24.05]],
-];
-const W_BLOB_OFFSET = { dx: -4, dy: -4 };  // review round 1, candidate 1
-
-// Exit flick — extended further right for visibility
-const W_EXIT_SEGS = [
-  [[109.38,37.28],[109.59,37.54],[145.00,35.00],[145.00,35.00]],
-];
-const W_EXIT = { startWidth: 2.0, taperPower: 1.7, liftPoint: 0.90 };
-const W_EXIT_OFFSET = { dx: 0, dy: 0 };
-
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 's'
 // Source: hand-traced on s/01 from high-res 1823 facsimile (91×91, 1x).
@@ -1256,67 +1042,6 @@ const U_JOIN_ANCHORS = {
 //            bar-bowl descender loop + exit flick.
 // ═════════════════════════════════════════════════════════════════════════════
 
-const Z_REF_CENTER = { x: 50, y: 34 };  // entry flick end / weird stroke start
-
-// Entry flick
-const Z_ENTRY_SEGS = [
-  [[11.96,67.92],[11.96,67.92],[50.28,33.68],[50.28,33.68]],
-];
-const Z_ENTRY = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
-
-// Main weird stroke — the zigzag z-shape
-const Z_STROKE_SEGS = [
-  [[49.25,33.43],[48.45,33.77],[48.29,43.03],[50.55,42.07]],
-  [[50.55,42.07],[49.32,43.83],[56.40,50.00],[58.39,47.79]],
-  [[58.39,47.79],[58.39,47.79],[77.14,35.58],[77.14,35.58]],
-  [[77.14,35.58],[75.00,32.83],[30.64,70.68],[31.51,71.79]],
-  [[31.51,71.79],[31.13,71.18],[50.02,65.76],[50.92,67.20]],
-  [[50.92,67.20],[52.69,66.46],[62.02,78.76],[57.88,80.51]],
-  [[57.88,80.51],[57.88,80.51],[58.06,84.23],[58.06,84.23]],
-];
-
-// Width: blob at top, fat diagonal, thin turnaround, fat return, thins to bar-bowl
-function zStrokeWidth(t, scale) {
-  // Top blob
-  if (t < 0.08) return 3.5 * scale;
-
-  // First arm going right: moderate
-  if (t < 0.20) return smoothStep(3.5, 3.0, (t - 0.08) / 0.12) * scale;
-
-  // Diagonal descent: fattening
-  if (t < 0.45) return smoothStep(3.0, 5.0, (t - 0.20) / 0.25) * scale;
-
-  // Turnaround at bottom of diagonal
-  if (t < 0.55) return smoothStep(5.0, 2.0, (t - 0.45) / 0.10) * scale;
-
-  // Return stroke going up-right: thickening
-  if (t < 0.75) return smoothStep(2.0, 4.5, (t - 0.55) / 0.20) * scale;
-
-  // Descending to bar-bowl junction: thinning
-  return smoothStep(4.5, 2.0, (t - 0.75) / 0.25) * scale;
-}
-
-// Bar-bowl (descender loop)
-const Z_BAR_BOWL = {
-  inner: {
-    cx: 27.9, cy: 129.7,
-    a: 32.6, b: 7.5, tilt: -48.9
-  },
-  outer: {
-    cx: 28.2, cy: 129.4,
-    a: 46.9, b: 12.9, tilt: -46.4   // tilt diff 5.6°
-  },
-};
-// Reuse 'f' bar-bowl width — proven formula
-const zBarBowlWidth = fBarBowlWidth;
-const zBarBowlDensity = fBarBowlDensity;
-
-// Exit flick
-const Z_EXIT_SEGS = [
-  [[56.46,87.45],[56.46,87.45],[108.06,46.49],[108.06,46.49]],
-];
-const Z_EXIT = { startWidth: 2.0, taperPower: 1.7, liftPoint: 0.85 };
-
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'y'
 // Source: hand-traced on y/01 from high-res 1823 facsimile (227×196, 1x).
@@ -1325,77 +1050,6 @@ const Z_EXIT = { startWidth: 2.0, taperPower: 1.7, liftPoint: 0.85 };
 //            + exit flick.
 // REF_CENTER at the junction point where all strokes converge.
 // ═════════════════════════════════════════════════════════════════════════════
-
-// REF_CENTER shifted up to x-height midline so 'y' aligns with other letters.
-// Original junction was (95, 113); entry zone is around y≈45.
-const Y_REF_CENTER = { x: 95, y: 50 };
-
-// Entry flick
-const Y_ENTRY_SEGS = [
-  [[84.28,48.59],[84.44,48.59],[98.86,38.05],[98.86,38.05]],
-];
-const Y_ENTRY = { startWidth: 1.0, taperPower: 1.7, liftPoint: 1.0 };
-
-// Initial downstroke — curved stroke going down-left then looping back up.
-// Width function written without outline — inferred from reference image.
-const Y_INITIAL_SEGS = [
-  [[98.47,38.52],[98.55,37.15],[110.89,32.70],[110.75,34.95]],
-  [[110.75,34.95],[115.47,37.84],[93.20,68.82],[90.58,67.22]],
-  [[90.58,67.22],[88.50,68.04],[88.62,77.42],[91.91,76.12]],
-  [[91.91,76.12],[93.80,80.51],[126.28,64.32],[125.23,61.88]],
-];
-
-// Width function for initial downstroke. The stroke:
-//   0-10%: entry from top — starts thin (connecting to entry flick)
-//  10-40%: main descent — fattens up (pen decelerating)
-//  40-60%: bottom turnaround — thins (pen changes direction)
-//  60-85%: rising back to junction — moderate width
-//  85-100%: arrives at junction — thins to merge with exit
-function yInitialWidth(t, scale) {
-  if (t < 0.10) return smoothStep(2.0, 3.5, t / 0.10) * scale;
-  if (t < 0.40) return smoothStep(3.5, 5.0, (t - 0.10) / 0.30) * scale;
-  if (t < 0.55) return smoothStep(5.0, 1.5, (t - 0.40) / 0.15) * scale;
-  if (t < 0.75) return smoothStep(1.5, 3.5, (t - 0.55) / 0.20) * scale;
-  if (t < 0.90) return smoothStep(3.5, 2.0, (t - 0.75) / 0.15) * scale;
-  return smoothStep(2.0, 0.7, (t - 0.90) / 0.10) * scale;
-}
-
-// Second downstroke — straight-ish from upper-right to junction
-const Y_SECOND_SEGS = [
-  [[156.74,29.03],[156.74,29.03],[142.87,39.20],[142.87,39.20]],
-  [[142.87,39.20],[140.10,39.20],[95.41,115.40],[95.96,115.40]],
-];
-const Y_SECOND_HALF_WIDTH = 5.0;
-const Y_SECOND_OFFSET = { dx: 0, dy: 0 };
-
-// Bar-bowl / descender loop
-const Y_BAR_BOWL = {
-  inner: {
-    cx: 52.4, cy: 152.3,
-    a: 36.7, b: 5.3, tilt: -39.9
-  },
-  outer: {
-    cx: 44.0, cy: 157.8,
-    a: 56.5, b: 10.9, tilt: -36.3   // tilt diff 3.3°
-  },
-};
-
-function yBarBowlWidth(arcFracRaw) {
-  const f = (arcFracRaw + BOWL_PHASE) % 1.0;
-  if (f < 0.10) return smoothStep(0.45, 0.70, f / 0.10);
-  if (f < 0.40) return smoothStep(0.70, 1.0, (f - 0.10) / 0.30);
-  if (f < 0.60) return 1.0;
-  if (f < 0.90) return smoothStep(1.0, 0.70, (f - 0.60) / 0.30);
-  return smoothStep(0.70, 0.45, (f - 0.90) / 0.10);
-}
-function yBarBowlDensity() { return 0.85; }
-
-// Exit flick
-const Y_EXIT_SEGS = [
-  [[94.52,113.00],[94.40,113.09],[199.90,55.86],[199.90,55.86]],
-];
-const Y_EXIT = { startWidth: 2.5, taperPower: 1.7, liftPoint: 0.85 };
-const Y_EXIT_OFFSET = { dx: 0, dy: 0 };
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOWERCASE 'o'
@@ -1766,9 +1420,9 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
     case 'i':
       return iGlyph.build(cx, cy, scale, dpr, overrides)
     case 'j':
-      return buildJ(cx, cy, scale, dpr, overrides)
+      return jGlyph.build(cx, cy, scale, dpr, overrides)
     case 'k':
-      return buildK(cx, cy, scale, dpr, overrides)
+      return kGlyph.build(cx, cy, scale, dpr, overrides)
     case 'l':
       return buildL(cx, cy, scale, dpr, overrides, variant)
     case 'm':
@@ -1792,13 +1446,13 @@ export function buildGlyph(glyph, cx, cy, size, dpr, overrides = {}, variant) {
     case 'v':
       return vGlyph.build(cx, cy, scale, dpr, overrides)
     case 'w':
-      return buildW(cx, cy, scale, dpr, overrides)
+      return wGlyph.build(cx, cy, scale, dpr, overrides)
     case 'x':
       return xGlyph.build(cx, cy, scale, dpr, overrides)
     case 'y':
-      return buildY(cx, cy, scale, dpr, overrides)
+      return yGlyph.build(cx, cy, scale, dpr, overrides)
     case 'z':
-      return buildZ(cx, cy, scale, dpr, overrides)
+      return zGlyph.build(cx, cy, scale, dpr, overrides)
     default:
       throw new Error(`Glyph ${glyph} not yet supported`)
   }
@@ -1996,159 +1650,6 @@ function buildH(cx, cy, scale, dpr, overrides, variant = undefined) {
       ...entrFills,
       ...exitFills,
     ],
-      },
-    ],
-    fills: [
-    ],
-  };
-}
-
-/**
- * Render a Matlack-style lowercase 'j'.
- * Components: dot + entrance flick + downstroke + bar-bowl (bottom loop) + exit flick.
- */
-function buildJ(cx, cy, scale, dpr, overrides) {
-  // ── Bar-bowl (bottom loop) ────────────────────────────────────
-  const inner = scaleEllipse(J_BAR_BOWL.inner, cx, cy, scale, J_REF_CENTER);
-  const outer = scaleEllipse(J_BAR_BOWL.outer, cx, cy, scale, J_REF_CENTER);
-
-  // ── Downstroke (curved, rendered as constant-width ribbon) ────
-  const dsOff = resolveOffset('downstroke', J_DOWNSTROKE_OFFSET, overrides, dpr);
-  const dsCenter = sampleSegments(
-    J_DOWNSTROKE_SEGS, [0, 1], 12,
-    cx + dsOff.dx, cy + dsOff.dy, scale, J_REF_CENTER
-  );
-  const dsQuads = buildRibbon(dsCenter, () => J_DOWNSTROKE_HALF_WIDTH * scale);
-  const dsFills = dsQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Entrance flick (reversed taper) ───────────────────────────
-  const entrCenter = sampleSegments(
-    J_ENTRANCE_SEGS, [0], 12, cx, cy, scale, J_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed,
-    J_DOWNSTROKE_HALF_WIDTH * scale,
-    J_ENTRANCE.taperPower,
-    J_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Exit flick (tapered ribbon from bar-bowl junction) ────────
-  const exitOff = resolveOffset('exitFlick', J_EXIT_OFFSET, overrides, dpr);
-  const exitCenter = sampleSegments(
-    J_EXIT_SEGS, [0], 12, cx + exitOff.dx, cy + exitOff.dy, scale, J_REF_CENTER
-  );
-  const exitQuads = buildTaperedRibbon(
-    exitCenter,
-    J_EXIT.startWidth * scale,
-    J_EXIT.taperPower,
-    J_EXIT.liftPoint,
-  );
-  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Dot ────────────────────────────────────────────────────────
-  const dotOff = resolveOffset('dot', J_DOT_OFFSET, overrides, dpr);
-  const dot = sampleSegments(
-    J_DOT_SEGS, [0, 1, 2, 3, 4, 5], 12,
-    cx + dotOff.dx, cy + dotOff.dy, scale, J_REF_CENTER
-  );
-
-  return {
-    bowls: [
-      {
-        outer: outer,
-        inner: inner,
-        widthFn: jBarBowlWidth,
-        densityFn: jBarBowlDensity,
-        overlayFills: [
-      ...dsFills,
-      ...entrFills,
-      ...exitFills,
-      { points: dot, pressure: 0.85 },
-    ],
-      },
-    ],
-    fills: [
-    ],
-  };
-}
-
-/**
- * Render a Matlack-style lowercase 'k'.
- * Components: entrance flick + bar-bowl + downstroke + upper crescent + exit stroke.
- */
-function buildK(cx, cy, scale, dpr, overrides) {
-  // ── Bar-bowl (tall stem) ──────────────────────────────────────
-  const bbInner = scaleEllipse(K_BAR_BOWL.inner, cx, cy, scale, K_REF_CENTER);
-  const bbOuter = scaleEllipse(K_BAR_BOWL.outer, cx, cy, scale, K_REF_CENTER);
-
-  // ── Downstroke (fat bar) ──────────────────────────────────────
-  const dsOff = resolveOffset('downstroke', K_DOWNSTROKE_OFFSET, overrides, dpr);
-  const hw = K_DOWNSTROKE_HALF_WIDTH * scale;
-  const p0 = refToCanvas(K_DOWNSTROKE.x1, K_DOWNSTROKE.y1, cx, cy, scale, K_REF_CENTER);
-  const p1 = refToCanvas(K_DOWNSTROKE.x2, K_DOWNSTROKE.y2, cx, cy, scale, K_REF_CENTER);
-  p0.x += dsOff.dx; p0.y += dsOff.dy;
-  p1.x += dsOff.dx; p1.y += dsOff.dy;
-  const ddx = p1.x - p0.x, ddy = p1.y - p0.y;
-  const dlen = Math.hypot(ddx, ddy);
-  const dnx = -ddy / dlen * hw, dny = ddx / dlen * hw;
-  const downstroke = [
-    { x: p0.x + dnx, y: p0.y + dny },
-    { x: p1.x + dnx, y: p1.y + dny },
-    { x: p1.x - dnx, y: p1.y - dny },
-    { x: p0.x - dnx, y: p0.y - dny },
-  ];
-
-  // ── Entrance flick (reversed taper) ───────────────────────────
-  const entrCenter = sampleSegments(
-    K_ENTRANCE_SEGS, [0], 12, cx, cy, scale, K_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed,
-    K_DOWNSTROKE_HALF_WIDTH * scale,
-    K_ENTRANCE.taperPower,
-    K_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Upper crescent (partial arc, like 'c') ────────────────────
-  // Apply rotation override (dtheta in degrees, clockwise positive)
-  const crRotation = overrides.crescent?.dtheta ?? 39;  // review: 39° CW
-  const crOff = resolveOffset('crescent', { dx: -4, dy: -4 }, overrides, dpr);  // review round 3
-  const crInnerData = { ...K_CRESCENT.inner, tilt: K_CRESCENT.inner.tilt + crRotation };
-  const crOuterData = { ...K_CRESCENT.outer, tilt: K_CRESCENT.outer.tilt + crRotation };
-  const crInner = scaleEllipse(crInnerData, cx + crOff.dx, cy + crOff.dy, scale, K_REF_CENTER);
-  const crOuter = scaleEllipse(crOuterData, cx + crOff.dx, cy + crOff.dy, scale, K_REF_CENTER);
-
-  // ── Exit stroke (variable-width ribbon) ────────────────────────
-  const exitOff = resolveOffset('exitStroke', K_EXIT_OFFSET, overrides, dpr);
-  const exitCenter = sampleSegments(
-    K_EXIT_SEGS, [0, 1, 2, 3], 12,
-    cx + exitOff.dx, cy + exitOff.dy, scale, K_REF_CENTER
-  );
-  const exitQuads = buildRibbon(exitCenter, (t) => kExitWidth(t, scale));
-  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-      {
-        outer: bbOuter,
-        inner: bbInner,
-        widthFn: kBarBowlWidth,
-        densityFn: kBarBowlDensity,
-        overlayFills: [
-      { points: downstroke, pressure: 0.85 },
-      ...entrFills,
-    ],
-      },
-      {
-        outer: crOuter,
-        inner: crInner,
-        widthFn: kCrescentWidth,
-        densityFn: kCrescentDensity,
-        overlayFills: exitFills,
       },
     ],
     fills: [
@@ -2433,59 +1934,6 @@ function buildU(cx, cy, scale, dpr, overrides, variant = undefined) {
   };
 }
 
-function buildW(cx, cy, scale, dpr, overrides) {
-  // Combined stroke ribbon
-  const strokeCenter = sampleSegments(
-    W_STROKE_SEGS,
-    Array.from({ length: W_STROKE_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, W_REF_CENTER
-  );
-  const strokeQuads = buildRibbon(strokeCenter, (t) => wStrokeWidth(t, scale));
-  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // Entrance flick (reversed taper)
-  const entrCenter = sampleSegments(
-    W_ENTRANCE_SEGS, [0], 12, cx, cy, scale, W_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed, 4.0 * scale, W_ENTRANCE.taperPower, W_ENTRANCE.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // Ink blob
-  const blobOff = resolveOffset('blob', W_BLOB_OFFSET, overrides, dpr);
-  const blobScale = overrides.blob ?? {};
-  let blob = sampleSegments(
-    W_BLOB_SEGS,
-    Array.from({ length: W_BLOB_SEGS.length }, (_, i) => i),
-    12, cx + blobOff.dx, cy + blobOff.dy, scale, W_REF_CENTER
-  );
-  blob = scalePolygon(blob, blobScale.sx ?? 1, blobScale.sy ?? 1);
-
-  // Exit flick
-  const exitOff = resolveOffset('exitFlick', W_EXIT_OFFSET, overrides, dpr);
-  const exitCenter = sampleSegments(
-    W_EXIT_SEGS, [0], 12,
-    cx + exitOff.dx, cy + exitOff.dy, scale, W_REF_CENTER
-  );
-  const exitQuads = buildTaperedRibbon(
-    exitCenter, W_EXIT.startWidth * scale, W_EXIT.taperPower, W_EXIT.liftPoint,
-  );
-  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-    ],
-    fills: [
-      ...strokeFills,
-    ...entrFills,
-    { points: blob, pressure: 0.85 },
-    ...exitFills,
-    ],
-  };
-}
-
 function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: 'low' }) {
   variant = resolveVariant('r', variant);
 
@@ -2548,132 +1996,6 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
       ...strokeFills,
     ...entrFills,
     ...exitFills,
-    ],
-  };
-}
-
-/**
- * Render a Matlack-style lowercase 'z'.
- * Components: entry flick + zigzag weird stroke + bar-bowl loop + exit flick.
- */
-function buildZ(cx, cy, scale, dpr, overrides) {
-  // Bar-bowl (descender loop)
-  const bbOff = resolveOffset('barBowl', { dx: 0, dy: -8 }, overrides, dpr);  // review round 2
-  const bbInner = scaleEllipse(Z_BAR_BOWL.inner, cx + bbOff.dx, cy + bbOff.dy, scale, Z_REF_CENTER);
-  const bbOuter = scaleEllipse(Z_BAR_BOWL.outer, cx + bbOff.dx, cy + bbOff.dy, scale, Z_REF_CENTER);
-
-  // Main weird stroke (zigzag z-shape)
-  const strokeCenter = sampleSegments(
-    Z_STROKE_SEGS,
-    Array.from({ length: Z_STROKE_SEGS.length }, (_, i) => i),
-    12, cx, cy, scale, Z_REF_CENTER
-  );
-  const strokeQuads = buildRibbon(strokeCenter, (t) => zStrokeWidth(t, scale));
-  const strokeFills = strokeQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // Entry flick (reversed taper)
-  const entrCenter = sampleSegments(
-    Z_ENTRY_SEGS, [0], 12, cx, cy, scale, Z_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed, 3.5 * scale, Z_ENTRY.taperPower, Z_ENTRY.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // Exit flick
-  const exitCenter = sampleSegments(
-    Z_EXIT_SEGS, [0], 12, cx, cy, scale, Z_REF_CENTER
-  );
-  const exitQuads = buildTaperedRibbon(
-    exitCenter, Z_EXIT.startWidth * scale, Z_EXIT.taperPower, Z_EXIT.liftPoint,
-  );
-  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  return {
-    bowls: [
-      {
-        outer: bbOuter,
-        inner: bbInner,
-        widthFn: zBarBowlWidth,
-        densityFn: zBarBowlDensity,
-        overlayFills: [
-      ...strokeFills,
-      ...entrFills,
-      ...exitFills,
-    ],
-      },
-    ],
-    fills: [
-    ],
-  };
-}
-
-function buildY(cx, cy, scale, dpr, overrides) {
-  // ── Initial downstroke (variable-width ribbon, no outline needed) ──
-  const initCenter = sampleSegments(
-    Y_INITIAL_SEGS, [0, 1, 2, 3], 12, cx, cy, scale, Y_REF_CENTER
-  );
-  const initQuads = buildRibbon(initCenter, (t) => yInitialWidth(t, scale));
-  const initFills = initQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Second downstroke (constant-width ribbon) ─────────────────
-  const secOff = resolveOffset('secondDownstroke', Y_SECOND_OFFSET, overrides, dpr);
-  const secCenter = sampleSegments(
-    Y_SECOND_SEGS, [0, 1], 12,
-    cx + secOff.dx, cy + secOff.dy, scale, Y_REF_CENTER
-  );
-  const secQuads = buildRibbon(secCenter, () => Y_SECOND_HALF_WIDTH * scale);
-  const secFills = secQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Entry flick (reversed taper) ──────────────────────────────
-  const entrCenter = sampleSegments(
-    Y_ENTRY_SEGS, [0], 12, cx, cy, scale, Y_REF_CENTER
-  );
-  const entrReversed = [...entrCenter].reverse();
-  const entrQuads = buildTaperedRibbon(
-    entrReversed,
-    3.5 * scale,
-    Y_ENTRY.taperPower,
-    Y_ENTRY.liftPoint,
-  );
-  const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Exit flick (tapered ribbon) ───────────────────────────────
-  const exitOff = resolveOffset('exitFlick', Y_EXIT_OFFSET, overrides, dpr);
-  const exitCenter = sampleSegments(
-    Y_EXIT_SEGS, [0], 12,
-    cx + exitOff.dx, cy + exitOff.dy, scale, Y_REF_CENTER
-  );
-  const exitQuads = buildTaperedRibbon(
-    exitCenter,
-    Y_EXIT.startWidth * scale,
-    Y_EXIT.taperPower,
-    Y_EXIT.liftPoint,
-  );
-  const exitFills = exitQuads.map(quad => ({ points: quad, pressure: 0.85 }));
-
-  // ── Bar-bowl / descender loop ─────────────────────────────────
-  const bbOff = resolveOffset('barBowl', { dx: 8, dy: -8 }, overrides, dpr);  // review round 2
-  const bbInner = scaleEllipse(Y_BAR_BOWL.inner, cx + bbOff.dx, cy + bbOff.dy, scale, Y_REF_CENTER);
-  const bbOuter = scaleEllipse(Y_BAR_BOWL.outer, cx + bbOff.dx, cy + bbOff.dy, scale, Y_REF_CENTER);
-
-  return {
-    bowls: [
-      {
-        outer: bbOuter,
-        inner: bbInner,
-        widthFn: yBarBowlWidth,
-        densityFn: yBarBowlDensity,
-        overlayFills: [
-      ...initFills,
-      ...secFills,
-      ...entrFills,
-      ...exitFills,
-    ],
-      },
-    ],
-    fills: [
     ],
   };
 }
@@ -2802,25 +2124,22 @@ export function exportGlyphOutlines(glyph, overrides = {}) {
     case 'g': return gGlyph.exportOutlines(overrides);
     case 'h': return { barBowl: { inner: sampleEllipse(H_BAR_BOWL.inner), outer: sampleEllipse(H_BAR_BOWL.outer) } };
     case 'i': return iGlyph.exportOutlines(overrides);
-    case 'j': return { barBowl: { inner: sampleEllipse(J_BAR_BOWL.inner), outer: sampleEllipse(J_BAR_BOWL.outer) } };
+    case 'j': return jGlyph.exportOutlines(overrides);
     case 'l': return { loop: 'single-stroke' };
     case 'm': return { humps: 'single-stroke' };
     case 'n': return nGlyph.exportOutlines(overrides);
     case 'p': return pGlyph.exportOutlines(overrides);
-    case 'k': return {
-      barBowl: { inner: sampleEllipse(K_BAR_BOWL.inner), outer: sampleEllipse(K_BAR_BOWL.outer) },
-      crescent: { inner: sampleEllipse(K_CRESCENT.inner), outer: sampleEllipse(K_CRESCENT.outer) },
-    };
+    case 'k': return kGlyph.exportOutlines(overrides);
     case 'o': return exportOutlinesO();
     case 'r': return { stroke: 'ribbon' };
-    case 'w': return { stroke: 'ribbon', blob: 'filled-blob' };
+    case 'w': return wGlyph.exportOutlines(overrides);
     case 's': return sGlyph.exportOutlines(overrides);
     case 'u': return { stroke: 'ribbon' };
     case 'v': return vGlyph.exportOutlines(overrides);
     case 'x': return xGlyph.exportOutlines(overrides);
     case 't': return tGlyph.exportOutlines(overrides);
-    case 'y': return { barBowl: { inner: sampleEllipse(Y_BAR_BOWL.inner), outer: sampleEllipse(Y_BAR_BOWL.outer) } };
-    case 'z': return { barBowl: { inner: sampleEllipse(Z_BAR_BOWL.inner), outer: sampleEllipse(Z_BAR_BOWL.outer) } };
+    case 'y': return yGlyph.exportOutlines(overrides);
+    case 'z': return zGlyph.exportOutlines(overrides);
     case 'q': return qGlyph.exportOutlines(overrides);
     default: throw new Error(`Glyph ${glyph} not yet supported`);
   }
