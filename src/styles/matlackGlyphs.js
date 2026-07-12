@@ -956,14 +956,22 @@ const T_ENTRANCE = {
 // ascender height while the crossbar stays pinned near x-height.
 const T_RULE = { yTop: -7, yCenter: 82.7, yBottom: 122.9 };
 
-// Mid-word low entrance: the traced entrance (T_ENTRANCE_SEGS) starts at
-// (6.77, 98.97) — a 56%-x-height hang, i.e. the word-INITIAL form (same
-// lesson as r/01). For mid-word entries, extend the tip down along the
-// same line through the low-join band to 10% x-height (y 118.9), so a
-// preceding letter's low exit can overlap. Same recipe as R_ENTRANCE_SEGS.
+// Mid-word low entrance — band-true slice of to/01 path3 (derive_band.py
+// low --xh 40.2 --ybottom 122.9 --anchor-x -13.64 --skip-head 12.1
+// --fade-len 20). The slice end (4.58, 100.82) lands 0.03 su off the
+// traced entrance line's extension — zero bridge; the line carries on to
+// the fat-bar junction (G1 within 0.3°: slice tangent −41.2°, line
+// −40.9°). Replaces the original straight-line extension (pre-h-lesson;
+// l→t scored coart 0.00 with the letters not even touching). The traced
+// hang (T_ENTRANCE_SEGS) stays the word-initial form.
 const T_ENTRANCE_LOW_SEGS = [
-  [[-16.24, 118.88], [-16.24, 118.88], [72.61, 41.99], [72.61, 41.99]],
+  // Band-true slice; anchor (-13.64, 116.64) at 15.6% x-height.
+  [[-24.36, 122.1], [-21.47, 122.92], [-5.62, 109.73], [4.58, 100.82]],
+  // The traced entrance line, on to the fat-bar junction.
+  [[4.58, 100.82], [4.58, 100.82], [72.61, 41.99], [72.61, 41.99]],
 ];
+// Reversed render: anchor at ~0.91 of arc from the body side.
+const T_ENTRANCE_LOW = { fadeStart: 0.93 };
 
 // Mid-word exit connector — band-true slice of to/01 path3 (the canonical
 // LOW band; derive_band.py low --xh 40.2 --ybottom 122.9 --anchor-x 47.0
@@ -1952,7 +1960,11 @@ const R_JOIN_ANCHORS = {
     // low-join convention height. The old (28.18, 55.62) mid-flick spot
     // sat at 68.5% — fine against the flick, but drift-inconsistent with
     // every low exit (they anchor at 15%).
-    low:  { x: -7.55, y: 85.6 },
+    // (85.6 → 85.28 when the entrance went band-true: the canonical low
+    // scan point through the slice transform; the old value was read off
+    // the extended flick and carried a 0.32 su offset every band-true
+    // partner exit would have inherited as drift.)
+    low:  { x: -7.55, y: 85.28 },
     // high: the SAME scan point as o.exit — sinback's (46.22, 30.11) on
     // or/01 path2 — mapped through the transform that placed
     // R_ENTRANCE_AFTERHIGH_SEGS (scale 2.17, end pinned to downstrokeTop,
@@ -1974,15 +1986,30 @@ const R_STRUCTURAL_ANCHORS = {
   downstrokeTop: { x: 51.75, y: 38.69 },  // top of r's swoop (R_STROKE_SEGS[0] start)
 };
 
-// Entrance flick
-// Tip extended from (18.10, 64.90) — the traced r/01 flick, which is the
-// word-INITIAL form and hangs at 52% x-height — down along the same line
-// through the 15% low-join band to 10% (y=88.4), so mid-word low entries
-// (e→r, r→r) can overlap. The added stretch is in the deep taper zone,
-// so it renders as a fading hairline, per the table's "weak" r entry.
+// Entrance — band-true slice of to/01 path3 (derive_band.py low --xh 56
+// --ybottom 94 --anchor-x -7.55 --skip-head 12.1 --fade-len 20), bridged
+// onto the traced entrance line (r/01 flick tip (18.10, 64.90) → body
+// junction (51.44, 37.99)). Replaces the original straight-line
+// extension of the traced flick, which predates the band-true-entry
+// lesson (h, 2026-07-10): a straight extension crosses a band-true
+// partner's exit at a shallow angle instead of riding it — u→r scored
+// coart 0.02 (essentially offset-parallel). The bridge is G1-ish at
+// both ends (slice end tangent −40.3°, line −38.9°). Note r has no
+// entry-none variant: this chain is also the word-initial render, whose
+// deep baseline-crawling tip matches the table's "naturally y-bottom"
+// entry note.
 const R_ENTRANCE_SEGS = [
-  [[-11.0,88.4],[-11.0,88.4],[51.44,37.99],[51.44,37.99]],
+  // Band-true slice; anchor (-7.55, 85.28) at 15.6% x-height.
+  [[-25.54, 93.51], [-24.12, 93.31], [-23.05, 93.07], [-22.73, 92.78]],
+  [[-22.73, 92.78], [-20.07, 94.53], [-4.07, 81.92], [9.61, 70.31]],
+  // Bridge (authored): band → the traced entrance line.
+  [[9.61, 70.31], [14.2, 66.42], [19.72, 63.6], [24.0, 60.15]],
+  // The traced entrance line, on to the body junction.
+  [[24.0, 60.15], [24.0, 60.15], [51.44, 37.99], [51.44, 37.99]],
 ];
+// Reversed render (body→tip fade): anchor sits ~0.78 of arc from the
+// body side; hold hairline ~4 su past it, fade over the deep tail.
+const R_ENTRANCE_LOW = { fadeStart: 0.83 };
 
 // Entrance flick — afterHigh variant (r after b/f/o/v/w, or after strong o-exit).
 // Source: or/01 path2 ('o Exit → r Entry'), sliced at t≈0.45 on its 2nd
@@ -3434,13 +3461,15 @@ function buildT(cx, cy, scale, dpr, overrides, variant = undefined) {
   let entrFills;
   if (variant.entry === 'low') {
     const entrCenter = sampleSegments(
-      T_ENTRANCE_LOW_SEGS, [0], 12, cx, cy, scale, T_REF_CENTER
+      T_ENTRANCE_LOW_SEGS,
+      Array.from({ length: T_ENTRANCE_LOW_SEGS.length }, (_, i) => i),
+      12, cx, cy, scale, T_REF_CENTER
     );
     const entrReversed = [...entrCenter].reverse();
     const entrQuads = buildConnectorRibbon(
       entrReversed,
       T_EXIT_CONN.hairline * scale,
-      0.9,
+      T_ENTRANCE_LOW.fadeStart,
       { bodyWidth: T_FAT_BAR_HALF_WIDTH * scale, blendEnd: 0.25 },
     );
     entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
@@ -4395,7 +4424,7 @@ function buildR(cx, cy, scale, dpr, overrides, variant = { entry: 'low', exit: '
   const entrQuads = buildConnectorRibbon(
     entrReversed,
     0.65 * scale,
-    0.9,
+    isAfterHigh ? 0.9 : R_ENTRANCE_LOW.fadeStart,
     { bodyWidth: 3.5 * scale, blendEnd: 0.4 },
   );
   const entrFills = entrQuads.map(quad => ({ points: quad, pressure: 0.85, label: 'entrance' }));
